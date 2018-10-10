@@ -157,3 +157,17 @@ Details of `memory_bandwidth` allocation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Allocation for memory bandwidth is set equally across all NUMA nodes and translated to percentage (as required by resctrl filesystem API).
+
+
+Allocations metrics
+-------------------
+
+Returned allocations will be encode as metrics and stored using storage.
+
+When stored using `KafkaStorage` returned allocations will be encoded as follows in ``Prometheus`` exposition format:
+
+
+.. code-block:: ini
+
+    allocation(task_id='some-task-id', type='llc_cache', ...<other comomn and task specific labels>) 0.2 1234567890000
+    allocation(task_id='some-task-id', type='cores', ...<other comomn and task specific labels>) 0.2 1234567890000
