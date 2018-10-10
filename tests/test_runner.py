@@ -13,105 +13,16 @@
 # limitations under the License.
 
 
-import pytest
 from unittest.mock import patch, Mock
 
-from owca.runner import _calculate_desired_state, DetectionRunner
+from owca.runner import DetectionRunner
 from owca.mesos import MesosNode, sanitize_mesos_label
-from owca.containers import Container
 from owca import storage
 from owca import platforms
 from owca.metrics import Metric, MetricType
 from owca.detectors import AnomalyDetector
 from owca.testing import anomaly_metrics, anomaly, task
-
-
-def container(cgroup_path):
-    """Helper method to create container with patched subsystems."""
-    with patch('owca.containers.ResGroup'), patch('owca.containers.PerfCounters'):
-        return Container(cgroup_path, rdt_enabled=False)
-
-
-def metric(name, labels=None):
-    """Helper method to create metric with default values. Value is ignored during tests."""
-    return Metric(name=name, value=1234, labels=labels or {})
-
-
-@pytest.mark.parametrize(
-    'discovered_tasks,containers,expected_new_tasks,expected_containers_to_delete', (
-        # scenario when two task are created and them first one is removed,
-        ([task('/t1')], [],  # one new task, just arrived
-         [task('/t1')], []),  # should created one container
-        ([task('/t1')], [container('/t1')],  # after one iteration, our state is converged
-         [], []),  # no actions
-        ([task('/t1'), task('/t2')], [container('/t1'), ],  # another task arrived,
-         [task('/t2')], []),  # let's create another container,
-        ([task('/t1'), task('/t2')], [container('/t1'), container('/t2')],  # 2on2 converged
-         [], []),  # nothing to do,
-        ([task('/t2')], [container('/t1'), container('/t2')],  # first task just disappeared
-         [], [container('/t1')]),  # remove the first container
-        # some other cases
-        ([task('/t1'), task('/t2')], [],  # the new task, just appeared
-         [task('/t1'), task('/t2')], []),
-        ([task('/t1'), task('/t3')], [container('/t1'),
-                                      container('/t2')],  # t2 replaced with t3
-         [task('/t3')], [container('/t2')]),  # nothing to do,
-    ))
-def test_calculate_desired_state(
-        discovered_tasks,
-        containers,
-        expected_new_tasks,
-        expected_containers_to_delete):
-
-    new_tasks, containers_to_delete = _calculate_desired_state(
-        discovered_tasks, containers
-    )
-
-    assert new_tasks == expected_new_tasks
-    assert containers_to_delete == expected_containers_to_delete
-
-
-@patch('owca.containers.ResGroup')
-@patch('owca.containers.PerfCounters')
-@patch('owca.containers.Container.sync')
-@patch('owca.containers.Container.cleanup')
-@pytest.mark.parametrize('tasks,existing_containers,expected_running_containers', (
-    ([], {},
-     {}),
-    ([task('/t1')], {},
-     {task('/t1'): container('/t1')}),
-    ([task('/t1')], {task('/t2'): container('/t2')},
-     {task('/t1'): container('/t1')}),
-    ([task('/t1')], {task('/t1'): container('/t1'), task('/t2'): container('/t2')},
-     {task('/t1'): container('/t1')}),
-    ([], {task('/t1'): container('/t1'), task('/t2'): container('/t2')},
-     {}),
-))
-def test_sync_containers_state(cleanup_mock, sync_mock, PerfCoutners_mock, ResGroup_mock,
-                               tasks, existing_containers,
-                               expected_running_containers):
-
-    # Mocker runner, because we're only interested in one sync_containers_state function.
-    runner = DetectionRunner(
-        node=Mock(),
-        metrics_storage=Mock(),
-        anomalies_storage=Mock(),
-        detector=Mock(),
-        rdt_enabled=False,
-    )
-    # Prepare internal state used by sync_containers_state function.
-    runner.containers = dict(existing_containers)  # Use list for copying to have original list.
-
-    # Call it.
-    runner._sync_containers_state(tasks)
-
-    # Check internal state ...
-    assert expected_running_containers == runner.containers
-
-    # Check other side effects like calling sync() on external objects.
-    assert sync_mock.call_count == len(expected_running_containers)
-    number_of_removed_containers = len(set(existing_containers) - set(expected_running_containers))
-    assert cleanup_mock.call_count == number_of_removed_containers
+from tests.test_containers import container, metric
 
 
 # We are mocking objects used by containers.
@@ -120,6 +31,7 @@ def test_sync_containers_state(cleanup_mock, sync_mock, PerfCoutners_mock, ResGr
 @patch('owca.runner.are_privileges_sufficient', return_value=True)
 @patch('owca.containers.ResGroup')
 @patch('owca.containers.PerfCounters')
+@patch('owca.platforms.collect_topology_information', return_value=(1, 1, 1))
 @patch('owca.containers.Cgroup.get_measurements', return_value=dict(cpu_usage=23))
 @patch('time.time', return_value=1234567890.123)
 def test_runner_containers_state(*mocks):
@@ -188,11 +100,11 @@ def test_runner_containers_state(*mocks):
     # store() method was called twice:
     # 1. Before calling detect() to store state of the environment.
     metrics_storage.store.assert_called_once_with([
-             metric('platform-cpu-usage', labels=extra_labels),  # Store metrics from platform ...
-             Metric(name='cpu_usage', value=23,
-                    labels=dict(extra_labels, **task_labels_sanitized_with_task_id)),
-             Metric('owca_up', type=MetricType.COUNTER, value=1234567890.123, labels=extra_labels),
-             Metric('owca_tasks', type=MetricType.GAUGE, value=1, labels=extra_labels),
+        Metric('owca_up', type=MetricType.COUNTER, value=1234567890.123, labels=extra_labels),
+        Metric('owca_tasks', type=MetricType.GAUGE, value=1, labels=extra_labels),
+        metric('platform-cpu-usage', labels=extra_labels),  # Store metrics from platform ...
+        Metric(name='cpu_usage', value=23,
+               labels=dict(extra_labels, **task_labels_sanitized_with_task_id)),
     ])  # and task
 
     # 2. After calling detect to store information about detected anomalies.
@@ -207,6 +119,7 @@ def test_runner_containers_state(*mocks):
         Metric('anomaly_count', type=MetricType.COUNTER, value=1, labels=extra_labels),
         Metric('anomaly_last_occurence', type=MetricType.COUNTER, value=1234567890.123,
                labels=extra_labels),
+        Metric(name='detect_duration', value=0.0, labels={'el': 'ev'}, type=MetricType.GAUGE),
     ])
     anomalies_storage.store.assert_called_once_with(expected_anomaly_metrics)
 
@@ -219,7 +132,7 @@ def test_runner_containers_state(*mocks):
     )
 
     # assert expected state (new container based on first task /t1)
-    assert (runner.containers ==
+    assert (runner.containers_manager.containers ==
             {task('/t1', resources=dict(cpus=8.), labels=task_labels): container('/t1')})
 
     runner.wait_or_finish.assert_called_once()

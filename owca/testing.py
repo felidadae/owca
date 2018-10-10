@@ -38,7 +38,9 @@ def create_open_mock(sys_file_mock):
         def __call__(self, path, mode='rb'):
             mock_data = self.file_sys[path]
             if isinstance(mock_data, str):
-                return StringIO(mock_data)
+                s = StringIO(mock_data)
+                s.name = path  # Behave like a file with name.
+                return s
             else:
                 return mock_data(path, mode)
 
