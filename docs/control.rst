@@ -103,8 +103,8 @@ There is no need to actually returns all allocations for every tasks every time.
 those allocation for specified tasks returned during iteration if needed. Note that, if ``OWCA`` service is restarted, then already applied allocations will not be reset (
 current state of allocation on system will be read and provided as input).
 
-Supported resources types ``AllocationTypes``
-----------------------------------------------
+Supported allocations types
+---------------------------
 
 Following builtin allocations types are supported:
 
@@ -113,7 +113,7 @@ Following builtin allocations types are supported:
 - ``memory_bandwidth`` - Limiting memory bandwidth (Intel MBA)
 - ``llc_cache`` - Maximum cache occupancy (Intel CAT)
 
-The builtin resources are defined using following enumeration:
+The builtin allocation types are defined using following ``AllocationType`` enumeration:
 
 .. code-block:: python
 
