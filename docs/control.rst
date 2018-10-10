@@ -124,7 +124,7 @@ The builtin allocation types are defined using following ``AllocationType`` enum
         MEMORY_BANDWIDTH = 'memory_bandwidth'
         LLC_CACHE = 'llc_cache'
 
-Details of `cpu_quota` allocation
+Details of **cpu_quota** allocation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``cpu_quota`` is normalized in respect to whole system capacity (all logical processor) that will be applied on cgroups cpu subsystem
@@ -153,7 +153,7 @@ Details of `llc_cache` allocation
 Allocation for LLC cache allocation will be normalized to all available cache ways and rounded to minimum required number of consecutive ways.
 Additionally will be distributed across workloads to minimize both overlap of cache ways for across all tasks (if possible) and amount of reconfiguration required to perform isolation.
 
-Details of `memory_bandwidth` allocation
+Details of **memory_bandwidth** allocation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Allocation for memory bandwidth is set equally across all NUMA nodes and translated to percentage (as required by resctrl filesystem API).
