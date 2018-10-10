@@ -3,10 +3,16 @@ Control algorithm interface
 ===========================
 
 
-Control interface reuses existing Detector input and metric structures.
-Please use `detection.rst` for further reference on ``Platform``, ``TaskResources``, ``TasksMeasurements`` and 
-``TaskLabels`` structures.
+Introduction
+------------
 
+Control interface allows to provide control logic based on gathered platform and resources metrics and enforce isolation
+on compute resources (cpu, cache and access).
+
+Control interface reuses existing Detector input and metric structures. Please use :ref:`detection document <detection.rst>`_ 
+for further reference on ``Platform``, ``TaskResources``, ``TasksMeasurements`` and ``TaskLabels`` structures.
+
+:ref:`text <path>`
 
 Allocate resource callback 
 --------------------------
