@@ -133,7 +133,7 @@ using CFS bandwidth control.
 For example, with default ``cpu_period`` set to **100ms** on machine with **16** logical processor, setting ``cpu_quota`` to **0.25**, which semantically means
 hard limit on quarter on the available CPU resources, will effectively translated into **400ms** for(quota over **100ms** for period.
 
-Details of `cpu_shares` allocation
+Details of **cpu_shares** allocation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``cpu_shares`` is normalized to values given in ``AlloctionConfiguraiton`` structure:
@@ -147,7 +147,7 @@ and values between will be normalized according following formula:
 
     effective_cpu_shares = cpu_shares * (max_cpu_shares - min_cpu_shares) + min_cpu_shares
 
-Details of `llc_cache` allocation
+Details of **llc_cache** allocation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Allocation for LLC cache allocation will be normalized to all available cache ways and rounded to minimum required number of consecutive ways.
