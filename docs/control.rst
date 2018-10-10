@@ -30,17 +30,15 @@ Provided  ``ControlRunner`` class has following required and optional attributes
 
         # Required
         node: MesosNode
-        allocator: !Allocator
+        allocator: Allocator
 
         # Optional with default values
         delay: float = 1.                       # callback function call interval [s] 
-        allocations: !AllocationsConfigurations
-            cpu_min_shares: 100                   
-            cpu_max_shares: 1000               
+        allocations: AllocationsConfigurations = DefaultAllocationConfiguration()
 
         # Optional and empty
-        metrics_storage: Storage = None         # stores internal and input metrics for control algorithm
-        allocations_storage: Storage = None     # stores any allocations issued on tasks
+        metrics_storage: Storage = LogStorage()         # stores internal and input metrics for control algorithm
+        allocations_storage: Storage = LogStorage()     # stores any allocations issued on tasks
 
 ``AllocationsConfigurations`` structure contains static configuration to perform normalization of resource allocations.
 
@@ -54,11 +52,10 @@ Provided  ``ControlRunner`` class has following required and optional attributes
 
         # Number of minimum shares, when ``cpu_shares`` allocation is set to 0.0.
         cpu_min_shares: int = 2                   
-
         # Number of shares to set, when ``cpu_shares`` allocation is set to 1.0.
         cpu_max_shares: int = 10000               
 
-``Allocator`` and ``allocate`` resource callback function
+``Allocator`` structure and ``allocate`` resource callback function
 --------------------------------------------------------------------
         
 ``Allocator`` class must implement one function with following signature:
@@ -80,7 +77,7 @@ Provided  ``ControlRunner`` class has following required and optional attributes
 Control interface reuses existing ``Detector`` input and metric structures. Please use `detection document <detection.rst>`_ 
 for further reference on ``Platform``, ``TaskResources``, ``TasksMeasurements`` and ``TaskLabels`` structures.
 
-``TasksAllocations`` structure is a mapping from task identifier to allocations  and  defined as follows:
+``TasksAllocations`` structure is a mapping from task identifier to allocations and defined as follows:
 
 .. code:: python
     
@@ -92,7 +89,7 @@ for further reference on ``Platform``, ``TaskResources``, ``TasksMeasurements`` 
     tasks_allocations = {
         'some-task-id': {
             'cpu_quota': 0.6,
-            'cpu_shares': 0.8
+            'cpu_shares': 0.8,
         },
         'other-task-id': {
             'cpu_quota': 0.6,
@@ -100,7 +97,7 @@ for further reference on ``Platform``, ``TaskResources``, ``TasksMeasurements`` 
         ...
     }
 
-This structure is used as an input representing actually enforced configuration and as an output for desired allocations that will be applied in the current``ControlRunner`` iteration.
+This structure is used as an input representing actually enforced configuration and as an output for desired allocations that will be applied in the current ``ControlRunner`` iteration.
 
 There is no need to actually returns all allocations for every tasks every time. The ``ControlRunner`` is stateful (state is kept on OS level) and applies only
 those allocation for specified tasks returned during iteration if needed. Note that, if ``OWCA`` service is restarted, then already applied allocations will not be reset (
