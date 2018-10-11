@@ -34,18 +34,17 @@ Provided  ``ControlRunner`` class has following required and optional attributes
 
         # Optional with default values
         delay: float = 1.                       # callback function call interval [s] 
-        allocations: AllocationsConfigurations = DefaultAllocationConfiguration()
-
-        # Optional and empty
+        allocations: AllocationConfiguration = AllocationConfiguration()
         metrics_storage: Storage = LogStorage()         # stores internal and input metrics for control algorithm
         allocations_storage: Storage = LogStorage()     # stores any allocations issued on tasks
+        anomalies_storage: Storage = LogStorage()       # stores any detected anomalies during control iteration
 
-``AllocationsConfigurations`` structure contains static configuration to perform normalization of resource allocations.
+``AllocationsConfigurations`` structure contains static configuration to perform normalization of specific resource allocations.
 
 .. code-block:: python
 
     @dataclass
-    class AllocationsConfigurations:
+    class AllocationConfiguration:
 
         # Default value for cpu.cpu_period [ms] (used as denominator).
         cpu_quota_period : int = 100               
@@ -58,7 +57,7 @@ Provided  ``ControlRunner`` class has following required and optional attributes
 ``Allocator`` structure and ``allocate`` resource callback function
 --------------------------------------------------------------------
         
-``Allocator`` class must implement one function with following signature:
+``Allocator`` class must implement at least one function with following signature:
 
 .. code:: python
 
@@ -69,13 +68,13 @@ Provided  ``ControlRunner`` class has following required and optional attributes
                 tasks_measurements: TasksMeasurements,
                 tasks_resources: TasksResources,
                 tasks_labels: TasksLabels,
-                tasks_allocations: TasskAllocations,             
-            ) -> (List[TasksAllocations], List[Metric]):
+                tasks_allocations: TasksAllocations,             
+            ) -> (TasksAllocations, List[Anomaly], List[Metric]):
             ...
 
 
 Control interface reuses existing ``Detector`` input and metric structures. Please use `detection document <detection.rst>`_ 
-for further reference on ``Platform``, ``TaskResources``, ``TasksMeasurements`` and ``TaskLabels`` structures.
+for further reference on ``Platform``, ``TaskResources``, ``TasksMeasurements``, ``Anomaly`` and ``TaskLabels`` structures.
 
 ``TasksAllocations`` structure is a mapping from task identifier to allocations and defined as follows:
 
@@ -133,8 +132,10 @@ using CFS bandwidth control.
 For example, with default ``cpu_period`` set to **100ms** on machine with **16** logical processor, setting ``cpu_quota`` to **0.25**, which semantically means
 hard limit on quarter on the available CPU resources, will effectively translated into **400ms** for(quota over **100ms** for period.
 
+Refer to `Kerenl sched-bwc.txt <https://www.kernel.org/doc/Documentation/scheduler/sched-bwc.txt>`_ document for further reference.
+
 Details of **cpu_shares** allocation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``cpu_shares`` is normalized to values given in ``AlloctionConfiguraiton`` structure:
 
@@ -147,17 +148,24 @@ and values between will be normalized according following formula:
 
     effective_cpu_shares = cpu_shares * (max_cpu_shares - min_cpu_shares) + min_cpu_shares
 
+Refer to `Kernel sched-design <https://www.kernel.org/doc/Documentation/scheduler/sched-design-CFS.txt>`_ document for further reference.
+
+
 Details of **llc_cache** allocation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Allocation for LLC cache allocation will be normalized to all available cache ways and rounded to minimum required number of consecutive ways.
 Additionally will be distributed across workloads to minimize both overlap of cache ways for across all tasks (if possible) and amount of reconfiguration required to perform isolation.
 
+Refer to `Kernel x86/intel_rdt_ui.txt`_ document for further reference.
+
+
 Details of **memory_bandwidth** allocation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Allocation for memory bandwidth is set equally across all NUMA nodes and translated to percentage (as required by resctrl filesystem API).
 
+Refer to `Kernel x86/intel_rdt_ui.txt`_ document for further reference.
 
 Allocations metrics
 -------------------
@@ -171,3 +179,6 @@ When stored using `KafkaStorage` returned allocations will be encoded as follows
 
     allocation(task_id='some-task-id', type='llc_cache', ...<other comomn and task specific labels>) 0.2 1234567890000
     allocation(task_id='some-task-id', type='cores', ...<other comomn and task specific labels>) 0.2 1234567890000
+
+
+.. _`Kernel x86/intel_rdt_ui.txt`: https://www.kernel.org/doc/Documentation/x86/intel_rdt_ui.txt
