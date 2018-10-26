@@ -111,6 +111,8 @@ Following builtin allocations types are supported:
 - ``cpu_shares`` - CPU shares for Linux CFS 
 - ``memory_bandwidth`` - Limiting memory bandwidth (Intel MBA)
 - ``llc_cache`` - Maximum cache occupancy (Intel CAT)
+- ``rdt_MB`` -  User specified available bandwidth
+- ``rdt_LC`` - User specified cache bit mask
 
 The builtin allocation types are defined using following ``AllocationType`` enumeration:
 
@@ -122,6 +124,8 @@ The builtin allocation types are defined using following ``AllocationType`` enum
         SHARES = 'cpu_shares'
         MEMORY_BANDWIDTH = 'memory_bandwidth'
         LLC_CACHE = 'llc_cache'
+        RDT_MB = 'rdt_MB'
+        RTD_LC = 'rtd_LC'
 
 Details of **cpu_quota** allocation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -131,6 +135,10 @@ using CFS bandwidth control.
 
 For example, with default ``cpu_period`` set to **100ms** on machine with **16** logical processor, setting ``cpu_quota`` to **0.25**, which semantically means
 hard limit on quarter on the available CPU resources, will effectively translated into **400ms** for(quota over **100ms** for period.
+
+.. code-block:: python
+
+    effective_cpu_quota = cpu_period * cpu * cpu_quota
 
 Refer to `Kerenl sched-bwc.txt <https://www.kernel.org/doc/Documentation/scheduler/sched-bwc.txt>`_ document for further reference.
 
@@ -177,8 +185,8 @@ When stored using `KafkaStorage` returned allocations will be encoded as follows
 
 .. code-block:: ini
 
-    allocation(task_id='some-task-id', type='llc_cache', ...<other comomn and task specific labels>) 0.2 1234567890000
-    allocation(task_id='some-task-id', type='cores', ...<other comomn and task specific labels>) 0.2 1234567890000
+    allocation(task_id='some-task-id', type='llc_cache', ...<other common and task specific labels>) 0.2 1234567890000
+    allocation(task_id='some-task-id', type='cores', ...<other common and task specific labels>) 0.2 1234567890000
 
 
 .. _`Kernel x86/intel_rdt_ui.txt`: https://www.kernel.org/doc/Documentation/x86/intel_rdt_ui.txt
