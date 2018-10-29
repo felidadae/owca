@@ -175,6 +175,39 @@ Allocation for memory bandwidth is set equally across all NUMA nodes and transla
 
 Refer to `Kernel x86/intel_rdt_ui.txt`_ document for further reference.
 
+
+Details of **rdt_MB** allocation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Allocation of available bandwidth is in given format:
+.. code-block:: python
+
+    MB:<cache_id0>=bw_MBps0;<cache_id1>=bw_MBps1;...
+
+For example:
+.. code-block:: python
+
+    MB:0=20;1=100
+
+Refer to `Kernel x86/intel_rdt_ui.txt`_ document for further reference.
+
+
+Details of **rdt_LC** allocation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Allocation of cache bit mask is in given format:
+.. code-block:: python
+
+    L3:<cache_id0>=<cbm>;<cache_id1>=<cbm>;...
+
+For example:
+.. code-block:: python
+
+    L3:0=fffff;1=fffff
+
+
+Refer to `Kernel x86/intel_rdt_ui.txt`_ document for further reference.
+
+
 Allocations metrics
 -------------------
 
