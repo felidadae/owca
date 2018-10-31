@@ -109,10 +109,11 @@ Following builtin allocations types are supported:
 
 - ``cpu_quota`` - CPU Bandwidth Control called quota 
 - ``cpu_shares`` - CPU shares for Linux CFS 
-- ``memory_bandwidth`` - Limiting memory bandwidth (Intel MBA)
-- ``llc_cache`` - Maximum cache occupancy (Intel CAT)
-- ``rdt_MB`` -  User specified available bandwidth
-- ``rdt_L3`` - User specified cache bit mask
+- ``llc_cache`` - Maximum cache occupancy Intel RDT CAT (normalized)
+- ``memory_bandwidth`` - Limiting memory bandwidth Intel RDT MBA (normalized) 
+- ``rdt_L3`` - Maximum cache occupancy Intel RDT CAT (raw resctrl format)
+- ``rdt_MB`` -  Limiting memory bandwidth Intel RDT MBA (raw resctrl format)
+
 
 The builtin allocation types are defined using following ``AllocationType`` enumeration:
 
@@ -127,7 +128,7 @@ The builtin allocation types are defined using following ``AllocationType`` enum
         RDT_MB = 'rdt_MB'
         RTD_L3 = 'rtd_L3'
 
-Details of **cpu_quota** allocation
+**cpu_quota**
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``cpu_quota`` is normalized in respect to whole system capacity (all logical processor) that will be applied on cgroups cpu subsystem
@@ -142,7 +143,7 @@ hard limit on quarter on the available CPU resources, will effectively translate
 
 Refer to `Kerenl sched-bwc.txt <https://www.kernel.org/doc/Documentation/scheduler/sched-bwc.txt>`_ document for further reference.
 
-Details of **cpu_shares** allocation
+**cpu_shares**
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``cpu_shares`` is normalized to values given in ``AlloctionConfiguraiton`` structure:
@@ -159,7 +160,7 @@ and values between will be normalized according following formula:
 Refer to `Kernel sched-design <https://www.kernel.org/doc/Documentation/scheduler/sched-design-CFS.txt>`_ document for further reference.
 
 
-Details of **llc_cache** allocation
+**llc_cache**
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Allocation for LLC cache allocation will be normalized to all available cache ways and rounded to minimum required number of consecutive ways.
@@ -168,7 +169,7 @@ Additionally will be distributed across workloads to minimize both overlap of ca
 Refer to `Kernel x86/intel_rdt_ui.txt`_ document for further reference.
 
 
-Details of **memory_bandwidth** allocation
+**memory_bandwidth**
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Allocation for memory bandwidth is set equally across all NUMA nodes and translated to percentage (as required by resctrl filesystem API).
@@ -176,7 +177,7 @@ Allocation for memory bandwidth is set equally across all NUMA nodes and transla
 Refer to `Kernel x86/intel_rdt_ui.txt`_ document for further reference.
 
 
-Details of **rdt_MB** allocation
+**rdt_MB**
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Allocation of available bandwidth is in given format:
@@ -194,8 +195,8 @@ For example:
 Refer to `Kernel x86/intel_rdt_ui.txt`_ document for further reference.
 
 
-Details of **rdt_L3** allocation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**rdt_L3**
+^^^^^^^^^^
 
 Allocation of cache bit mask is in given format:
 
