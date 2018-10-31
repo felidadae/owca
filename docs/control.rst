@@ -213,6 +213,29 @@ For example:
 Refer to `Kernel x86/intel_rdt_ui.txt`_ document for further reference.
 
 
+Extended topology information
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Platform object will provide enough infomration to be able to construct raw configuration for rdt resources, including:
+
+- number of cache_ways, number of minimum number of cache ways required to allocate
+- number of sockets
+
+based on ``/sys/fs/resctrl/info/`` and ``procfs``
+
+.. code-block:: python
+
+    class Platform:
+        ...
+
+        rdt_min_cbm_bits: str
+        rdt_cbm_mask: str
+        rdt_min_bandwidth: str
+        ...
+
+
+Refer to `Kernel x86/intel_rdt_ui.txt`_ document for further reference.
+
 Allocations metrics
 -------------------
 
