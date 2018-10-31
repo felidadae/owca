@@ -183,7 +183,7 @@ Allocation of available bandwidth is in given format:
 
 .. code-block::
 
-    MB:<cache_id0>=bw_MBps0;<cache_id1>=bw_MBps1;...
+    MB:<cache_id0>=bandwidth0;<cache_id1>=bandwidth1;...
 
 For example:
 
