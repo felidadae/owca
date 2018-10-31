@@ -112,7 +112,7 @@ Following builtin allocations types are supported:
 - ``memory_bandwidth`` - Limiting memory bandwidth (Intel MBA)
 - ``llc_cache`` - Maximum cache occupancy (Intel CAT)
 - ``rdt_MB`` -  User specified available bandwidth
-- ``rdt_LC`` - User specified cache bit mask
+- ``rdt_L3`` - User specified cache bit mask
 
 The builtin allocation types are defined using following ``AllocationType`` enumeration:
 
@@ -125,7 +125,7 @@ The builtin allocation types are defined using following ``AllocationType`` enum
         MEMORY_BANDWIDTH = 'memory_bandwidth'
         LLC_CACHE = 'llc_cache'
         RDT_MB = 'rdt_MB'
-        RTD_LC = 'rtd_LC'
+        RTD_L3 = 'rtd_L3'
 
 Details of **cpu_quota** allocation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -181,31 +181,31 @@ Details of **rdt_MB** allocation
 
 Allocation of available bandwidth is in given format:
 
-.. code-block:: python
+.. code-block::
 
     MB:<cache_id0>=bw_MBps0;<cache_id1>=bw_MBps1;...
 
 For example:
 
-.. code-block:: python
+.. code-block::
 
     MB:0=20;1=100
 
 Refer to `Kernel x86/intel_rdt_ui.txt`_ document for further reference.
 
 
-Details of **rdt_LC** allocation
+Details of **rdt_L3** allocation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Allocation of cache bit mask is in given format:
 
-.. code-block:: python
+.. code-block::
 
     L3:<cache_id0>=<cbm>;<cache_id1>=<cbm>;...
 
 For example:
 
-.. code-block:: python
+.. code-block::
 
     L3:0=fffff;1=fffff
 
@@ -224,7 +224,7 @@ When stored using `KafkaStorage` returned allocations will be encoded as follows
 .. code-block:: ini
 
     allocation(task_id='some-task-id', type='llc_cache', ...<other common and task specific labels>) 0.2 1234567890000
-    allocation(task_id='some-task-id', type='cores', ...<other common and task specific labels>) 0.2 1234567890000
+    allocation(task_id='some-task-id', type='cpu_quota', ...<other common and task specific labels>) 0.2 1234567890000
 
 
 .. _`Kernel x86/intel_rdt_ui.txt`: https://www.kernel.org/doc/Documentation/x86/intel_rdt_ui.txt
