@@ -138,7 +138,7 @@ hard limit on quarter on the available CPU resources, will effectively translate
 
 .. code-block:: python
 
-    effective_cpu_quota = cpu_period * cpu * cpu_quota
+    effective_cpu_quota = cpu_quota * cpu_period
 
 Refer to `Kerenl sched-bwc.txt <https://www.kernel.org/doc/Documentation/scheduler/sched-bwc.txt>`_ document for further reference.
 
