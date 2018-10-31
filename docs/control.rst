@@ -2,6 +2,8 @@
 Control algorithm interface
 ===========================
 
+.. contents:: Table of Contents
+
 Introduction
 ------------
 
