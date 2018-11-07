@@ -31,6 +31,8 @@ MON_DATA = 'mon_data'
 MON_L3_00 = 'mon_L3_00'
 MBM_TOTAL = 'mbm_total_bytes'
 LLC_OCCUPANCY = 'llc_occupancy'
+RDT_MB = 'rdt_MB'
+RDT_LC = 'rdt_LC'
 
 
 log = logging.getLogger(__name__)
@@ -154,7 +156,7 @@ class ResGroup:
             return
 
         log.log(logger.TRACE,
-                'sync: Succesful synchronization for %r - returning' % self.resgroup_dir)
+                'sync: Successful synchronization for %r - returning' % self.resgroup_dir)
 
     def get_measurements(self) -> Measurements:
         """
@@ -176,6 +178,25 @@ class ResGroup:
                 llc_occupancy += int(llc_occupancy_file.read())
 
         return {MetricName.MEM_BW: mbm_total, MetricName.LLC_OCCUPANCY: llc_occupancy}
+
+    def get_allocations(self):
+        task_allocations = {}
+        with open(os.path.join(self.resgroup_dir, SCHEMATA)) as schemata:
+            for line in schemata:
+                if 'MB' in line:
+                    task_allocations[RDT_MB] = line
+                elif 'L3' in line:
+                    task_allocations[RDT_LC] = line
+
+        return task_allocations
+
+    def set_allocations(self, task_allocations):
+        with open(os.path.join(self.resgroup_dir, SCHEMATA)) as schemata:
+            if task_allocations.get(RDT_MB):
+                schemata.write(task_allocations[RDT_MB])
+
+            if task_allocations.get(RDT_LC):
+                schemata.write(task_allocations[RDT_LC])
 
     def cleanup(self):
         log.log(logger.TRACE, 'resctrl: rmdir(%s)', self.resgroup_dir)
