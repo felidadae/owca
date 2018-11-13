@@ -136,8 +136,8 @@ The builtin allocation types are defined using following ``AllocationType`` enum
         SHARES = 'cpu_shares'
         RDT = 'rdt'
 
-**cpu_quota**
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+cpu_quota
+^^^^^^^^^
 
 ``cpu_quota`` is normalized in respect to whole system capacity (all logical processor) that will be applied on cgroups cpu subsystem
 using CFS bandwidth control.
@@ -151,8 +151,8 @@ hard limit on quarter on the available CPU resources, will effectively translate
 
 Refer to `Kerenl sched-bwc.txt <https://www.kernel.org/doc/Documentation/scheduler/sched-bwc.txt>`_ document for further reference.
 
-**cpu_shares**
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+cpu_shares
+^^^^^^^^^^
 
 ``cpu_shares`` is normalized to values given in ``AlloctionConfiguraiton`` structure:
 
@@ -168,8 +168,8 @@ and values between will be normalized according following formula:
 Refer to `Kernel sched-design <https://www.kernel.org/doc/Documentation/scheduler/sched-design-CFS.txt>`_ document for further reference.
 
 
-**rdt**
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+rdt
+^^^
 
 .. code-block:: python
 
@@ -250,8 +250,6 @@ When stored using `KafkaStorage` returned allocations will be encoded as follows
 
     allocation(task_id='some-task-id', type='llc_cache', ...<other common and task specific labels>) 0.2 1234567890000
     allocation(task_id='some-task-id', type='cpu_quota', ...<other common and task specific labels>) 0.2 1234567890000
-    allocation(task_id='some-task-id', type='rdt_mba', ...<other common and task specific labels>) 0.2 1234567890000
-    allocation(task_id='some-task-id', type='rdt_l3', ...<other common and task specific labels>) 0.2 1234567890000
 
 
 .. _`Kernel x86/intel_rdt_ui.txt`: https://www.kernel.org/doc/Documentation/x86/intel_rdt_ui.txt
