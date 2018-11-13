@@ -81,22 +81,35 @@ for further reference on ``Platform``, ``TaskResources``, ``TasksMeasurements``,
 ``TasksAllocations`` structure is a mapping from task identifier to allocations and defined as follows:
 
 .. code:: python
-    
+
     TaskId = str
     TasksAllocations = Dict[TaskId, TaskAllocations]
-    TaskAllocations = Dict[AllocationType, float]
+    TaskAllocations = Dict[AllocationType, Union[float, RDTAllocation]]
 
     # example
     tasks_allocations = {
         'some-task-id': {
             'cpu_quota': 0.6,
             'cpu_shares': 0.8,
+            'rdt': RDTAllocation(name='hp_group', l3='L3:0=fffff;1=fffff', mb='MB:0=20;1=5')
         },
         'other-task-id': {
-            'cpu_quota': 0.6,
+            'cpu_quota': 0.5,
+            'rdt': RDTAllocation(name='hp_group', l3='L3:0=fffff;1=fffff', mb='MB:0=20;1=5')
+        }
+        'one-another-task-id': {
+            'cpu_quota': 0.7,
+            'rdt': RDTAllocation(name='be_group', l3='L3:0=000ff;1=000ff', mb='MB:0=1;1=1'),
+        }
+        'another-task-with-own-rdtgroup': {
+            'cpu_quota': 0.7,
+            'rdt': RDTAllocation(l3='L3:0=000ff;1=000ff', mb='MB:0=1;1=1'),  # "another-task-with-own-rdtgroup" will be used as `name`
         }
         ...
     }
+
+
+Please refer to `rdt`_ for definition of RDTAllocation.
 
 This structure is used as an input representing actually enforced configuration and as an output for desired allocations that will be applied in the current ``ControlRunner`` iteration.
 
@@ -109,13 +122,9 @@ Supported allocations types
 
 Following builtin allocations types are supported:
 
-- ``cpu_quota`` - CPU Bandwidth Control called quota 
-- ``cpu_shares`` - CPU shares for Linux CFS 
-- ``llc_cache`` - Maximum cache occupancy Intel RDT CAT (normalized)
-- ``memory_bandwidth`` - Limiting memory bandwidth Intel RDT MBA (normalized) 
-- ``rdt_L3`` - Maximum cache occupancy Intel RDT CAT (raw resctrl format)
-- ``rdt_MB`` -  Limiting memory bandwidth Intel RDT MBA (raw resctrl format)
-
+- ``cpu_quota`` - CPU Bandwidth Control called quota (normalized)
+- ``cpu_shares`` - CPU shares for Linux CFS (normalized)
+- ``rdt`` - Intel RDT (raw access)
 
 The builtin allocation types are defined using following ``AllocationType`` enumeration:
 
@@ -125,10 +134,7 @@ The builtin allocation types are defined using following ``AllocationType`` enum
 
         QUOTA = 'cpu_quota'
         SHARES = 'cpu_shares'
-        MEMORY_BANDWIDTH = 'memory_bandwidth'
-        LLC_CACHE = 'llc_cache'
-        RDT_MB = 'rdt_MB'
-        RTD_L3 = 'rtd_L3'
+        RDT = 'rdt'
 
 **cpu_quota**
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -162,31 +168,29 @@ and values between will be normalized according following formula:
 Refer to `Kernel sched-design <https://www.kernel.org/doc/Documentation/scheduler/sched-design-CFS.txt>`_ document for further reference.
 
 
-**llc_cache**
+**rdt**
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Allocation for LLC cache allocation will be normalized to all available cache ways and rounded to minimum required number of consecutive ways.
-Additionally will be distributed across workloads to minimize both overlap of cache ways for across all tasks (if possible) and amount of reconfiguration required to perform isolation.
+.. code-block:: python
 
-Refer to `Kernel x86/intel_rdt_ui.txt`_ document for further reference.
+    @dataclasss
+    class RDTAllocation:
+        name: str = None  # defaults to TaskId from TasksAllocations
+        mb: str = None  # optional - when no provided doesn't change the existing allocation
+        l3: str = None  # optional - when no provided doesn't change the existing allocation
 
+You can use ``RDTAllocation`` structure to configure Intel RDT available resources.
 
-**memory_bandwidth**
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``RDTAllocation`` wraps resctrl ``schemata`` file. Using ``name`` property allow to one to specify name for control group to be used
+for given task to save limited CLOSids and isolate RDT resources for multiple containers at once.
 
-Allocation for memory bandwidth is set equally across all NUMA nodes and translated to percentage (as required by resctrl filesystem API).
+``name`` field is optional and if not provided, the ``TaskID`` from parent structure will be used.
 
-Refer to `Kernel x86/intel_rdt_ui.txt`_ document for further reference.
-
-
-**rdt_MB**
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Allocation of available bandwidth is in given format:
+Allocation of available bandwidth for ``mb`` field is given format:
 
 .. code-block::
 
-    MB:<cache_id0>=bandwidth0;<cache_id1>=bandwidth1;...
+    MB:<cache_id0>=bw_MBps0;<cache_id1>=bw_MBps1
 
 For example:
 
@@ -194,13 +198,8 @@ For example:
 
     MB:0=20;1=100
 
-Refer to `Kernel x86/intel_rdt_ui.txt`_ document for further reference.
 
-
-**rdt_L3**
-^^^^^^^^^^
-
-Allocation of cache bit mask is in given format:
+Allocation of cache bit mask for ``l3`` field is given format:
 
 .. code-block::
 
@@ -251,6 +250,8 @@ When stored using `KafkaStorage` returned allocations will be encoded as follows
 
     allocation(task_id='some-task-id', type='llc_cache', ...<other common and task specific labels>) 0.2 1234567890000
     allocation(task_id='some-task-id', type='cpu_quota', ...<other common and task specific labels>) 0.2 1234567890000
+    allocation(task_id='some-task-id', type='rdt_mba', ...<other common and task specific labels>) 0.2 1234567890000
+    allocation(task_id='some-task-id', type='rdt_l3', ...<other common and task specific labels>) 0.2 1234567890000
 
 
 .. _`Kernel x86/intel_rdt_ui.txt`: https://www.kernel.org/doc/Documentation/x86/intel_rdt_ui.txt
