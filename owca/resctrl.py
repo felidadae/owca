@@ -17,6 +17,8 @@ import errno
 import logging
 import os
 
+from dataclasses import dataclass
+
 from owca import logger
 from owca.cgroups import BASE_SUBSYSTEM_PATH
 from owca.metrics import Measurements, MetricName
@@ -37,6 +39,25 @@ RDT_LC = 'rdt_LC'
 
 log = logging.getLogger(__name__)
 
+@dataclass
+class RDTGroup:
+    """Abstraction over resctrl fs CTRL group directory.
+    Depedning on usage
+    """
+
+    name: str = None
+    l3: str = None
+    mb: str = None
+
+    def _read_state(self):
+        """read and parse current allocation from underlaying filesystem"""
+        self.l3 = 'L3:0....'  # TODO: implement me
+        # open('/sys/fs/resctrl/{name}/schemata) read and parse
+
+    def _write_state(self):
+        """read current allocation from underlaying filesystem"""
+        pass
+        # open('/sys/fs/resctrl/{name}/schemata) and write self.l3 and self.mb if not None
 
 def cleanup_resctrl():
     """Remove taskless subfolders at resctrl folders to free scarce CLOS and RMID resources. """

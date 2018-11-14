@@ -20,8 +20,10 @@ configuration file  ``config.yaml``:
 
     runner: !ControlRunner
       node: !MesosNode
-      delay: 1                                 
+      action_delay: 1                                  # [s]
       allocator: !ExampleAllocator
+
+
 
 Provided  ``ControlRunner`` class has following required and optional attributes.
 
@@ -35,7 +37,8 @@ Provided  ``ControlRunner`` class has following required and optional attributes
         allocator: Allocator
 
         # Optional with default values
-        delay: float = 1.                       # callback function call interval [s] 
+        action_delay: float = 1.                        # callback function call interval [s]
+        # Default static configuration for allocation
         allocations: AllocationConfiguration = AllocationConfiguration()
         metrics_storage: Storage = LogStorage()         # stores internal and input metrics for control algorithm
         allocations_storage: Storage = LogStorage()     # stores any allocations issued on tasks
@@ -173,7 +176,7 @@ rdt
 
 .. code-block:: python
 
-    @dataclasss
+    @dataclass
     class RDTAllocation:
         name: str = None  # defaults to TaskId from TasksAllocations
         mb: str = None  # optional - when no provided doesn't change the existing allocation

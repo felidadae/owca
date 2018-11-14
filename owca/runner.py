@@ -250,3 +250,32 @@ class DetectionRunner(Runner):
         # cleanup
         for container in self.containers.values():
             container.cleanup()
+
+
+@dataclass
+class ControlRunner:
+    node: mesos.MesosNode
+    metrics_storage: storage.Storage
+    anomalies_storage: storage.Storage
+    allocations_storage: storage.Storage
+    allocator: detectors.AnomalyDetector
+    action_delay: float = 0.  # [s]
+    rdt_enabled: bool = True
+    extra_labels: Dict[str, str] = field(default_factory=dict)
+
+    def __post_init__(self):
+        self.detection_runner = DetectionRunner(
+            node=self.node,
+            metrics_storage=self.metrics_storage,
+            anomalies_storage=self.anomalies_storage,
+        )
+        pass
+
+
+    def run(self):
+        #TODO: replace implement extract common funcitnoality for both detectors and allocators
+        self.detection_runner.run()
+
+
+
+
