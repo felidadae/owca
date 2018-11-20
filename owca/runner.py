@@ -253,7 +253,7 @@ class DetectionRunner(Runner):
 
 
 @dataclass
-class ControlRunner:
+class AllocationRunner:
     node: mesos.MesosNode
     metrics_storage: storage.Storage
     anomalies_storage: storage.Storage
