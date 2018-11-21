@@ -124,7 +124,7 @@ class ResGroup:
 
             try:
                 log.log(logger.TRACE, 'resctrl: makedirs(%s)', self.resgroup_dir)
-                os.makedirs(self.resgroup_dir)
+                os.makedirs(self.resgroup_dir, exist_ok=True)
             except OSError as e:
                 if e.errno == errno.ENOSPC:  # "No space left on device"
                     raise Exception("Limit of workloads reached! (Oot of available CLoSes/RMIDs!)")
