@@ -21,6 +21,7 @@ import json
 
 # Workload idenfitication
 workload_name = os.environ['workload_name']
+workload_version_name = os.environ['workload_version_name']
 job_uniq_id = os.environ['job_uniq_id']
 job_name = os.environ['job_name']
 

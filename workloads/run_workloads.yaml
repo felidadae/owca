@@ -208,9 +208,13 @@
     - name: Create twemcache/mutilate workload
       vars:
         workload_name: twemcache_mutilate
+        workload: "{{workloads[workload_name][item[1]]}}"
+        job_name: "{{workload_name}}--{{item[1]}}--{{job_id}}--{{job_uniq_id}}"
         job_uniq_id: "{{communication_port}}"
         application: twemcache
         load_generator: mutilate
+        communication_port: "{{workload.communication_port | int + item[0] }}"
+        instances_version_iterator: "{{workloads[workload_name] | instances_version_iter }}"
       environment: "{{workload[job_id].env | default({}) }}"
       block:
       - name: Create twemcache for mutilate
@@ -218,14 +222,14 @@
           job_id: twemcache
           own_ip: "{{application_host_ip}}"
         command: "{{create_job_command}}"
-        loop: "{{instances_iterator}}"
+        loop: "{{instances_version_iterator}}"
         tags: twemcache_mutilate--twemcache
       - name: Create mutilate for twemcache
         vars:
           job_id: mutilate
           own_ip: "{{load_generator_host_ip}}"
         command: "{{create_job_command}}"
-        loop: "{{instances_iterator}}"
+        loop: "{{instances_version_iterator}}"
         tags: twemcache_mutilate--mutilate
       delegate_to: localhost
       tags: twemcache_mutilate

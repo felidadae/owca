@@ -9,6 +9,16 @@
 
 application_hosts:
   hosts:
+
+    # <<< @TO_BE_REMOVED
+    100.64.176.13:
+      env_uniq_id: 13
+      load_generator_host_ip: 100.64.176.21
+    100.64.176.14:
+      env_uniq_id: 14
+      load_generator_host_ip: 100.64.176.22
+    # >>> @TO_BE_REMOVED
+
     10.10.10.1:
       env_uniq_id: 1
       load_generator_host_ip: 10.10.10.11
@@ -38,10 +48,10 @@ application_hosts:
     # Global variables to run workloads.
     cluster: example
     role: root
-    image_tag: testing_setup
+    image_tag: 2f59fc840663337f94490a19684f46399e4853bd
 
-    wrapper_kafka_brokers: 10.10.10.99
-    docker_registry: 10.10.10.99:80
+    wrapper_kafka_brokers: 100.64.176.12
+    docker_registry: 100.64.176.12:80
 
     default_resources:
       cpu: 1
@@ -97,15 +107,26 @@ application_hosts:
             disk: 2
 
       twemcache_mutilate:
-        count: 1
-        slo: 3200
-        communication_port: 11311
-        twemcache:
-        mutilate:
-          resources:
-            cpu: 0.5
-            ram: 1
-            disk: 1
+        small:
+          count: 1
+          slo: 3200
+          communication_port: 11311
+          twemcache:
+          mutilate:
+            resources:
+              cpu: 0.5
+              ram: 1
+              disk: 1
+        big:
+          count: 1
+          slo: 3200
+          communication_port: 11411
+          twemcache:
+          mutilate:
+            resources:
+              cpu: 0.5
+              ram: 1
+              disk: 1
 
       specjbb:
         count: 1
