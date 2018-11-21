@@ -13,20 +13,22 @@
 # limitations under the License.
 
 
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import List, Dict, Optional, Tuple
 import logging
 import time
-from typing import List, Dict, Optional
-from abc import ABC, abstractmethod
-
-from dataclasses import dataclass, field
 
 from owca import detectors, nodes
 from owca import logger
 from owca import platforms
 from owca import storage
 from owca.containers import Container
-from owca.detectors import (TasksMeasurements, TasksResources,
-                            TasksLabels, convert_anomalies_to_metrics)
+from owca.detectors import (AnomalyDetector, TasksMeasurements, TasksResources,
+                            TasksLabels, convert_anomalies_to_metrics, 
+                            update_anomalies_metrics_with_task_information
+                            )
+from owca.allocators import Allocator, TasksAllocations, convert_allocations_to_metrics
 from owca.mesos import MesosTask, create_metrics, sanitize_mesos_label
 from owca.metrics import Metric, MetricType
 from owca.resctrl import check_resctrl, cleanup_resctrl
@@ -73,32 +75,12 @@ class Runner(ABC):
         ...
 
 
-@dataclass
-class DetectionRunner(Runner):
-    """Watch over tasks running on this cluster on this node, collect observation
-    and report externally (using storage) detected anomalies.
-    """
-    node: nodes.Node
-    metrics_storage: storage.Storage
-    anomalies_storage: storage.Storage
-    detector: detectors.AnomalyDetector
-    action_delay: float = 0.  # [s]
-    rdt_enabled: bool = True
-    extra_labels: Dict[str, str] = field(default_factory=dict)
+class ContainerManager:
 
-    def __post_init__(self):
+    def __init__(self):
         self.containers: Dict[MesosTask, Container] = {}
-        self.anomaly_counter: int = 0
-        self.anomaly_last_occurence: Optional[int] = None
 
-    def wait_or_finish(self):
-        """Decides how long one run takes and when to finish.
-        TODO: handle graceful shutdown on signal
-        """
-        time.sleep(self.action_delay)
-        return True
-
-    def _sync_containers_state(self, tasks):
+    def _sync_containers_state(self, tasks) -> Dict[MesosTask, Container]:
         """Sync internal state of runner by removing orphaned containers, and creating containers
         for newly arrived tasks, and synchronizing containers' state.
 
@@ -137,10 +119,31 @@ class DetectionRunner(Runner):
         for container in self.containers.values():
             container.sync()
 
-    @logger.trace(log)
-    def run(self):
+        return self.containers
+    
+
+    def cleanup(self):
+        # cleanup
+        for container in self.containers.values():
+            container.cleanup()
+
+
+
+class BaseRunnerMixin:
+    """Provides common functionallity for both Allocator and Detector.
+    - configure_rdt based on self.rdt_enabled property
+    - wait_or_finish based on self.action_delay property
+    - includes container manager to sync container state
+    """
+    def __init__(self):
+        self.containers_manager = ContainerManager()
+
+    def configure_rdt(self):
+        """Check required permission for using rdt and initilize subsystem.
+        Returns False, if rdt wasn't properly configured. """
+
         if self.rdt_enabled and not check_resctrl():
-            return
+            return False
         elif not self.rdt_enabled:
             log.warning('Rdt disabled. Skipping collecting measurements '
                         'and resctrl synchronization')
@@ -153,128 +156,257 @@ class DetectionRunner(Runner):
                          "/proc/sys/kernel/perf_event_paranoid; or has CAP_DAC_OVERRIDE capability"
                          " set. You can run process as root too. See man 2 perf_event_open for "
                          "details.")
-            return
+            return False
 
-        while True:
-            # Collect information about tasks running on node.
-            tasks = self.node.get_tasks()
+        return True
 
-            # Keep sync of found tasks and internally managed containers.
-            self._sync_containers_state(tasks)
+    def wait_or_finish(self):
+        """Decides how long one run takes and when to finish.
+        TODO: handle graceful shutdown on signal
+        """
+        time.sleep(self.action_delay)
+        return True
 
-            # Owca internal metrics.
-            internal_metrics = [
-                Metric(name='owca_up', type=MetricType.COUNTER, value=time.time()),
-                Metric(name='owca_tasks', type=MetricType.GAUGE, value=len(tasks)),
-            ]
 
-            # Platform information
-            platform, platform_metrics, platform_labels = platforms.collect_platform_information()
+    def _prepare_tasks_data(self, containers) -> Tuple[
+            List[Metric], TasksResources, TasksMeasurements, TasksLabels, TasksAllocations]:
+        """Build labeled tasks_metrics and task_metrics_values."""
+        tasks_measurements: TasksMeasurements = {}
+        tasks_resources: TasksResources = {}
+        tasks_labels: TasksLabels = {}
+        tasks_metrics: List[Metric] = []
+        for task, container in containers.items():
+            # Single task data
+            task_measurements = container.get_measurements()
+            task_metrics = create_metrics(task_measurements)
+            # Prepare tasks labels based on Mesos tasks metadata labels and task id.
+            task_labels = {
+                sanitize_mesos_label(label_key): label_value
+                for label_key, label_value
+                in task.labels.items()
+            }
+            task_labels['task_id'] = task.task_id
 
-            # Common labels
-            common_labels = dict(platform_labels, **self.extra_labels)
+            # Task scoped label decoration.
+            for task_metric in task_metrics:
+                task_metric.labels.update(task_labels)
 
-            # Update platform_metrics with common labels.
-            for metric in platform_metrics + internal_metrics:
-                metric.labels.update(common_labels)
+            # Aggregate over all tasks.
+            tasks_labels[task.task_id] = task_labels
+            tasks_measurements[task.task_id] = task_measurements
+            tasks_resources[task.task_id] = task.resources
+            tasks_metrics += task_metrics
+        return task_metrics, tasks_resources, task_labels
 
-            # Build labeled tasks_metrics and task_metrics_values.
-            tasks_measurements: TasksMeasurements = {}
-            tasks_resources: TasksResources = {}
-            tasks_labels: TasksLabels = {}
-            tasks_metrics: List[Metric] = []
-            for task, container in self.containers.items():
-                # Single task data
-                task_measurements = container.get_measurements()
-                task_metrics = create_metrics(task_measurements)
-                # Prepare tasks labels based on Mesos tasks metadata labels and task id.
-                task_labels = {
-                    sanitize_mesos_label(label_key): label_value
-                    for label_key, label_value
-                    in task.labels.items()
-                }
-                task_labels['task_id'] = task.task_id
 
-                # Task scoped label decoration.
-                for task_metric in task_metrics:
-                    task_metric.labels.update(common_labels)
-                    task_metric.labels.update(task_labels)
+    def get_internal_metrics(self, tasks):
+        """Internal owca metrics."""
+        return [
+            Metric(name='owca_up', type=MetricType.COUNTER, value=time.time()),
+            Metric(name='owca_tasks', type=MetricType.GAUGE, value=len(tasks)),
+        ]
 
-                # Aggregate over all tasks.
-                tasks_labels[task.task_id] = task_labels
-                tasks_measurements[task.task_id] = task_measurements
-                tasks_resources[task.task_id] = task.resources
-                tasks_metrics += task_metrics
 
-            self.metrics_storage.store(platform_metrics + tasks_metrics + internal_metrics)
+    def get_anomalies_statistics_metrics(self, anomalies, detection_duration=None):
+        """Extra external plugin anomaly & allocaton statistics."""
+        if len(anomalies):
+            self.anomaly_last_occurence = time.time()
+            self.anomaly_counter += len(anomalies)
 
-            anomalies, extra_metrics = self.detector.detect(
-                platform, tasks_measurements, tasks_resources, tasks_labels)
+        statistics_metrics = [
+            Metric(name='anomaly_count', type=MetricType.COUNTER, value=self.anomaly_counter),
+        ]
+        if self.anomaly_last_occurence:
+            statistics_metrics.extend([
+                Metric(name='anomaly_last_occurence', type=MetricType.COUNTER,
+                       value=self.anomaly_last_occurence),
+            ])
+        if detection_duration is not None:
+            statistics_metrics.extend([
+                Metric(name='detection_duration', type=MetricType.GAUGE, value=detection_duration)
+            ])
+        return statistics_metrics
 
-            log.debug('Anomalies detected: %d', len(anomalies))
 
-            # Note: anomaly metrics include metrics found in ContentionAnomaly.metrics.
-            anomaly_metrics = convert_anomalies_to_metrics(anomalies)
+    def get_allocation_statistics_metrics(self, allocations, allocation_duration=None):
+        """Extra external plugin anomaly & allocaton statistics."""
+        if len(allocations):
+            self.allocations_counter += len(allocations)
 
-            for anomaly_metric in anomaly_metrics:
-                # Extra labels for anomaly metrics for information about task.
-                if 'contended_task_id' in anomaly_metric.labels:  # Only for anomaly metrics.
-                    contended_task_id = anomaly_metric.labels['contended_task_id']
-                    anomaly_metric.labels.update(
-                        tasks_labels.get(contended_task_id, {})
-                    )
+        statistics_metrics = [
+            Metric(name='allocations_count', type=MetricType.COUNTER, 
+                   value=self.allocations_counter),
+        ]
 
-            # Extra anomaly statistics
-            if len(anomalies):
-                self.anomaly_last_occurence = time.time()
-                self.anomaly_counter += len(anomalies)
+        if allocation_duration is not None:
+            statistics_metrics.extend([
+                Metric(name='allocation_duration', type=MetricType.GAUGE, 
+                       value=allocation_duration)
+            ])
 
-            statistics_metrics = [
-                Metric(name='anomaly_count', type=MetricType.COUNTER, value=self.anomaly_counter),
-            ]
-            if self.anomaly_last_occurence:
-                statistics_metrics.extend([
-                    Metric(name='anomaly_last_occurence', type=MetricType.COUNTER,
-                           value=self.anomaly_last_occurence),
-                ])
+        return statistics_metrics
 
-            # Update anomaly & extra metrics with common labels.
-            for metric in anomaly_metrics + extra_metrics + statistics_metrics:
-                metric.labels.update(common_labels)
 
-            self.anomalies_storage.store(anomaly_metrics + extra_metrics + statistics_metrics)
+    def _prepare_input_and_send_metrics_package(self):
 
-            if not self.wait_or_finish():
-                break
+        # Collect information about tasks running on node.
+        tasks = self.node.get_tasks()
 
-        # cleanup
-        for container in self.containers.values():
-            container.cleanup()
+        # Keep sync of found tasks and internally managed containers.
+        containers = self.containers_manager._sync_containers_state(tasks)
+
+        metrics_package = MetricPackage(self.metrics_storage)
+        metrics_package.add_metrics(self.get_internal_metrics(tasks))
+
+        # Platform information
+        platform, platform_metrics, platform_labels = platforms.collect_platform_information()
+        metrics_package.add_metrics(platform_metrics)
+
+        # Common labels
+        common_labels = dict(platform_labels, **self.extra_labels)
+
+        # Tasks informations
+        (tasks_metrics, tasks_measurements, tasks_resources, tasks_labels, task_allocations
+         ) = self._prepare_tasks_data(containers)
+        metrics_package.add_metrics(tasks_metrics)
+        metrics_package.send(common_labels)
+
+        return platform, tasks_measurements, tasks_resources, tasks_labels, task_allocations
 
 
 @dataclass
-class AllocationRunner:
-    node: mesos.MesosNode
+class DetectionRunner(Runner, BaseRunnerMixin):
+    """Watch over tasks running on this cluster on this node, collect observation
+    and report externally (using storage) detected anomalies.
+    """
+    node: nodes.Node
     metrics_storage: storage.Storage
     anomalies_storage: storage.Storage
-    allocations_storage: storage.Storage
-    allocator: detectors.AnomalyDetector
+    detector: detectors.AnomalyDetector
     action_delay: float = 0.  # [s]
     rdt_enabled: bool = True
     extra_labels: Dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self):
-        self.detection_runner = DetectionRunner(
-            node=self.node,
-            metrics_storage=self.metrics_storage,
-            anomalies_storage=self.anomalies_storage,
-        )
-        pass
-
+        self.anomaly_counter: int = 0
+        self.anomaly_last_occurence: Optional[int] = None
 
     def run(self):
-        #TODO: replace implement extract common funcitnoality for both detectors and allocators
-        self.detection_runner.run()
+        if not self.configure_rdt():
+            return
+
+        while True:
+            # Prepare input and send input based metrics.
+            platform, tasks_measurements, tasks_resources, \
+            tasks_labels, task_allocations, common_labels = \
+                self._prepare_input_and_send_metrics_package()
+
+            # Detector callback
+            detect_start = time.time()
+            new_task_allocations, anomalies, extra_metrics = self.detector.detect(
+                platform, tasks_measurements, tasks_resources, tasks_labels, task_allocations)
+            detect_duration = time.time() - detect_start
+            log.debug('Anomalies detected (in %.2fs): %d', detect_duration, len(anomalies))
+
+            # Prepare anomly metrics
+            anomaly_metrics = convert_anomalies_to_metrics(anomalies)
+            update_anomalies_metrics_with_task_information(anomaly_metrics, tasks_labels)
+
+            # Prepare and send all output (anomalies) metrics.
+            anomalies_package = MetricPackage(self.anomalies_storage)
+            anomalies_package.add_metrics(
+                anomaly_metrics,
+                extra_metrics, 
+                self.get_anomalies_statistics_metrics(detect_duration)
+            )
+            anomalies_package.send(common_labels)
+
+            if not self.wait_or_finish():
+                break
+
+        self.container_manager.cleanup()
+
+
+class MetricPackage:
+    """Wraps storage to pack metrics from diffrent sources and apply common labels
+    before send."""
+    def __init__(self, storage: storage.Storage):
+        self.storage = storage
+        self.metrics: List[Metric] = []
+
+    def add_metrics(self, *metrics_args: List[Metric]):
+        for metrics in metrics_args:
+            self.metrics.extend(metrics)
+
+    def send(self, common_labels: Dict[str, str] = None):
+        """Apply common_labels and send using storage from constructor. """
+        if self.common_labels:
+            for metric in self.metrics:
+                metric.labels.update(common_labels)
+        self.storage.store(self.metrics)
+    
+
+@dataclass
+class AllocationRunner(Runner, BaseRunnerMixin):
+    node: nodes.Node
+    allocator: Allocator
+    metrics_storage: storage.Storage
+    anomalies_storage: storage.Storage
+    allocations_storage: storage.Storage
+    action_delay: float = 1.  # [s]
+    rdt_enabled: bool = True
+    extra_labels: Dict[str, str] = field(default_factory=dict)
+
+    def _calculate_resulting_allocations(old_allocations, new_allocations):
+        # TODO: implement me!!!!
+        return {}, {}
+
+    def run(self):
+        if not self.configure_rdt():
+            return
+
+        while True:
+            # Prepare input and send input based metrics.
+            platform, tasks_measurements, tasks_resources, \
+            tasks_labels, task_allocations, common_labels = \
+                self._prepare_input_and_send_metrics_package()
+
+            # Allocator callback
+            allocation_start = time.time()
+            new_task_allocations, anomalies, extra_metrics = self.allocator.allocate(
+                platform, tasks_measurements, tasks_resources, tasks_labels, task_allocations)
+            allocation_duration = time.time() - allocation_start
+
+            log.debug('Anomalies detected: %d', len(anomalies))
+            log.debug('Allocations received: %d', len(new_task_allocations))
+
+            all_allocations, effective_allocations = \
+                self._calculate_resulting_allocations(task_allocations, new_task_allocations) 
+            log.trace('Resulting allocations to execute: %r', effective_allocations)
+
+            # Note: anomaly metrics include metrics found in ContentionAnomaly.metrics.
+            anomaly_metrics = convert_anomalies_to_metrics(anomalies)
+            update_anomalies_metrics_with_task_information(anomaly_metrics, tasks_labels)
+
+            anomalies_package = MetricPackage(self.anomalies_package)
+            anomalies_package.add_metrics(self.get_anomalies_statistics_metrics(anomalies))
+            anomalies_package.add_metrics(self.get_statistics_metrics())
+            anomalies_package.send(common_labels)
+
+            # Store allocations information
+            allocations_metrics = convert_allocations_to_metrics(all_allocations, allocation_duration)
+            allocations_package = MetricPackage(self.allocations_storage)
+            allocations_package.add_metrics(
+                allocations_metrics,
+                extra_metrics,
+                self.get_allocations_statistics_metrics(all_allocations),
+            )
+            allocations_metrics.send(common_labels)
+
+            if not self.wait_or_finish():
+                break
+
+
 
 
 
