@@ -112,7 +112,13 @@ application_hosts:
           slo: 3200
           communication_port: 11311
           twemcache:
+            unique_count: 1
+            resources:
+              cpu: 1
+              ram: 1
+              disk: 1
           mutilate:
+            unique_count: 3
             resources:
               cpu: 0.5
               ram: 1
@@ -122,7 +128,13 @@ application_hosts:
           slo: 3200
           communication_port: 11411
           twemcache:
+            unique_count: 1
+            resources:
+              cpu: 1
+              ram: 1
+              disk: 1
           mutilate:
+            unique_count: 1
             resources:
               cpu: 0.5
               ram: 1

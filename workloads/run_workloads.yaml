@@ -209,13 +209,15 @@
       vars:
         workload_name: twemcache_mutilate
         workload: "{{workloads[workload_name][item[1]]}}"
-        job_name: "{{workload_name}}--{{item[1]}}--{{job_id}}--{{job_uniq_id}}"
+        job_name: "{{workload_name}}.{{item[1]}}--{{job_id}}--{{job_uniq_id}}.{{item[2]}}"
         job_uniq_id: "{{communication_port}}"
         application: twemcache
         load_generator: mutilate
         communication_port: "{{workload.communication_port | int + item[0] }}"
-        instances_version_iterator: "{{workloads[workload_name] | instances_version_iter }}"
-      environment: "{{workload[job_id].env | default({}) }}"
+        instances_version_iterator: "{{workloads[workload_name] | instances_version_iter_2(job_id) }}"
+        standard_env: 
+          workload_version_name: "item[1]"
+      environment: "{{workload[job_id].env | default({}) | combine(standard_env) }}"
       block:
       - name: Create twemcache for mutilate
         vars:
