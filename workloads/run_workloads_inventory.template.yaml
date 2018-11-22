@@ -9,16 +9,6 @@
 
 application_hosts:
   hosts:
-
-    # <<< @TO_BE_REMOVED
-    100.64.176.13:
-      env_uniq_id: 13
-      load_generator_host_ip: 100.64.176.21
-    100.64.176.14:
-      env_uniq_id: 14
-      load_generator_host_ip: 100.64.176.22
-    # >>> @TO_BE_REMOVED
-
     10.10.10.1:
       env_uniq_id: 1
       load_generator_host_ip: 10.10.10.11
@@ -48,10 +38,10 @@ application_hosts:
     # Global variables to run workloads.
     cluster: example
     role: root
-    image_tag: 2f59fc840663337f94490a19684f46399e4853bd
+    image_tag: <DOCKER_IMAGE_TAG>
 
-    wrapper_kafka_brokers: 100.64.176.12
-    docker_registry: 100.64.176.12:80
+    wrapper_kafka_brokers: 10.10.10.99
+    docker_registry: 10.10.10.99:80
 
     default_resources:
       cpu: 1
@@ -62,7 +52,7 @@ application_hosts:
     workloads:
 
       cassandra_ycsb:
-        default: 
+        default:
           count: 1
           slo: 2500
           jmx_port: 7199
@@ -75,7 +65,7 @@ application_hosts:
           ycsb:
 
       cassandra_stress:
-        default: 
+        default:
           count: 1
           communication_port: 9142
           jmx_port: 7299
