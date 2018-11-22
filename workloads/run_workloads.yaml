@@ -12,15 +12,23 @@
   strategy: free
 
   vars:
-    workload_version: "{{item[1]}}"
-    job_name: "{{workload_name}}.{{workload_version}}--{{job_id}}--{{job_uniq_id}}.{{item[2]}}"
+    # Note: variables defined on task level or in the inventory: 
+    # * workload_name
+    # * job_id
+
+    # Generate `item` dictionaries (item object is created for each workload's task loop iteration).
+    instances_version_iterator: "{{workloads[workload_name] | default({}) | workload_job_iterator(job_id) }}"
+
+    workload_version_name: "{{item.workload_version_name}}"
+    job_name: "{{workload_name}}.{{workload_version_name}}--{{job_id}}--{{job_uniq_id}}.{{item.job_replica_index}}"
     job_key: "{{cluster}}/{{role}}/staging{{env_uniq_id}}/{{job_name}}"
     aurora_file: "{{job_id}}/{{job_id}}.aurora"
     create_job_command: "aurora job create {{job_key}} {{aurora_file}}"
 
+    workload_version: "{{workloads[workload_name][workload_version_name] if workload_name in workloads else dict(count=0) }}"
+
     # Note: search for resources in workload[job_id]['resources'], otherwise use default value.
-    resources: "{{workload[job_id].resources if (workload[job_id].resources is defined) else default_resources}}"
-    workload: "{{workloads[workload_name][workload_version] if workload_name in workloads else dict(count=0) }}"
+    resources: "{{workload_version[job_id].resources if (workload_version[job_id].resources is defined) else default_resources}}"
 
     # By default image_name is {{docker_registry}}/owca/{{job_id}}
     #   However, the image_name can be ovewritten on job level.
@@ -28,19 +36,18 @@
     image_prefix: "owca"
     image_subname: "{{job_id}}"
     # Note: prefixing name with underscore as otherwise we would have infinite recursion.
-    image_tag_: "{{workload[job_id].image_tag
-                  if workload[job_id] is defined and workload[job_id].image_name is defined else
+    image_tag_: "{{workload_version[job_id].image_tag
+                  if workload_version[job_id] is defined and workload_version[job_id].image_name is defined else
                   image_tag}}"
-    image_name: "{{workload[job_id].image_name
-                  if workload[job_id] is defined and workload[job_id].image_name is defined
+    image_name: "{{workload_version[job_id].image_name
+                  if workload_version[job_id] is defined and workload_version[job_id].image_name is defined
                   else docker_registry + '/' + image_prefix + '/' + image_subname}}"
 
     # Incrementing communication port for multiple instances of the same workload.
-    communication_port: "{{workload.communication_port | int + item[0] }}"
+    communication_port: "{{workload_version.communication_port | int + item.workload_instance_index }}"
 
     application_host_ip: "{{inventory_hostname}}"
 
-    instances_version_iterator: "{{workloads[workload_name] | default({}) | instances_version_iter(job_id) }}"
 
   environment:
     job_key: "{{job_key}}"
@@ -54,14 +61,14 @@
     env_uniq_id: "{{env_uniq_id}}"
     image_name: "{{image_name}}"
     image_tag: "{{image_tag_}}"
-    labels: "{{workload.labels | default({}) | to_json }}"
+    labels: "{{workload_version.labels | default({}) | to_json }}"
 
     cpu: "{{resources.cpu}}"
     ram: "{{resources.ram}}"
     disk: "{{resources.disk}}"
 
     job_uniq_id: "{{job_uniq_id}}"
-    workload_version_name: "{{workload_version}}"
+    workload_version_name: "{{workload_version_name}}"
 
     communication_port: "{{communication_port}}"
 
@@ -70,7 +77,7 @@
     application: "{{application}}"
     load_generator: "{{load_generator}}"
 
-    slo: "{{workload.get('slo')}}"
+    slo: "{{workload_version.get('slo')}}"
 
 
   tasks:
@@ -79,8 +86,9 @@
       # Fill all normally required parameters for workload that 
       # make no sense for this task.
       vars:
-        item: [0,0,0]
-        workload_name:  
+        item: {'workload_instance_index': 0, 'workload_version_name': 0, 'job_replica_index': 0}
+        workload_name: 
+        workload_version_name:
         image_tag_:
         image_name:
         resources:
@@ -105,7 +113,7 @@
         job_uniq_id: "{{communication_port}}"
         application: cassandra
         load_generator: ycsb
-      environment: "{{workload[job_id].env | default({}) }}"
+      environment: "{{workload_version[job_id].env | default({}) }}"
       block:
       - name: Create cassandra for ycsb
         vars:
@@ -114,7 +122,7 @@
           image_tag: 3.11.3
           own_ip: "{{application_host_ip}}"
         environment:
-          jmx_port: "{{workload.jmx_port + item[0]}}"
+          jmx_port: "{{workload_version.jmx_port + item.workload_instance_index}}"
         command: "{{create_job_command}}"
         loop: "{{instances_version_iterator}}"
         tags: cassandra_ycsb--cassandra
@@ -135,14 +143,14 @@
         job_uniq_id: "{{communication_port}}"
         application: cassandra
         load_generator: cassandra_stress
-      environment: "{{workload[job_id].env | default({}) }}"
+      environment: "{{workload_version[job_id].env | default({}) }}"
       block:
       - name: Create cassandra for stress
         vars:
           job_id: cassandra
           own_ip: "{{application_host_ip}}"
         environment:
-          jmx_port: "{{workload.jmx_port + item[0]}}"
+          jmx_port: "{{workload_version.jmx_port + item.workload_instance_index}}"
         command: "{{create_job_command}}"
         loop: "{{instances_version_iterator}}"
         tags: cassandra_stress--cassandra
@@ -163,7 +171,7 @@
         job_uniq_id: "{{communication_port}}"
         application: redis
         load_generator: rpc_perf
-      environment: "{{workload[job_id].env | default({}) }}"
+      environment: "{{workload_version[job_id].env | default({}) }}"
       block:
       - name: Create redis
         vars:
@@ -189,7 +197,7 @@
         job_uniq_id: "{{communication_port}}"
         application: twemcache
         load_generator: rpc_perf
-      environment: "{{workload[job_id].env | default({}) }}"
+      environment: "{{workload_version[job_id].env | default({}) }}"
       block:
       - name: Create twemcache for rpc-perf
         vars:
@@ -215,7 +223,7 @@
         job_uniq_id: "{{communication_port}}"
         application: twemcache
         load_generator: mutilate
-      environment: "{{workload[job_id].env | default({}) }}"
+      environment: "{{workload_version[job_id].env | default({}) }}"
       block:
       - name: Create twemcache for mutilate
         vars:
@@ -251,7 +259,7 @@
         vars:
           job_id: backend
           own_ip: "{{application_host_ip}}"
-        environment: "{{workload[job_id].env | default({}) }}"
+        environment: "{{workload_version[job_id].env | default({}) }}"
         command: "{{create_job_command}}"
         loop: "{{instances_version_iterator}}"
         tags: specjbb--backend
@@ -259,7 +267,7 @@
         vars:
           job_id: injector
           own_ip: "{{load_generator_host_ip}}"
-        environment: "{{workload[job_id].env | default({}) }}"
+        environment: "{{workload_version[job_id].env | default({}) }}"
         command: "{{create_job_command}}"
         loop: "{{instances_version_iterator}}"
         tags: specjbb--injector
@@ -267,7 +275,7 @@
         vars:
           job_id: controller
           own_ip: "{{load_generator_host_ip}}"
-        environment: "{{workload[job_id].env | default({}) }}"
+        environment: "{{workload_version[job_id].env | default({}) }}"
         command: "{{create_job_command}}"
         loop: "{{instances_version_iterator}}"
         tags: specjbb--controller
@@ -278,15 +286,15 @@
     - name: Create tensorflow/inference workload
       vars:
         workload_name: tensorflow_inference
-        job_uniq_id: "{{item[0]}}"
+        job_uniq_id: "{{item.workload_instance_index}}"
         application: tensorflow
         load_generator: inference
         job_id: tensorflow_inference
-        job_name: "{{job_id}}.{{workload_version}}--{{job_uniq_id}}"
-        resources: "{{workload.resources | default(default_resources)}}"
+        job_name: "{{job_id}}.{{workload_version_name}}--{{job_uniq_id}}"
+        resources: "{{workload_version.resources | default(default_resources)}}"
         own_ip: "{{application_host_ip}}"
         communication_port: 0
-      environment: "{{workload.env | default({}) }}"
+      environment: "{{workload_version.env | default({}) }}"
       delegate_to: localhost
       tags: tensorflow_inference
       command: "{{create_job_command}}"
@@ -296,15 +304,15 @@
     - name: Create tensorflow/train workload
       vars:
         workload_name: tensorflow_train
-        job_uniq_id: "{{item[0]}}"
+        job_uniq_id: "{{item.workload_instance_index}}"
         application: tensorflow
         load_generator: train
         job_id: tensorflow_train
-        job_name: "{{job_id}}.{{workload_version}}--{{job_uniq_id}}"
-        resources: "{{workload.resources | default(default_resources)}}"
+        job_name: "{{job_id}}.{{workload_version_name}}--{{job_uniq_id}}"
+        resources: "{{workload_version.resources | default(default_resources)}}"
         own_ip: "{{application_host_ip}}"
         communication_port: 0
-      environment: "{{workload.env | default({}) }}"
+      environment: "{{workload_version.env | default({}) }}"
       delegate_to: localhost
       tags: tensorflow_train
       command: "{{create_job_command}}"
@@ -314,17 +322,17 @@
     - name: Create tensorflow-benchmark/train workload
       vars:
         workload_name: tensorflow_benchmark_train
-        job_uniq_id: "{{item[0]}}"
+        job_uniq_id: "{{item.workload_instance_index}}"
         application: tensorflow
         aurora_file: tensorflow_benchmark/tensorflow-benchmark-training.aurora
         load_generator: benchmark_train
-        resources: "{{workload.resources | default(default_resources)}}"
+        resources: "{{workload_version.resources | default(default_resources)}}"
         job_id: tensorflow_benchmark_train
         image_subname: tensorflow_benchmark
-        job_name: "{{job_id}}.{{workload_version}}--{{job_uniq_id}}"
+        job_name: "{{job_id}}.{{workload_version_name}}--{{job_uniq_id}}"
         own_ip: "{{application_host_ip}}"
         communication_port: 0
-      environment: "{{workload.env | default({}) }}"
+      environment: "{{workload_version.env | default({}) }}"
       delegate_to: localhost
       tags: tensorflow_benchmark_train
       command: "{{create_job_command}}"
@@ -334,17 +342,17 @@
     - name: Create tensorflow-benchmark/prediction workload
       vars:
         workload_name: tensorflow_benchmark_prediction
-        job_uniq_id: "{{item[0]}}"
+        job_uniq_id: "{{item.workload_instance_index}}"
         application: tensorflow
         aurora_file: tensorflow_benchmark/tensorflow-benchmark-prediction.aurora
         load_generator: benchmark_prediction
-        resources: "{{workload.resources | default(default_resources)}}"
+        resources: "{{workload_version.resources | default(default_resources)}}"
         job_id: tensorflow_benchmark_prediction
         image_subname: tensorflow_benchmark
-        job_name: "{{job_id}}.{{workload_version}}--{{job_uniq_id}}"
+        job_name: "{{job_id}}.{{workload_version_name}}--{{job_uniq_id}}"
         own_ip: "{{application_host_ip}}"
         communication_port: 0
-      environment: "{{workload.env | default({}) }}"
+      environment: "{{workload_version.env | default({}) }}"
       delegate_to: localhost
       tags: tensorflow_benchmark_prediction
       command: "{{create_job_command}}"

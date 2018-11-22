@@ -194,22 +194,24 @@ into common.aurora parameteres:
     docker_registry: 10.10.10.99:80
     # other params goes here ...
     workloads:
-      cassandra_ycsb:                           # workload_name
-        count: 3
-        slo: 2500                               # slo
-        communication_port: 3333                # communication_port
-        cassandra:
-          image_name: cassandra                 # image_name
-          image_tag: 3.11.3                     # image_tag
-          resources:
-            cpu: 8                              # cpu
-            disk: 4                             # disk
-        ycsb:
-          env:                                  # any value passed here will be passed directly to aurora job (using environment variables)
-            ycsb_target: 2000                   # check ycsb.aurora file for description of available parameters
-            ycsb_thread_count: 8                            
-          resources:
-            cpu: 1.5                            # cpu
+      cassandra_ycsb:                             # workload_name
+        default:                                  # workload_version
+          count: 3
+          slo: 2500                               # slo
+          communication_port: 3333                # communication_port
+          cassandra:
+            image_name: cassandra                 # image_name
+            image_tag: 3.11.3                     # image_tag
+            resources:
+              cpu: 8                              # cpu
+              disk: 4                             # disk
+          ycsb:
+            count: 2                              # two load generators stress the same cassandra instance
+            env:                                  # any value passed here will be passed directly to aurora job (using environment variables)
+              ycsb_target: 2000                   # check ycsb.aurora file for description of available parameters
+              ycsb_thread_count: 8                            
+            resources:
+              cpu: 1.5                            # cpu
 
 The rule of building aurora ``job_key`` (string identifying an aurora job, required argument in command ``aurora job create``) is:
 ``{{cluster}}/{{role}}/staging{{env_uniq_id}}/{{workload_name}}--{{job_id}}--{{job_uniq_id}}``.

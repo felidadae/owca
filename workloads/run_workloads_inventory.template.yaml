@@ -117,13 +117,13 @@ application_hosts:
           slo: 3200
           communication_port: 11311
           twemcache:
-            unique_count: 1
+            replica_count: 1
             resources:
               cpu: 1
               ram: 1
               disk: 1
           mutilate:
-            unique_count: 3
+            replica_count: 3
             resources:
               cpu: 1
               ram: 1
@@ -133,13 +133,13 @@ application_hosts:
           slo: 3200
           communication_port: 11411
           twemcache:
-            unique_count: 1
+            replica_count: 1
             resources:
               cpu: 2
               ram: 2
               disk: 2
           mutilate:
-            unique_count: 2
+            replica_count: 2
             resources:
               cpu: 2
               ram: 2
@@ -158,17 +158,15 @@ application_hosts:
         default:
           count: 1
           slo: 2 # in seconds (maximum time to process a single image)
-          tensorflow_inference:
-            resources:
-              cpu: 1
-              ram: 2
-              disk: 2
+          resources:
+            cpu: 1
+            ram: 2
+            disk: 2
 
       tensorflow_train:
         default:
           count: 1
           slo: 0.5
-          tensorflow_train:
 
       tensorflow_benchmark_train:
         default:
