@@ -36,6 +36,10 @@ qps = os.environ.get('qps', '1000')
 # Note:
 # there are many specjbb config params which can be set.
 # Please modify specjbb.config file to change them.
+
+component_type = os.environ['specjbb_component_type']
+if component_type != 'controller' and component_type != 'injector' and component_type != 'backend':
+    raise Exception('specjbb_component_type must one of: injector, controller or backend.')
 #----------------------------------------------------------------------------------------------------
 
 
@@ -112,14 +116,21 @@ backend_task = SequentialTask(
     resources = Resources(cpu=cpu, ram=ram, disk=disk)
 )
 
-jobs = [
-    WorkloadService(
-        name='specjbb--controller--{}'.format(job_uniq_id),
-        task=controller_task),
-    WorkloadService(
-        name='specjbb--injector--{}'.format(job_uniq_id),
-        task=injector_task),
-    WorkloadService(
-        name='specjbb--backend--{}'.format(job_uniq_id),
-        task=backend_task),
-]
+if component_type == 'controller':
+    jobs = [
+        WorkloadService(
+            name=job_name,
+            task=controller_task),
+    ]
+elif component_type == 'injector':
+    jobs = [
+        WorkloadService(
+            name=job_name,
+            task=injector_task),
+    ]
+elif component_type == 'backend':
+    jobs = [
+        WorkloadService(
+            name=job_name,
+            task=backend_task),
+    ]

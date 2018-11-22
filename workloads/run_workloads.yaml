@@ -12,14 +12,15 @@
   strategy: free
 
   vars:
-    job_name: "{{workload_name}}--{{job_id}}--{{job_uniq_id}}"
+    workload_version: "{{item[1]}}"
+    job_name: "{{workload_name}}.{{workload_version}}--{{job_id}}--{{job_uniq_id}}.{{item[2]}}"
     job_key: "{{cluster}}/{{role}}/staging{{env_uniq_id}}/{{job_name}}"
     aurora_file: "{{job_id}}/{{job_id}}.aurora"
     create_job_command: "aurora job create {{job_key}} {{aurora_file}}"
 
     # Note: search for resources in workload[job_id]['resources'], otherwise use default value.
     resources: "{{workload[job_id].resources if (workload[job_id].resources is defined) else default_resources}}"
-    workload: "{{workloads[workload_name] if workload_name in workloads else dict(count=0) }}"
+    workload: "{{workloads[workload_name][workload_version] if workload_name in workloads else dict(count=0) }}"
 
     # By default image_name is {{docker_registry}}/owca/{{job_id}}
     #   However, the image_name can be ovewritten on job level.
@@ -35,11 +36,11 @@
                   else docker_registry + '/' + image_prefix + '/' + image_subname}}"
 
     # Incrementing communication port for multiple instances of the same workload.
-    communication_port: "{{workload.communication_port | int + item }}"
+    communication_port: "{{workload.communication_port | int + item[0] }}"
 
     application_host_ip: "{{inventory_hostname}}"
 
-    instances_iterator: "{{ range(0, workload.count)|list}}"
+    instances_version_iterator: "{{workloads[workload_name] | default({}) | instances_version_iter(job_id) }}"
 
   environment:
     job_key: "{{job_key}}"
@@ -58,7 +59,9 @@
     cpu: "{{resources.cpu}}"
     ram: "{{resources.ram}}"
     disk: "{{resources.disk}}"
+
     job_uniq_id: "{{job_uniq_id}}"
+    workload_version_name: "{{workload_version}}"
 
     communication_port: "{{communication_port}}"
 
@@ -76,6 +79,7 @@
       # Fill all normally required parameters for workload that 
       # make no sense for this task.
       vars:
+        item: [0,0,0]
         workload_name:  
         image_tag_:
         image_name:
@@ -110,16 +114,16 @@
           image_tag: 3.11.3
           own_ip: "{{application_host_ip}}"
         environment:
-          jmx_port: "{{workload.jmx_port + item}}"
+          jmx_port: "{{workload.jmx_port + item[0]}}"
         command: "{{create_job_command}}"
-        loop: "{{instances_iterator}}"
+        loop: "{{instances_version_iterator}}"
         tags: cassandra_ycsb--cassandra
       - name: Create ycsb for cassandra
         vars:
           job_id: ycsb
           own_ip: "{{load_generator_host_ip}}"
         command: "{{create_job_command}}"
-        loop: "{{instances_iterator}}"
+        loop: "{{instances_version_iterator}}"
         tags: cassandra_ycsb--ycsb
       delegate_to: localhost
       tags: cassandra_ycsb
@@ -138,16 +142,16 @@
           job_id: cassandra
           own_ip: "{{application_host_ip}}"
         environment:
-          jmx_port: "{{workload.jmx_port + item}}"
+          jmx_port: "{{workload.jmx_port + item[0]}}"
         command: "{{create_job_command}}"
-        loop: "{{instances_iterator}}"
+        loop: "{{instances_version_iterator}}"
         tags: cassandra_stress--cassandra
       - name: Create cassandra_stress
         vars:
           job_id: cassandra_stress
           own_ip: "{{load_generator_host_ip}}"
         command: "{{create_job_command}}"
-        loop: "{{instances_iterator}}"
+        loop: "{{instances_version_iterator}}"
         tags: cassandra_stress--stress
       delegate_to: localhost
       tags: cassandra_stress
@@ -166,14 +170,14 @@
           job_id: redis
           own_ip: "{{application_host_ip}}"
         command: "{{create_job_command}}"
-        loop: "{{instances_iterator}}"
+        loop: "{{instances_version_iterator}}"
         tags: redis_rpc_perf--redis
       - name: Create rpc-perf for redis
         vars:
           job_id: rpc_perf
           own_ip: "{{load_generator_host_ip}}"
         command: "{{create_job_command}}"
-        loop: "{{instances_iterator}}"
+        loop: "{{instances_version_iterator}}"
         tags: redis_rpc_perf--rpc_perf
       delegate_to: localhost
       tags: redis_rpc_perf
@@ -192,14 +196,14 @@
           job_id: twemcache
           own_ip: "{{application_host_ip}}"
         command: "{{create_job_command}}"
-        loop: "{{instances_iterator}}"
+        loop: "{{instances_version_iterator}}"
         tags: twemcache_rpc_perf--twemcache
       - name: Create rpc-perf for twemcache
         vars:
           job_id: rpc_perf
           own_ip: "{{load_generator_host_ip}}"
         command: "{{create_job_command}}"
-        loop: "{{instances_iterator}}"
+        loop: "{{instances_version_iterator}}"
         tags: twemcache_rpc_perf--rpc_perf
       delegate_to: localhost
       tags: twemcache_rpc_perf
@@ -208,16 +212,10 @@
     - name: Create twemcache/mutilate workload
       vars:
         workload_name: twemcache_mutilate
-        workload: "{{workloads[workload_name][item[1]]}}"
-        job_name: "{{workload_name}}.{{item[1]}}--{{job_id}}--{{job_uniq_id}}.{{item[2]}}"
         job_uniq_id: "{{communication_port}}"
         application: twemcache
         load_generator: mutilate
-        communication_port: "{{workload.communication_port | int + item[0] }}"
-        instances_version_iterator: "{{workloads[workload_name] | instances_version_iter_2(job_id) }}"
-        standard_env: 
-          workload_version_name: "item[1]"
-      environment: "{{workload[job_id].env | default({}) | combine(standard_env) }}"
+      environment: "{{workload[job_id].env | default({}) }}"
       block:
       - name: Create twemcache for mutilate
         vars:
@@ -247,6 +245,7 @@
         load_generator: specjbb
       environment:
         controller_host_ip: "{{load_generator_host_ip}}"
+        specjbb_component_type: "{{job_id}}"
       block:
       - name: Create specjbb backends
         vars:
@@ -254,7 +253,7 @@
           own_ip: "{{application_host_ip}}"
         environment: "{{workload[job_id].env | default({}) }}"
         command: "{{create_job_command}}"
-        loop: "{{instances_iterator}}"
+        loop: "{{instances_version_iterator}}"
         tags: specjbb--backend
       - name: Create specjbb injectors
         vars:
@@ -262,7 +261,7 @@
           own_ip: "{{load_generator_host_ip}}"
         environment: "{{workload[job_id].env | default({}) }}"
         command: "{{create_job_command}}"
-        loop: "{{instances_iterator}}"
+        loop: "{{instances_version_iterator}}"
         tags: specjbb--injector
       - name: Create specjbb controllers
         vars:
@@ -270,7 +269,7 @@
           own_ip: "{{load_generator_host_ip}}"
         environment: "{{workload[job_id].env | default({}) }}"
         command: "{{create_job_command}}"
-        loop: "{{instances_iterator}}"
+        loop: "{{instances_version_iterator}}"
         tags: specjbb--controller
       delegate_to: localhost
       tags: specjbb
@@ -279,11 +278,11 @@
     - name: Create tensorflow/inference workload
       vars:
         workload_name: tensorflow_inference
-        job_uniq_id: "{{item}}"
+        job_uniq_id: "{{item[0]}}"
         application: tensorflow
         load_generator: inference
         job_id: tensorflow_inference
-        job_name: "tensorflow_inference--{{job_uniq_id}}"
+        job_name: "{{job_id}}.{{workload_version}}--{{job_uniq_id}}"
         resources: "{{workload.resources | default(default_resources)}}"
         own_ip: "{{application_host_ip}}"
         communication_port: 0
@@ -291,17 +290,17 @@
       delegate_to: localhost
       tags: tensorflow_inference
       command: "{{create_job_command}}"
-      loop: "{{instances_iterator}}"
+      loop: "{{instances_version_iterator}}"
 
 
     - name: Create tensorflow/train workload
       vars:
         workload_name: tensorflow_train
-        job_uniq_id: "{{item}}"
+        job_uniq_id: "{{item[0]}}"
         application: tensorflow
         load_generator: train
         job_id: tensorflow_train
-        job_name: "tensorflow_train--{{job_uniq_id}}"
+        job_name: "{{job_id}}.{{workload_version}}--{{job_uniq_id}}"
         resources: "{{workload.resources | default(default_resources)}}"
         own_ip: "{{application_host_ip}}"
         communication_port: 0
@@ -309,44 +308,44 @@
       delegate_to: localhost
       tags: tensorflow_train
       command: "{{create_job_command}}"
-      loop: "{{instances_iterator}}"
+      loop: "{{instances_version_iterator}}"
 
 
     - name: Create tensorflow-benchmark/train workload
       vars:
         workload_name: tensorflow_benchmark_train
-        job_uniq_id: "{{item}}"
+        job_uniq_id: "{{item[0]}}"
         application: tensorflow
         aurora_file: tensorflow_benchmark/tensorflow-benchmark-training.aurora
         load_generator: benchmark_train
         resources: "{{workload.resources | default(default_resources)}}"
         job_id: tensorflow_benchmark_train
         image_subname: tensorflow_benchmark
-        job_name: "tensorflow_benchmark_train--{{job_uniq_id}}"
+        job_name: "{{job_id}}.{{workload_version}}--{{job_uniq_id}}"
         own_ip: "{{application_host_ip}}"
         communication_port: 0
       environment: "{{workload.env | default({}) }}"
       delegate_to: localhost
       tags: tensorflow_benchmark_train
       command: "{{create_job_command}}"
-      loop: "{{instances_iterator}}"
+      loop: "{{instances_version_iterator}}"
 
 
     - name: Create tensorflow-benchmark/prediction workload
       vars:
         workload_name: tensorflow_benchmark_prediction
-        job_uniq_id: "{{item}}"
+        job_uniq_id: "{{item[0]}}"
         application: tensorflow
         aurora_file: tensorflow_benchmark/tensorflow-benchmark-prediction.aurora
         load_generator: benchmark_prediction
         resources: "{{workload.resources | default(default_resources)}}"
         job_id: tensorflow_benchmark_prediction
         image_subname: tensorflow_benchmark
-        job_name: "tensorflow_benchmark_prediction--{{job_uniq_id}}"
+        job_name: "{{job_id}}.{{workload_version}}--{{job_uniq_id}}"
         own_ip: "{{application_host_ip}}"
         communication_port: 0
       environment: "{{workload.env | default({}) }}"
       delegate_to: localhost
       tags: tensorflow_benchmark_prediction
       command: "{{create_job_command}}"
-      loop: "{{instances_iterator}}"
+      loop: "{{instances_version_iterator}}"

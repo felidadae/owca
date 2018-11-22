@@ -60,51 +60,56 @@ application_hosts:
 
     # Per workload parameters.
     workloads:
+
       cassandra_ycsb:
-        count: 1
-        slo: 2500
-        jmx_port: 7199
-        communication_port: 9042
-        labels:
-          workload_kind:
-        cassandra:
-          image_name: cassandra
-          image_tag: 3.11.3
-        ycsb:
+        default: 
+          count: 1
+          slo: 2500
+          jmx_port: 7199
+          communication_port: 9042
+          labels:
+            workload_kind:
+          cassandra:
+            image_name: cassandra
+            image_tag: 3.11.3
+          ycsb:
 
       cassandra_stress:
-        count: 1
-        communication_port: 9142
-        jmx_port: 7299
-        slo: 1000
-        cassandra:
-          image_name: cassandra
-          image_tag: 3.11.3
-        cassandra_stress:
+        default: 
+          count: 1
+          communication_port: 9142
+          jmx_port: 7299
+          slo: 1000
+          cassandra:
+            image_name: cassandra
+            image_tag: 3.11.3
+          cassandra_stress:
 
       redis_rpc_perf:
-        labels:
-            foo: bar
-        count: 1
-        slo: 100000
-        communication_port: 6789
-        redis:
-          image_name: centos/redis
-          image_tag: latest
-        rpc_perf:
+        default:
+          labels:
+              foo: bar
+          count: 1
+          slo: 100000
+          communication_port: 6789
+          redis:
+            image_name: centos/redis
+            image_tag: latest
+          rpc_perf:
 
       twemcache_rpc_perf:
-        count: 1
-        slo: 100000
-        communication_port: 11211
-        twemcache:
-          threads: 1
-          max_memory: 1234
-        rpc_perf:
-          resources:
-            cpu: 0.5
-            ram: 2
-            disk: 2
+        default:
+          count: 1
+          slo: 100000
+          communication_port: 11211
+          twemcache:
+            threads: 1
+            max_memory: 1234
+          rpc_perf:
+            resources:
+              cpu: 0.5
+              ram: 2
+              disk: 2
 
       twemcache_mutilate:
         small:
@@ -120,7 +125,7 @@ application_hosts:
           mutilate:
             unique_count: 3
             resources:
-              cpu: 0.5
+              cpu: 1
               ram: 1
               disk: 1
         big:
@@ -130,48 +135,55 @@ application_hosts:
           twemcache:
             unique_count: 1
             resources:
-              cpu: 1
-              ram: 1
-              disk: 1
+              cpu: 2
+              ram: 2
+              disk: 2
           mutilate:
-            unique_count: 1
+            unique_count: 2
             resources:
-              cpu: 0.5
-              ram: 1
-              disk: 1
+              cpu: 2
+              ram: 2
+              disk: 2
 
       specjbb:
-        count: 1
-        slo: 26000000
-        communication_port: 42000
-        backend:
-        injector:
-        controller:
+        default:
+          count: 1
+          slo: 26000000
+          communication_port: 42000
+          backend:
+          injector:
+          controller:
 
       tensorflow_inference:
-        count: 1
-        slo: 2 # in seconds (maximum time to process a single image)
-        resources:
-          cpu: 1
-          ram: 2
-          disk: 2
+        default:
+          count: 1
+          slo: 2 # in seconds (maximum time to process a single image)
+          tensorflow_inference:
+            resources:
+              cpu: 1
+              ram: 2
+              disk: 2
 
       tensorflow_train:
-        count: 1
-        slo: 0.5
+        default:
+          count: 1
+          slo: 0.5
+          tensorflow_train:
 
       tensorflow_benchmark_train:
-        count: 1
-        slo: 0.03
-        resources:
-          cpu: 10
-          ram: 50
-          disk: 30
+        default:
+          count: 1
+          slo: 0.03
+          resources:
+            cpu: 10
+            ram: 50
+            disk: 30
 
       tensorflow_benchmark_prediction:
-        count: 1
-        slo: 0.03
-        resources:
-          cpu: 10
-          ram: 50
-          disk: 30
+        default:
+          count: 1
+          slo: 0.03
+          resources:
+            cpu: 10
+            ram: 50
+            disk: 30

@@ -18,7 +18,7 @@ include('../common.aurora')
 jobs = [
   WorkloadService(
     task=SequentialTask(
-      name=workload_name,
+      name=job_name,
       resources=Resources(cpu=cpu, ram=ram, disk=disk),
       processes=[
         Process(
