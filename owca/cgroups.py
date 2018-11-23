@@ -55,16 +55,21 @@ class Cgroup:
     def _read(self, cgroup_control_file: str) -> int:
         """Read helper to store any and convert value from cgroup control file."""
         with open(os.path.join(self.cgroup_fullpath, cgroup_control_file)) as f:
-            return int(f.read())
+            v = int(f.read())
+            log.log(logger.TRACE, 'cgroup: read %s=%r', f.name, v)
+            return v
 
     def _write(self, cgroup_control_file: str, value: int):
         """Write helper to store any int value in cgroup control file."""
-        with open(os.path.join(self.cgroup_fullpath, cgroup_control_file)) as f:
-            log.log(logger.TRACE)
-            f.write(str(value))
+        with open(os.path.join(self.cgroup_fullpath, cgroup_control_file), 'wb') as f:
+            raw_value = str(value)
+            log.log(logger.TRACE, 'cgroup: write %s=%r', f.name, raw_value)
+            f.write(raw_value)
 
     def _get_normalized_shares(self) -> float:
         """Return normalized using cpu_shreas_min and cpu_shares_max for normalization."""
+        assert self.allocation_configuration is not None, \
+            'normalization configuration cannot be used without configuration!'
         shares = self._read(CPU_SHARES)
         return ((shares - self.allocation_configuration.cpu_shares_min) /
                 self.allocation_configuration.cpu_shares_max)
@@ -79,6 +84,9 @@ class Cgroup:
         self._write(CPU_SHARES, shares)
 
     def _get_normalized_quota(self) -> float:
+        """Read normlalized quota against configured period and number of available cpus."""
+        assert self.allocation_configuration is not None, \
+            'normalization configuration cannot be used without configuration!'
         current_quota = self._read(CPU_QUOTA)
         current_period = self._read(CPU_PERIOD)
         if current_quota == -1:
@@ -95,17 +103,21 @@ class Cgroup:
         # synchornize quota if nessesary
         if current_period != self.allocation_configuration.cpu_quota_period:
             self._write(CPU_QUOTA, self.allocation_configuration.cpu_quota_period)
-        quota = (quota_normalized * self.allocation_configuration.cpu_quota_period *
-                 self.platform_cpus)
+        quota = int(quota_normalized * self.allocation_configuration.cpu_quota_period *
+                    self.platform_cpus)
         self._write(CPU_QUOTA, quota)
 
     def get_allocations(self) -> TaskAllocations:
+        assert self.allocation_configuration is not None, \
+            'reading normalized allocations is not possible without configuration!'
         return {
            AllocationType.QUOTA: self._get_normalized_quota(),
            AllocationType.SHARES: self._get_normalized_shares(),
         }
 
     def perform_allocations(self, allocations: TaskAllocations):
+        assert self.allocation_configuration is not None, \
+            'performing normalized allocations is not possible without configuration!'
         if AllocationType.QUOTA in allocations:
             self._set_normalized_quota(allocations[AllocationType.QUOTA])
         if AllocationType.SHARES in allocations:
