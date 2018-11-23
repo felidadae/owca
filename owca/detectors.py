@@ -172,8 +172,9 @@ def convert_anomalies_to_metrics(anomalies: List[Anomaly]) -> List[Metric]:
 
     return metrics
 
+
 def update_anomalies_metrics_with_task_information(anomaly_metrics: List[Metric],
-                                                   tasks_labels: Dict[str, Dict[str,str]],
+                                                   tasks_labels: Dict[str, Dict[str, str]],
                                                    ):
     for anomaly_metric in anomaly_metrics:
         # Extra labels for anomaly metrics for information about task.

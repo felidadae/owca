@@ -71,7 +71,10 @@ class Container:
         self.perf_counters.cleanup()
 
     def get_allocations(self) -> TaskAllocations:
-        allocations : TaskAllocations = dict()
+        # In only detect mode, without allocation configuration return nothing.
+        if not self.allocation_configuration:
+            return {}
+        allocations: TaskAllocations = dict()
         allocations.update(self.cgroup.get_allocations())
         if self.rdt_enabled:
             allocations.update(self.resgroup.get_allocations())
@@ -81,4 +84,3 @@ class Container:
         self.cgroup.perform_allocations(allocations)
         if self.rdt_enabled:
             self.resgroup.perform_allocations(allocations)
-

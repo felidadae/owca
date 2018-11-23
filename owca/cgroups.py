@@ -29,6 +29,7 @@ CPU_PERIOD = 'cpu.cfs_period_us'
 CPU_SHARES = 'cpu.shares'
 BASE_SUBSYSTEM_PATH = '/sys/fs/cgroup/cpu'
 
+
 @dataclass
 class Cgroup:
 
@@ -65,16 +66,16 @@ class Cgroup:
     def _get_normalized_shares(self) -> float:
         """Return normalized using cpu_shreas_min and cpu_shares_max for normalization."""
         shares = self._read(CPU_SHARES)
-        return (shares - self.allocation_configuration.cpu_shares_min) / \
-               self.allocation_configuration.cpu_shares_max
+        return ((shares - self.allocation_configuration.cpu_shares_min) /
+                self.allocation_configuration.cpu_shares_max)
 
     def _set_normalized_shares(self, shares_normalized):
         """Store shares normalized values in cgroup files system. For denormalization
         we use reverse formule to _get_normalized_shares."""
         assert self.allocation_configuration is not None, \
             'allocation configuration cannot be used without configuration!'
-        shares = (shares_normalized * self.allocation_configuration.pu_shares_max) + \
-                 self.allocation_configuration.cpu_shares_min
+        shares = ((shares_normalized * self.allocation_configuration.cpu_shares_max) +
+                  self.allocation_configuration.cpu_shares_min)
         self._write(CPU_SHARES, shares)
 
     def _get_normalized_quota(self) -> float:
@@ -94,8 +95,8 @@ class Cgroup:
         # synchornize quota if nessesary
         if current_period != self.allocation_configuration.cpu_quota_period:
             self._write(CPU_QUOTA, self.allocation_configuration.cpu_quota_period)
-        quota = quota_normalized * self.allocation_configuration.cpu_quota_period * \
-                self.platform_cpus
+        quota = (quota_normalized * self.allocation_configuration.cpu_quota_period *
+                 self.platform_cpus)
         self._write(CPU_QUOTA, quota)
 
     def get_allocations(self) -> TaskAllocations:
@@ -109,4 +110,3 @@ class Cgroup:
             self._set_normalized_quota(allocations[AllocationType.QUOTA])
         if AllocationType.SHARES in allocations:
             self._set_normalized_shares(allocations[AllocationType.SHARES])
-

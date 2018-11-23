@@ -39,6 +39,7 @@ RDT_LC = 'rdt_LC'
 
 log = logging.getLogger(__name__)
 
+
 @dataclass
 class RDTGroup:
     """Abstraction over resctrl fs CTRL group directory.
@@ -58,6 +59,7 @@ class RDTGroup:
         """read current allocation from underlaying filesystem"""
         pass
         # open('/sys/fs/resctrl/{name}/schemata) and write self.l3 and self.mb if not None
+
 
 def cleanup_resctrl():
     """Remove taskless subfolders at resctrl folders to free scarce CLOS and RMID resources. """

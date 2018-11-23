@@ -25,7 +25,7 @@ from owca import platforms
 from owca import storage
 from owca.containers import Container
 from owca.detectors import (AnomalyDetector, TasksMeasurements, TasksResources,
-                            TasksLabels, convert_anomalies_to_metrics, 
+                            TasksLabels, convert_anomalies_to_metrics,
                             update_anomalies_metrics_with_task_information
                             )
 from owca.allocators import Allocator, TasksAllocations, convert_allocations_to_metrics, \
@@ -142,7 +142,6 @@ class ContainerManager:
             container.cleanup()
 
 
-
 class BaseRunnerMixin:
     """Provides common functionallity for both Allocator and Detector.
     - configure_rdt based on self.rdt_enabled property
@@ -196,9 +195,8 @@ class BaseRunnerMixin:
         time.sleep(delay)
         return True
 
-
     def _prepare_tasks_data(self, containers) -> Tuple[
-            List[Metric], TasksResources, TasksMeasurements, TasksLabels, TasksAllocations]:
+            List[Metric], TasksMeasurements, TasksResources, TasksLabels, TasksAllocations]:
         """Build labeled tasks_metrics and task_metrics_values."""
         tasks_measurements: TasksMeasurements = {}
         tasks_resources: TasksResources = {}
@@ -217,7 +215,7 @@ class BaseRunnerMixin:
             }
             task_labels['task_id'] = task.task_id
 
-            task_allocations = task.get_allocations()
+            task_allocations = container.get_allocations()
 
             # Task scoped label decoration.
             for task_metric in task_metrics:
@@ -230,8 +228,7 @@ class BaseRunnerMixin:
             tasks_metrics += task_metrics
             tasks_allocations[task.task_id] = task_allocations
 
-        return tasks_metrics, tasks_resources, tasks_measurements, tasks_labels, tasks_allocations
-
+        return tasks_metrics, tasks_measurements, tasks_resources, tasks_labels, tasks_allocations
 
     def get_internal_metrics(self, tasks):
         """Internal owca metrics."""
@@ -239,7 +236,6 @@ class BaseRunnerMixin:
             Metric(name='owca_up', type=MetricType.COUNTER, value=time.time()),
             Metric(name='owca_tasks', type=MetricType.GAUGE, value=len(tasks)),
         ]
-
 
     def get_anomalies_statistics_metrics(self, anomalies, detect_duration=None):
         """Extra external plugin anomaly & allocaton statistics."""
@@ -261,25 +257,23 @@ class BaseRunnerMixin:
             ])
         return statistics_metrics
 
-
     def get_allocations_statistics_metrics(self, allocations, allocation_duration=None):
         """Extra external plugin anomaly & allocaton statistics."""
         if len(allocations):
             self.allocations_counter += len(allocations)
 
         statistics_metrics = [
-            Metric(name='allocations_count', type=MetricType.COUNTER, 
+            Metric(name='allocations_count', type=MetricType.COUNTER,
                    value=self.allocations_counter),
         ]
 
         if allocation_duration is not None:
             statistics_metrics.extend([
-                Metric(name='allocation_duration', type=MetricType.GAUGE, 
+                Metric(name='allocation_duration', type=MetricType.GAUGE,
                        value=allocation_duration)
             ])
 
         return statistics_metrics
-
 
     def _prepare_input_and_send_metrics_package(self, node: mesos.MesosNode,
                                                 metrics_storage: storage.Storage,
@@ -312,9 +306,9 @@ class BaseRunnerMixin:
         return (platform, tasks_measurements, tasks_resources,
                 tasks_labels, tasks_allocations, common_labels)
 
-
     def cleanup(self):
         self.containers_manager.cleanup()
+
 
 @dataclass
 class DetectionRunner(Runner, BaseRunnerMixin):
@@ -339,14 +333,15 @@ class DetectionRunner(Runner, BaseRunnerMixin):
 
         while True:
             # Prepare input and send input based metrics.
-            platform, tasks_measurements, tasks_resources, \
-            tasks_labels, tasks_allocations, common_labels = \
-                self._prepare_input_and_send_metrics_package()
+            platform, tasks_measurements, \
+                tasks_resources, tasks_labels, tasks_allocations, common_labels = \
+                self._prepare_input_and_send_metrics_package(
+                    self.node, self.metrics_storage, self.extra_labels)
 
             # Detector callback
             detect_start = time.time()
-            new_task_allocations, anomalies, extra_metrics = self.detector.detect(
-                platform, tasks_measurements, tasks_resources, tasks_labels, tasks_allocations)
+            anomalies, extra_metrics = self.detector.detect(
+                platform, tasks_measurements, tasks_resources, tasks_labels)
             detect_duration = time.time() - detect_start
             log.debug('Anomalies detected (in %.2fs): %d', detect_duration, len(anomalies))
 
@@ -358,7 +353,7 @@ class DetectionRunner(Runner, BaseRunnerMixin):
             anomalies_package = MetricPackage(self.anomalies_storage)
             anomalies_package.add_metrics(
                 anomaly_metrics,
-                extra_metrics, 
+                extra_metrics,
                 self.get_anomalies_statistics_metrics(anomalies, detect_duration)
             )
             anomalies_package.send(common_labels)
@@ -386,7 +381,7 @@ class MetricPackage:
             for metric in self.metrics:
                 metric.labels.update(common_labels)
         self.storage.store(self.metrics)
-    
+
 
 @dataclass
 class AllocationRunner(Runner, BaseRunnerMixin):
@@ -403,8 +398,8 @@ class AllocationRunner(Runner, BaseRunnerMixin):
     def __post_init__(self):
         BaseRunnerMixin.__init__(self, self.rdt_enabled)
 
-    def _calculate_resulting_allocations(self,
-            old_allocations: TasksAllocations, new_allocations: TasksAllocations) \
+    def _calculate_resulting_allocations(
+            self, old_allocations: TasksAllocations, new_allocations: TasksAllocations) \
             -> Tuple[TasksAllocations, TasksAllocations]:
         # TODO: implement me!!!!
         return {}, {}
@@ -416,9 +411,9 @@ class AllocationRunner(Runner, BaseRunnerMixin):
         while True:
             # Prepare input and send input based metrics.
             platform, tasks_measurements, tasks_resources, \
-            tasks_labels, tasks_allocations, common_labels = \
-                self._prepare_input_and_send_metrics_package(self.node, self.metrics_storage,
-                                                             self.extra_labels)
+                tasks_labels, tasks_allocations, common_labels = \
+                self._prepare_input_and_send_metrics_package(
+                    self.node, self.metrics_storage, self.extra_labels)
 
             # Allocator callback
             allocate_start = time.time()
@@ -456,7 +451,3 @@ class AllocationRunner(Runner, BaseRunnerMixin):
                 break
 
         self.cleanup()
-
-
-
-

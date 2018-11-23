@@ -143,19 +143,6 @@ class MesosNode(Node):
 
         return tasks
 
-    def get_tasks(self):
-        return [MesosTask(
-            name='foo',
-            executor_pid=123,
-            cgroup_path='/tmp/foo',
-            container_id='123',
-            task_id='234',
-            agent_id='345',
-            executor_id='456',
-            labels={},
-            resources={},
-        )]
-
 
 MESOS_LABELS_PREFIXES_TO_DROP = ('org.apache.', 'aurora.metadata.')
 
