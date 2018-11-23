@@ -60,7 +60,7 @@ Name                    Required(default)        Description                    
 workload_name           yes                      Identifies a pair of application        - cassandra_ycsb
                                                  and its load generator (if              - twemcache_rpc_perf
                                                  in use).                                - tensorflow_inference
-workload_version_name   yes                      Used to seperate between different      - small
+workload_version_name   no (default)             Used to seperate between different      - small
                                                  configuration of a given workload;      - big
                                                  for instance one may want to run
                                                  two instances of a cassandra_ycsb
