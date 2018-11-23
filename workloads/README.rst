@@ -60,7 +60,15 @@ Name                    Required(default)        Description                    
 workload_name           yes                      Identifies a pair of application        - cassandra_ycsb
                                                  and its load generator (if              - twemcache_rpc_perf
                                                  in use).                                - tensorflow_inference
-job_name                yes                      Used as Aurora job_name (last part      twemcache_rpcperf--twemcache--11211
+workload_version_name   yes                      Used to seperate between different      - small
+                                                 configuration of a given workload;      - big
+                                                 for instance one may want to run
+                                                 two instances of a cassandra_ycsb
+                                                 workload differenting in ycsb
+                                                 thread count and target QPS -
+                                                 then two versions of a workload
+                                                 can be created.
+job_name                yes                      Used as Aurora job_name (last part      twemcache_rpcperf.default--twemcache--11211.0
                                                  of job_key in aurora documentation
                                                  nomenclature) and for aurora
                                                  Service/Job class instances
@@ -150,13 +158,14 @@ Below resource allocation definition for a workload. It will be applied to all h
             # ....
             workloads:
                 cassandra_ycsb:                # workload_name
-                    cassandra:                 # job_id
-                        resources:
-                            cpu: 8
-                            disk: 4
-                    ycsb:                      # job_id
-                        resources:
-                            cpu: 1.5
+                    default:                   # workload_version_name
+                        cassandra:             # job_id
+                            resources:
+                                cpu: 8
+                                disk: 4
+                        ycsb:                  # job_id
+                            resources:
+                                cpu: 1.5
 
 We can overwrite set values for a choosen host (we also need to set hash_behaviour to merge, please refer to
 `doc <https://docs.ansible.com/ansible/2.4/intro_configuration.html#hash-behaviour>`_).
@@ -169,21 +178,23 @@ To achieve this we create dictionary ``workloads`` under the choosen host:
             10.10.10.9.4:
                 env_uniq_id: 4
                 workloads:                      # overwriting for a choosen host
-                    cassandra_ycsb:             #
-                        resources:              #
-                            cpu: 4              #
+                    default:
+                        cassandra_ycsb:         #
+                            resources:          #
+                                cpu: 4          #
 
         vars:
             # ....
             workloads:
                 cassandra_ycsb:                 # workload_name
-                    cassandra:                  # job_id
-                        resources:
-                            cpu: 8
-                            disk: 4
-                    ycsb:
-                        resources:
-                            cpu: 1.5
+                    default:
+                        cassandra:              # job_id
+                            resources:
+                                cpu: 8
+                                disk: 4
+                        ycsb:
+                            resources:
+                                cpu: 1.5
 
 
 Below we include an example configuration of a workload with comments marking values which translates
@@ -193,31 +204,47 @@ into common.aurora parameteres:
 
     docker_registry: 10.10.10.99:80
     # other params goes here ...
-    workloads:
-      cassandra_ycsb:                             # workload_name
-        default:                                  # workload_version
-          count: 3
-          slo: 2500                               # slo
-          communication_port: 3333                # communication_port
-          cassandra:
-            image_name: cassandra                 # image_name
-            image_tag: 3.11.3                     # image_tag
-            resources:
-              cpu: 8                              # cpu
-              disk: 4                             # disk
-          ycsb:
-            count: 2                              # two load generators stress the same cassandra instance
-            env:                                  # any value passed here will be passed directly to aurora job (using environment variables)
-              ycsb_target: 2000                   # check ycsb.aurora file for description of available parameters
-              ycsb_thread_count: 8                            
-            resources:
-              cpu: 1.5                            # cpu
+        workloads:
+            cassandra_ycsb:                    # workload_name
+                default:                       # workload_version
+                    count: 2                   # two instances of the same workload
+                    slo: 2500                  # slo
+                    communication_port: 3333   # communication_port
+                    cassandra:
+                        image_name: cassandra  # image_name
+                        image_tag: 3.11.3      # image_tag
+                        resources:
+                            cpu: 8             # cpu
+                            disk: 4            # disk
+                    ycsb:
+                        count: 2               # two load generators stress the same cassandra instance
+                        env:                   # any value passed here will be passed directly to aurora job (using environment variables)
+                            ycsb_target: 2000  # check ycsb.aurora file for description of available parameters
+                            ycsb_thread_count: 8                                                        
+                        resources:
+                            cpu: 1.5           # cpu
+                big:
+                    ...
 
 The rule of building aurora ``job_key`` (string identifying an aurora job, required argument in command ``aurora job create``) is:
-``{{cluster}}/{{role}}/staging{{env_uniq_id}}/{{workload_name}}--{{job_id}}--{{job_uniq_id}}``.
+``{{cluster}}/{{role}}/staging{{env_uniq_id}}/{{workload_name}}.{{workload_version_name}}--{{job_id}}--{{job_uniq_id}}.{{job_replica_index}}``.
 The shell commands which will be executed by ansible as a result are as follow:
 
 .. code-block:: sh
 
-    aurora job create example/root/staging127/cassandra_ycsb--ycsb--3333
-    aurora job create example/root/staging127/cassandra_ycsb--cassandra--3333
+    # first instance of the workload
+    # two replicas of load generators
+    aurora job create example/root/staging127/cassandra_ycsb.default--ycsb--3333.0
+    aurora job create example/root/staging127/cassandra_ycsb.default--ycsb--3333.1
+    aurora job create example/root/staging127/cassandra_ycsb.default--cassandra--3333.0
+
+    # second instance of the workload
+    # two replicas of load generators
+    aurora job create example/root/staging127/cassandra_ycsb.default--ycsb--3334.0
+    aurora job create example/root/staging127/cassandra_ycsb.default--ycsb--3334.1
+    aurora job create example/root/staging127/cassandra_ycsb.default--cassandra--3334.0
+
+
+    # Here will goes commands for 'big' workload version
+    aurora job create example/root/staging127/cassandra_ycsb.default--ycsb--3333.0
+    # ...
