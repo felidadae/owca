@@ -13,10 +13,11 @@
 # limitations under the License.
 
 
-from typing import List
+from typing import List, Optional
 
 from dataclasses import dataclass
 
+from owca.allocators import AllocationConfiguration, TaskAllocations
 from owca.resctrl import ResGroup
 from owca.cgroups import Cgroup
 from owca.perf import PerfCounters
@@ -40,10 +41,16 @@ def flatten_measurements(measurements: List[Measurements]):
 class Container:
 
     cgroup_path: str
+    platform_cpus: int
+    allocation_configuration: Optional[AllocationConfiguration] = None
     rdt_enabled: bool = True
 
     def __post_init__(self):
-        self.cgroup = Cgroup(self.cgroup_path)
+        self.cgroup = Cgroup(
+            self.cgroup_path,
+            platform_cpus=self.platform_cpus,
+            allocation_configuration=self.allocation_configuration,
+        )
         self.perf_counters = PerfCounters(self.cgroup_path, event_names=DEFAULT_EVENTS)
         self.resgroup = ResGroup(self.cgroup_path) if self.rdt_enabled else None
 
@@ -62,3 +69,16 @@ class Container:
         if self.rdt_enabled:
             self.resgroup.cleanup()
         self.perf_counters.cleanup()
+
+    def get_allocations(self) -> TaskAllocations:
+        allocations : TaskAllocations = dict()
+        allocations.update(self.cgroup.get_allocations())
+        if self.rdt_enabled:
+            allocations.update(self.resgroup.get_allocations())
+        return allocations
+
+    def perform_allocations(self, allocations: TaskAllocations):
+        self.cgroup.perform_allocations(allocations)
+        if self.rdt_enabled:
+            self.resgroup.perform_allocations(allocations)
+

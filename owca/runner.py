@@ -28,7 +28,8 @@ from owca.detectors import (AnomalyDetector, TasksMeasurements, TasksResources,
                             TasksLabels, convert_anomalies_to_metrics, 
                             update_anomalies_metrics_with_task_information
                             )
-from owca.allocators import Allocator, TasksAllocations, convert_allocations_to_metrics
+from owca.allocators import Allocator, TasksAllocations, convert_allocations_to_metrics, \
+    AllocationConfiguration
 from owca.mesos import MesosTask, create_metrics, sanitize_mesos_label
 from owca.metrics import Metric, MetricType
 from owca.resctrl import check_resctrl, cleanup_resctrl
@@ -77,9 +78,12 @@ class Runner(ABC):
 
 class ContainerManager:
 
-    def __init__(self, rdt_enabled):
+    def __init__(self, rdt_enabled: bool, platform_cpus: int,
+                 allocation_configuration: Optional[AllocationConfiguration]):
         self.containers: Dict[MesosTask, Container] = {}
         self.rdt_enabled = rdt_enabled
+        self.platform_cpus = platform_cpus
+        self.allocation_configuration = allocation_configuration
 
     def _sync_containers_state(self, tasks) -> Dict[MesosTask, Container]:
         """Sync internal state of runner by removing orphaned containers, and creating containers
@@ -113,15 +117,24 @@ class ContainerManager:
 
         # Create new containers and store them.
         for new_task in new_tasks:
-            self.containers[new_task] = Container(new_task.cgroup_path,
-                                                  rdt_enabled=self.rdt_enabled)
+            self.containers[new_task] = Container(
+                new_task.cgroup_path,
+                rdt_enabled=self.rdt_enabled,
+                platform_cpus=self.platform_cpus,
+                allocation_configuration=self.allocation_configuration
+            )
 
         # Sync state of individual containers.
         for container in self.containers.values():
             container.sync()
 
         return self.containers
-    
+
+    def perfom_allocations(self, tasks_allocations):
+        for task, container in self.containers.items():
+            if task.task_id in tasks_allocations:
+                task_allocations = tasks_allocations[task.task_id]
+                container.perform_allocations(task_allocations)
 
     def cleanup(self):
         # cleanup
@@ -138,8 +151,14 @@ class BaseRunnerMixin:
     - metrics_storage and extra_labels for input data labeling and storing
     """
 
-    def __init__(self, rdt_enabled: bool):
-        self.containers_manager = ContainerManager(rdt_enabled)
+    def __init__(self, rdt_enabled: bool,
+                 allocation_configuration: Optional[AllocationConfiguration]):
+        platform_cpus, _, _ = platforms.collect_topology_information()
+        self.containers_manager = ContainerManager(
+            rdt_enabled,
+            platform_cpus=platform_cpus,
+            allocation_configuration=allocation_configuration
+        )
 
         # statistics state
         self.anomaly_last_occurence = None
@@ -312,7 +331,7 @@ class DetectionRunner(Runner, BaseRunnerMixin):
     ignore_privileges_check: bool = False
 
     def __post_init__(self):
-        BaseRunnerMixin.__init__(self, self.rdt_enabled)
+        BaseRunnerMixin.__init__(self, self.rdt_enabled, None)
 
     def run(self):
         if not self.configure_rdt(self.rdt_enabled, self.ignore_privileges_check):
