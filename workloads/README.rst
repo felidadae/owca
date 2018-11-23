@@ -206,7 +206,7 @@ into common.aurora parameteres:
     # other params goes here ...
         workloads:
             cassandra_ycsb:                    # workload_name
-                default:                       # workload_version
+                default:                       # workload_version_name
                     count: 2                   # two instances of the same workload
                     slo: 2500                  # slo
                     communication_port: 3333   # communication_port
@@ -223,7 +223,7 @@ into common.aurora parameteres:
                             ycsb_thread_count: 8                                                        
                         resources:
                             cpu: 1.5           # cpu
-                big:
+                big:                           # workload_version_name
                     ...
 
 The rule of building aurora ``job_key`` (string identifying an aurora job, required argument in command ``aurora job create``) is:
@@ -246,5 +246,5 @@ The shell commands which will be executed by ansible as a result are as follow:
 
 
     # Here will goes commands for 'big' workload version
-    aurora job create example/root/staging127/cassandra_ycsb.default--ycsb--3333.0
+    aurora job create example/root/staging127/cassandra_ycsb.big--ycsb--3333.0
     # ...
