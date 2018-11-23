@@ -69,6 +69,7 @@
 
     job_uniq_id: "{{job_uniq_id}}"
     workload_version_name: "{{workload_version_name}}"
+    replica_index: "{{item.job_replica_index}}"
 
     communication_port: "{{communication_port}}"
 

@@ -78,9 +78,16 @@ job_id                  yes                      Name of an application being a 
                                                  parameter is used in                    - memcached
                                                  `run_workloads.yaml`_                   - mutilate
                                                                                          - rpc-perf
-job_uniq_id             yes                      Unique component for same workloads     - 11211 (memcache port)
-                                                 running on the same host.               - 6789 (redis port)
-                                                                                         - 0 (instance counter)
+job_uniq_id             yes                      A workload instance unique identifier   - 11211 (memcache port)
+                                                 (unique among instances running on      - 6789 (redis port)
+                                                 the same host).                         - 0 (instance counter)
+replica_index           no (0)                   For some workloads, a component         - 0
+                                                 application can have multiple           - 1
+                                                 replicas sharing the same job_uniq_id,
+                                                 e.g. mutliple load generators stressing
+                                                 the same DB application; replica_index
+                                                 allows to differience between
+                                                 the replicas.
 application             yes                      Added as a label to produced metrics    - cassandra
                                                  to identify stressed application.       - twemcache
 load_generator          yes                      Added as a label to produced metrics    - ycsb

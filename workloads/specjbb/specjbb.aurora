@@ -101,17 +101,17 @@ injector_process= Process(name='specjbb_injector', cmdline=injector_cmd)
 backend_process = Process(name='specjbb_backend', cmdline=backend_cmd)
 
 controller_task = SequentialTask(
-    name = 'specjbb_controller--{}'.format(job_uniq_id),
+    name = job_name,
     processes = [config_create_process, controller_process],
     resources = Resources(cpu=cpu, ram=ram, disk=disk)
 )
 injector_task = SequentialTask(
-    name = 'specjbb_injector--{}'.format(job_uniq_id),
+    name = job_name,
     processes = [config_create_process, injector_process],
     resources = Resources(cpu=cpu, ram=ram, disk=disk)
 )
 backend_task = SequentialTask(
-    name = 'specjbb_backend--{}'.format(job_uniq_id),
+    name = job_name,
     processes = [config_create_process, backend_process],
     resources = Resources(cpu=cpu, ram=ram, disk=disk)
 )
