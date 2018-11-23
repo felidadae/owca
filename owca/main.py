@@ -72,6 +72,8 @@ def main():
     log_levels = logger.parse_loggers_from_list(args.levels)
     log_levels.setdefault(logger.DEFAULT_MODULE, 'info')
     logger.configure_loggers_from_dict(log_levels)
+    # Workaround for running main directly (name of logger is __main__)
+    log.setLevel(logging.getLogger(logger.DEFAULT_MODULE).getEffectiveLevel())
 
     log.warn('This software is pre-production and should not be deployed to production servers.')
     log.debug('started PID=%r', os.getpid())

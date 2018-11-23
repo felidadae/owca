@@ -15,6 +15,7 @@
 
 # Basic minimal configuration to dump metrics on stderr with NOPAnomaly detector
 runner: !AllocationRunner
+  ignore_privileges_check: true
   node: !MesosNode
     mesos_agent_endpoint: 'http://127.0.0.1:8000'
   action_delay: 1.
