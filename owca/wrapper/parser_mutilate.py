@@ -44,11 +44,16 @@ def parse(input: TextIOWrapper, regexp: str, separator: str = None,
     if "read" in new_line:
         read = re.search(r'read\s*[0-9]+\.[0-9]+[ ]*[0-9]' +
                          r'+\.[0-9]+[ ]*[0-9]+\.[0-9]+[ ]*[0-9]+\.[0-9]+[ ]*[0-9]+\.[0-9]' +
-                         r'+[ ]*[0-9]+\.[0-9]+[ ]*[0-9]+\.[0-9]+[ ]*([0-9]+\.[0-9]+)[ ]*',
+                         r'+[ ]*[0-9]+\.[0-9]+[ ]*([0-9]+\.[0-9]+)[ ]*([0-9]+\.[0-9]+)[ ]*',
                          new_line)
         p95 = float(read.group(1))
+        p99 = float(read.group(2))
         new_metrics.append(
-            Metric(metric_name_prefix + 'read_p99', p95,
+            Metric(metric_name_prefix + 'read_p95', p95,
+                   type=MetricType.GAUGE, labels=labels,
+                   help="95th percentile of read latency"))
+        new_metrics.append(
+            Metric(metric_name_prefix + 'read_p99', p99,
                    type=MetricType.GAUGE, labels=labels,
                    help="99th percentile of read latency"))
     if "Total QPS" in new_line:
