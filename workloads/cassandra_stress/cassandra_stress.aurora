@@ -15,13 +15,21 @@
 
 include('../common.aurora')
 
+#----------------------------------------------------------------------------------------------------
+###
+# Params which can be modified by exporting environment variables.
+###
+
 communication_port = os.environ.get('communication_port', '9042')
+threads = int(os.environ.get('threads') or 8)
+#----------------------------------------------------------------------------------------------------
+
 # For testing purpose set to small number as 1000
 number_of_rows = 100000
 cassandra_stress_cmd=('"while true; do cassandra-stress mixed duration=90s ' +
                      '-pop seq=1..%d -node %s -port native=%s -rate ' +
-                     'threads=8; done"') % (number_of_rows, application_host_ip,
-                                           communication_port)
+                     'threads=%d; done"') % (number_of_rows, application_host_ip,
+                                           communication_port, threads)
 
 jobs = [
   WorkloadService(
