@@ -89,13 +89,11 @@
       vars:
         item: {'workload_instance_index': 0, 'workload_version_name': 0, 'job_replica_index': 0}
         workload_name: 
+        workload_version: {'slo': 0}
         workload_version_name:
         image_tag_:
         image_name:
-        resources:
-          cpu:
-          ram:
-          disk:
+        resources: {'cpu': '', 'ram': '', 'disk': ''}
         application:
         load_generator: 
         communication_port: 
