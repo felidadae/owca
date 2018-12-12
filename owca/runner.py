@@ -24,7 +24,7 @@ from owca import logger
 from owca import platforms
 from owca import storage
 from owca.containers import Container
-from owca.detectors import (AnomalyDetector, TasksMeasurements, TasksResources,
+from owca.detectors import (TasksMeasurements, TasksResources,
                             TasksLabels, convert_anomalies_to_metrics,
                             update_anomalies_metrics_with_task_information
                             )
@@ -275,7 +275,7 @@ class BaseRunnerMixin:
 
         return statistics_metrics
 
-    def _prepare_input_and_send_metrics_package(self, node: mesos.MesosNode,
+    def _prepare_input_and_send_metrics_package(self, node: nodes.Node,
                                                 metrics_storage: storage.Storage,
                                                 extra_labels: Dict[str, str]) -> \
             Tuple[platforms.Platform, TasksMeasurements, TasksResources, TasksLabels,
