@@ -40,27 +40,6 @@ RDT_LC = 'rdt_LC'
 log = logging.getLogger(__name__)
 
 
-@dataclass
-class RDTGroup:
-    """Abstraction over resctrl fs CTRL group directory.
-    Depedning on usage
-    """
-
-    name: str = None
-    l3: str = None
-    mb: str = None
-
-    def _read_state(self):
-        """read and parse current allocation from underlaying filesystem"""
-        self.l3 = 'L3:0....'  # TODO: implement me
-        # open('/sys/fs/resctrl/{name}/schemata) read and parse
-
-    def _write_state(self):
-        """read current allocation from underlaying filesystem"""
-        pass
-        # open('/sys/fs/resctrl/{name}/schemata) and write self.l3 and self.mb if not None
-
-
 def cleanup_resctrl():
     """Remove taskless subfolders at resctrl folders to free scarce CLOS and RMID resources. """
 
@@ -87,7 +66,7 @@ def cleanup_resctrl():
 
     # Remove all monitoring groups for both CLOS and RMID.
     _clean_taskless_folders(BASE_RESCTRL_PATH, '', resource_recycled='CLOS')
-    _clean_taskless_folders(BASE_RESCTRL_PATH, MON_GROUPS, resource_recycled='RMID')
+    # _clean_taskless_folders(BASE_RESCTRL_PATH, MON_GROUPS, resource_recycled='RMID')
 
 
 def check_resctrl():
@@ -121,6 +100,8 @@ def check_resctrl():
 
 
 class ResGroup:
+    """Represents physical folder in /sys/fs/cgroup/resctrl/[rescgroup_name].
+    """
 
     def __init__(self, cgroup_path):
         assert cgroup_path.startswith('/'), 'Provide cgroup_path with leading /'
@@ -129,7 +110,7 @@ class ResGroup:
             BASE_SUBSYSTEM_PATH, relative_cgroup_path)
         # Resctrl group is flat so flatten then cgroup hierarchy.
         flatten_rescgroup_name = relative_cgroup_path.replace('/', '-')
-        self.resgroup_dir = os.path.join(BASE_RESCTRL_PATH, MON_GROUPS, flatten_rescgroup_name)
+        self.resgroup_dir = os.path.join(BASE_RESCTRL_PATH, flatten_rescgroup_name)
         self.resgroup_tasks = os.path.join(self.resgroup_dir, TASKS_FILENAME)
 
     def sync(self, max_attempts=3):
@@ -201,6 +182,7 @@ class ResGroup:
                 llc_occupancy += int(llc_occupancy_file.read())
 
         return {MetricName.MEM_BW: mbm_total, MetricName.LLC_OCCUPANCY: llc_occupancy}
+
 
     def get_allocations(self):
         task_allocations = {}

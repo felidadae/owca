@@ -17,10 +17,11 @@
 runner: !AllocationRunner
   ignore_privileges_check: true
   node: !MesosNode
-    mesos_agent_endpoint: 'http://127.0.0.1:8000'
+    mesos_agent_endpoint: 'http://127.0.0.1:5051'
   action_delay: 1.
   metrics_storage: !LogStorage
   anomalies_storage: !LogStorage
   allocations_storage: !LogStorage
   allocator: !NOPAllocator
-  rdt_enabled: False
+  rdt_enabled: True
+  allocation_configuration: !AllocationConfiguration

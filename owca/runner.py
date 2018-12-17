@@ -394,9 +394,10 @@ class AllocationRunner(Runner, BaseRunnerMixin):
     rdt_enabled: bool = True
     extra_labels: Dict[str, str] = field(default_factory=dict)
     ignore_privileges_check: bool = False
+    allocation_configuration: Optional[AllocationConfiguration] = None
 
     def __post_init__(self):
-        BaseRunnerMixin.__init__(self, self.rdt_enabled)
+        BaseRunnerMixin.__init__(self, self.rdt_enabled, self.allocation_configuration)
 
     def _calculate_resulting_allocations(
             self, old_allocations: TasksAllocations, new_allocations: TasksAllocations) \
