@@ -98,69 +98,63 @@ def check_resctrl():
 
 
 class ResGroup:
-    """Represents physical folder in /sys/fs/cgroup/resctrl/[rescgroup_name].
+    """Represent a resctrl group.
+    If self.name == "" the object represents the root resctrl group.
     """
 
-    def __init__(self, cgroup_path):
-        assert cgroup_path.startswith('/'), 'Provide cgroup_path with leading /'
-        relative_cgroup_path = cgroup_path[1:]  # cgroup path without leading '/'
-        self.cgroup_fullpath = os.path.join(
-            BASE_SUBSYSTEM_PATH, relative_cgroup_path)
-        # Resctrl group is flat so flatten then cgroup hierarchy.
-        flatten_rescgroup_name = relative_cgroup_path.replace('/', '-')
-        self.resgroup_dir = os.path.join(BASE_RESCTRL_PATH, flatten_rescgroup_name)
-        self.resgroup_tasks = os.path.join(self.resgroup_dir, TASKS_FILENAME)
+    def __init__(self, name):
+        """Note: lazy create resctrl control group in add_tasks method."""
+        self.name = name
+        self.is_root_group = name == ""
+        self.fullpath = BASE_RESCTRL_PATH + ("/" + name if name != "" else "")
 
-    def sync(self, max_attempts=3):
-        """Copy all the tasks from all cgroups to resctrl tasks file
-        """
-        if not os.path.exists('/sys/fs/resctrl'):
-            log.warning('Resctrl not mounted, ignore sync!')
-            return
+    def is_root_group(self):
+        return self.is_root_group
 
-        attempt = 1
-        while attempt <= max_attempts:
-            tasks = ''
-            with open(os.path.join(self.cgroup_fullpath, TASKS_FILENAME)) as f:
-                tasks += f.read()
-            log.log(logger.TRACE, 'sync: Read tasks for %r (found %d pids)'
-                    % (self.resgroup_dir, len(tasks)))
+    def _get_mongroup_fullpath(self, mongroup_name):
+        return os.path.join(self.fullpath, MON_GROUPS, mongroup_name)
 
-            try:
-                log.log(logger.TRACE, 'resctrl: makedirs(%s)', self.resgroup_dir)
-                os.makedirs(self.resgroup_dir, exist_ok=True)
-            except OSError as e:
-                if e.errno == errno.ENOSPC:  # "No space left on device"
-                    raise Exception("Limit of workloads reached! (Oot of available CLoSes/RMIDs!)")
-                raise
+    def _read_pids_from_tasks_file(self, tasks_filepath):
+        pids = []
+        with open(tasks_filepath) as ftasks:
+            for line in ftasks:
+                line = line.strip()
+                if line != "":
+                    pids.append(line)
+        return pids
 
-            try:
-                log.log(logger.TRACE, 'sync: Writings tasks for %r' % (self.resgroup_dir))
-                with open(self.resgroup_tasks, 'w') as f:
-                    with SetEffectiveRootUid():
-                        for task in tasks.split():
-                            f.write(task)
-                            f.flush()
-            except ProcessLookupError:
-                log.warning('Could not write process pids to resctrl (%r). '
-                            'Process probably does not exist. '
-                            'Restarting synchronization (attempt=%d).'
-                            % (self.resgroup_dir, attempt))
-                attempt += 1
-                continue
+    def _add_pids_to_tasks_file(self, pids, tasks_filepath):
+        with open(os.path.join(tasks_filepath, 'tasks')) as ftasks:
+            for pid in pids:
+                ftasks.write(pid + '\n')
 
-            log.log(logger.TRACE,
-                    'sync: Succesful synchronization for %r - braking' % self.resgroup_dir)
-            break
+    def add_tasks(self, pids, mongroup_name):
+        # create control group directory
+        if not self.is_root_group:
+            os.makedirs(self.fullpath)
 
-        else:
-            log.warning('sync: Unsuccessful synchronization attempts. Ignoring.')
-            return
+        # add pids to /tasks file
+        with open(os.path.join(self.fullpath, 'tasks')) as ftasks:
+            for pid in pids:
+                ftasks.write(pid + '\n')
 
-        log.log(logger.TRACE,
-                'sync: Successful synchronization for %r - returning' % self.resgroup_dir)
+        # create mongroup and write tasks there
+        mongroup_fullpath = self._get_mongroup_fullpath(mongroup_name)
+        os.makedirs(mongroup_fullpath)
+        self._add_pids_to_tasks_file(pids, os.path.join(mongroup_fullpath, 'tasks'))
 
-    def get_measurements(self) -> Measurements:
+    def remove_tasks(self, mongroup_name):
+        # read tasks that belongs to the mongroup
+        mongroup_fullpath = self._get_mongroup_fullpath(mongroup_name)
+        pids = self._read_pids_from_tasks_file(os.path.join(mongroup_fullpath, 'tasks'))
+
+        # remove the mongroup directory
+        os.rmdir(self.mongroup_fullpath)
+
+        # removes tasks from the group by adding it to the root group
+        self._add_pids_to_tasks_file(pids, os.path.join(self.fullpath, 'tasks'))
+
+    def get_measurements(self, mongroup_name) -> Measurements:
         """
         mbm_total: Memory bandwidth - type: counter, unit: [bytes]
         :return: Dictionary containing memory bandwidth
@@ -169,21 +163,22 @@ class ResGroup:
         mbm_total = 0
         llc_occupancy = 0
 
+        def _get_event_file(mon_dir, event_name):
+            return os.path.join(self.fullpath, MON_DATA, mon_dir, event_name)
+
         # mon_dir contains event files for specific socket:
         # llc_occupancy, mbm_total_bytes, mbm_local_bytes
-        for mon_dir in os.listdir(os.path.join(self.resgroup_dir, MON_DATA)):
-            with open(os.path.join(self.resgroup_dir, MON_DATA,
-                                   mon_dir, MBM_TOTAL)) as mbm_total_file:
+        for mon_dir in os.listdir(os.path.join(self.fullpath, mongroup_name, MON_DATA)):
+            with open(_get_event_file(mon_dir, MBM_TOTAL)) as mbm_total_file:
                 mbm_total += int(mbm_total_file.read())
-            with open(os.path.join(self.resgroup_dir, MON_DATA,
-                                   mon_dir, LLC_OCCUPANCY)) as llc_occupancy_file:
+            with open(_get_event_file(mon_dir, LLC_OCCUPANCY)) as llc_occupancy_file:
                 llc_occupancy += int(llc_occupancy_file.read())
 
         return {MetricName.MEM_BW: mbm_total, MetricName.LLC_OCCUPANCY: llc_occupancy}
 
     def get_allocations(self):
         task_allocations = {}
-        with open(os.path.join(self.resgroup_dir, SCHEMATA)) as schemata:
+        with open(os.path.join(self.fullpath, SCHEMATA)) as schemata:
             for line in schemata:
                 if 'MB' in line:
                     task_allocations[RDT_MB] = line
@@ -193,7 +188,7 @@ class ResGroup:
         return task_allocations
 
     def set_allocations(self, task_allocations):
-        with open(os.path.join(self.resgroup_dir, SCHEMATA)) as schemata:
+        with open(os.path.join(self.fullpath, SCHEMATA)) as schemata:
             if task_allocations.get(RDT_MB):
                 schemata.write(task_allocations[RDT_MB])
 
@@ -201,5 +196,5 @@ class ResGroup:
                 schemata.write(task_allocations[RDT_LC])
 
     def cleanup(self):
-        log.log(logger.TRACE, 'resctrl: rmdir(%s)', self.resgroup_dir)
-        os.rmdir(self.resgroup_dir)
+        log.log(logger.TRACE, 'resctrl: rmdir(%s)', self.fullpath)
+        os.rmdir(self.fullpath)

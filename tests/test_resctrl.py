@@ -75,6 +75,7 @@ def test_sync_no_space_left_on_device(makedirs_mock, exists_mock, log_warning_mo
         resgroup.sync()
 
 
+@pytest.mark.skip('work in progress')
 @patch('owca.resctrl.log.warning')
 @patch('os.path.exists', return_value=False)
 def test_sync_resctrl_not_mounted(exists_mock, log_warning_mock):
