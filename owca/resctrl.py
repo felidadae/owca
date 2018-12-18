@@ -17,8 +17,6 @@ import errno
 import logging
 import os
 
-from dataclasses import dataclass
-
 from owca import logger
 from owca.cgroups import BASE_SUBSYSTEM_PATH
 from owca.metrics import Measurements, MetricName
@@ -182,7 +180,6 @@ class ResGroup:
                 llc_occupancy += int(llc_occupancy_file.read())
 
         return {MetricName.MEM_BW: mbm_total, MetricName.LLC_OCCUPANCY: llc_occupancy}
-
 
     def get_allocations(self):
         task_allocations = {}

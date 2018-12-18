@@ -20,52 +20,21 @@ import logging
 import time
 
 from owca import detectors, nodes
-from owca import logger
 from owca import platforms
 from owca import storage
-from owca.containers import Container
+from owca.containers import ContainerManager
 from owca.detectors import (TasksMeasurements, TasksResources,
                             TasksLabels, convert_anomalies_to_metrics,
                             update_anomalies_metrics_with_task_information
                             )
 from owca.allocators import Allocator, TasksAllocations, convert_allocations_to_metrics, \
     AllocationConfiguration
-from owca.mesos import MesosTask, create_metrics, sanitize_mesos_label
+from owca.mesos import create_metrics, sanitize_mesos_label
 from owca.metrics import Metric, MetricType
 from owca.resctrl import check_resctrl, cleanup_resctrl
 from owca.security import are_privileges_sufficient
 
 log = logging.getLogger(__name__)
-
-
-def _calculate_desired_state(
-        discovered_tasks: List[MesosTask], known_containers: List[Container]
-) -> (List[MesosTask], List[Container]):
-    """Prepare desired state of system by comparing actual running Mesos tasks and already
-    watched containers.
-
-    Assumptions:
-    * One-to-one relationship between task and container
-    * cgroup_path for task and container need to be identical to establish the relationship
-    * cgroup_path is unique for each task
-
-    :returns "list of Mesos tasks to start watching" and "orphaned containers to cleanup" (there are
-    no more Mesos tasks matching those containers)
-    """
-    discovered_task_cgroup_paths = {task.cgroup_path for task in discovered_tasks}
-    containers_cgroup_paths = {container.cgroup_path for container in known_containers}
-
-    # Filter out containers which are still running according to Mesos agent.
-    # In other words pick orphaned containers.
-    containers_to_delete = [container for container in known_containers
-                            if container.cgroup_path not in discovered_task_cgroup_paths]
-
-    # Filter out tasks which are monitored using "Container abstraction".
-    # In other words pick new, not yet monitored tasks.
-    new_tasks = [task for task in discovered_tasks
-                 if task.cgroup_path not in containers_cgroup_paths]
-
-    return new_tasks, containers_to_delete
 
 
 class Runner(ABC):
@@ -74,72 +43,6 @@ class Runner(ABC):
     @abstractmethod
     def run(self):
         ...
-
-
-class ContainerManager:
-
-    def __init__(self, rdt_enabled: bool, platform_cpus: int,
-                 allocation_configuration: Optional[AllocationConfiguration]):
-        self.containers: Dict[MesosTask, Container] = {}
-        self.rdt_enabled = rdt_enabled
-        self.platform_cpus = platform_cpus
-        self.allocation_configuration = allocation_configuration
-
-    def _sync_containers_state(self, tasks) -> Dict[MesosTask, Container]:
-        """Sync internal state of runner by removing orphaned containers, and creating containers
-        for newly arrived tasks, and synchronizing containers' state.
-
-        Function is responsible for cleaning or initializing measurements stateful subsystems
-        and their external resources, e.g.:
-        - perf counters opens file descriptors for counters,
-        - resctrl (ResGroups) creates and manages directories under resctrl fs and scarce "clsid"
-            hardware identifiers
-
-        """
-        # Find difference between discovered Mesos tasks and already watched containers.
-        new_tasks, containers_to_cleanup = _calculate_desired_state(
-            tasks, list(self.containers.values()))
-
-        if containers_to_cleanup:
-            log.debug('state: cleaning up %d containers', len(containers_to_cleanup))
-            log.log(logger.TRACE, 'state: containers_to_cleanup=%r', containers_to_cleanup)
-
-        # Cleanup and remove orphaned containers (cleanup).
-        for container_to_cleanup in containers_to_cleanup:
-            container_to_cleanup.cleanup()
-        self.containers = {task: container
-                           for task, container in self.containers.items()
-                           if task in tasks}
-
-        if new_tasks:
-            log.debug('state: found %d new tasks', len(new_tasks))
-            log.log(logger.TRACE, 'state: new_tasks=%r', new_tasks)
-
-        # Create new containers and store them.
-        for new_task in new_tasks:
-            self.containers[new_task] = Container(
-                new_task.cgroup_path,
-                rdt_enabled=self.rdt_enabled,
-                platform_cpus=self.platform_cpus,
-                allocation_configuration=self.allocation_configuration
-            )
-
-        # Sync state of individual containers.
-        for container in self.containers.values():
-            container.sync()
-
-        return self.containers
-
-    def perfom_allocations(self, tasks_allocations):
-        for task, container in self.containers.items():
-            if task.task_id in tasks_allocations:
-                task_allocations = tasks_allocations[task.task_id]
-                container.perform_allocations(task_allocations)
-
-    def cleanup(self):
-        # cleanup
-        for container in self.containers.values():
-            container.cleanup()
 
 
 class BaseRunnerMixin:
@@ -285,7 +188,7 @@ class BaseRunnerMixin:
         tasks = node.get_tasks()
 
         # Keep sync of found tasks and internally managed containers.
-        containers = self.containers_manager._sync_containers_state(tasks)
+        containers = self.containers_manager.sync_containers_state(tasks)
 
         metrics_package = MetricPackage(metrics_storage)
         metrics_package.add_metrics(self.get_internal_metrics(tasks))
@@ -399,12 +302,6 @@ class AllocationRunner(Runner, BaseRunnerMixin):
     def __post_init__(self):
         BaseRunnerMixin.__init__(self, self.rdt_enabled, self.allocation_configuration)
 
-    def _calculate_resulting_allocations(
-            self, old_allocations: TasksAllocations, new_allocations: TasksAllocations) \
-            -> Tuple[TasksAllocations, TasksAllocations]:
-        # TODO: implement me!!!!
-        return {}, {}
-
     def run(self):
         if not self.configure_rdt(self.rdt_enabled, self.ignore_privileges_check):
             return
@@ -425,9 +322,10 @@ class AllocationRunner(Runner, BaseRunnerMixin):
             log.debug('Anomalies detected: %d', len(anomalies))
             log.debug('Allocations received: %d', len(new_tasks_allocations))
 
-            all_allocations, resulting_allocations = \
-                self._calculate_resulting_allocations(tasks_allocations, new_tasks_allocations)
-            log.log(logger.TRACE, 'Resulting allocations to execute: %r', resulting_allocations)
+            all_allocations = self.containers_manager.sync_allocations(
+                old_allocations=tasks_allocations,
+                new_allocations=new_tasks_allocations
+            )
 
             # Note: anomaly metrics include metrics found in ContentionAnomaly.metrics.
             anomaly_metrics = convert_anomalies_to_metrics(anomalies)
@@ -439,12 +337,12 @@ class AllocationRunner(Runner, BaseRunnerMixin):
             anomalies_package.send(common_labels)
 
             # Store allocations information
-            allocations_metrics = convert_allocations_to_metrics(all_allocations, allocate_duration)
+            allocations_metrics = convert_allocations_to_metrics(all_allocations)
             allocations_package = MetricPackage(self.allocations_storage)
             allocations_package.add_metrics(
                 allocations_metrics,
                 extra_metrics,
-                self.get_allocations_statistics_metrics(all_allocations),
+                self.get_allocations_statistics_metrics(all_allocations, allocate_duration),
             )
             allocations_package.send(common_labels)
 
