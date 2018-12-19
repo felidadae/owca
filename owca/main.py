@@ -73,7 +73,7 @@ def main():
     log_levels.setdefault(logger.DEFAULT_MODULE, 'info')
     logger.configure_loggers_from_dict(log_levels)
 
-    log.warn('This software is pre-production and should not be deployed to production servers.')
+    log.warning('This software is pre-production and should not be deployed to production servers.')
     log.debug('started PID=%r', os.getpid())
     log.info('Version owca: %s', platforms.get_owca_version())
 

@@ -73,16 +73,16 @@ def test_calculate_desired_state(
 @patch('owca.containers.Container.cleanup')
 @patch('owca.platforms.collect_topology_information', return_value=(1, 1, 1))
 @pytest.mark.parametrize('tasks,existing_containers,expected_running_containers', (
-    # ([], {},
-    #  {}),
+    ([], {},
+     {}),
     ([task('/t1')], {},
      {task('/t1'): container('/t1')}),
-    # ([task('/t1')], {task('/t2'): container('/t2')},
-    #  {task('/t1'): container('/t1')}),
-    # ([task('/t1')], {task('/t1'): container('/t1'), task('/t2'): container('/t2')},
-    #  {task('/t1'): container('/t1')}),
-    # ([], {task('/t1'): container('/t1'), task('/t2'): container('/t2')},
-    #  {}),
+    ([task('/t1')], {task('/t2'): container('/t2')},
+     {task('/t1'): container('/t1')}),
+    ([task('/t1')], {task('/t1'): container('/t1'), task('/t2'): container('/t2')},
+     {task('/t1'): container('/t1')}),
+    ([], {task('/t1'): container('/t1'), task('/t2'): container('/t2')},
+     {}),
 ))
 def test_sync_containers_state(platform_mock, cleanup_mock, sync_mock,
                                PerfCoutners_mock, ResGroup_mock,

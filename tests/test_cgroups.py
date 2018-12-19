@@ -62,3 +62,12 @@ def test_get_normalized_quota():
     cgroup = Cgroup('/some/foo1', platform_cpus=1,
                     allocation_configuration=AllocationConfiguration())
     assert cgroup._get_normalized_quota() == float('inf')
+
+    
+@patch('builtins.open', create_open_mock({
+    '/sys/fs/cgroup/cpu/some/foo1/tasks': '101\n102',
+    '/sys/fs/cgroup/cpu/foo2/tasks': '',
+}))
+def test_cgroup_get_tasks():
+    assert Cgroup('/some/foo1', platform_cpus=1).get_tasks() == [101, 102]
+    assert Cgroup('/foo2', platform_cpus=1).get_tasks() == []

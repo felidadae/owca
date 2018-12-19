@@ -19,9 +19,11 @@ from owca.mesos import MesosTask
 from owca.logger import init_logging
 from owca.testing import create_open_mock
 
+import pytest
 
 yaml_config = '''
 runner: !DetectionRunner
+  ignore_privileges_check: true
   node: !MesosNode
   action_delay: 1.
   metrics_storage: !LogStorage
@@ -106,14 +108,15 @@ mesos_tasks_mocks = [
     )
 ]
 
-
+@pytest.mark.skip('WIP')
 @mock.patch('sys.argv', ['owca', '-c', 'configs/see_yaml_config_variable_above.yaml',
-                         '-r', 'example.external_package:ExampleDetector', '-l', 'trace'])
+                         '-r', 'example.external_package:ExampleDetector', '-l', 'trace', 
+                         '--root'])
 @mock.patch('os.rmdir')
 @mock.patch('owca.config.exists', return_value=True)
 @mock.patch('owca.config.open', mock.mock_open(read_data=yaml_config))
 @mock.patch('owca.mesos.MesosNode.get_tasks', return_value=mesos_tasks_mocks)
-@mock.patch('owca.resctrl.ResGroup.sync')
+@mock.patch('owca.resctrl.ResGroup.add_tasks')
 @mock.patch('owca.containers.PerfCounters')
 @mock.patch('owca.runner.DetectionRunner.wait_or_finish', return_value=False)
 @mock.patch('builtins.open', new=create_open_mock({

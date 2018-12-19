@@ -37,5 +37,5 @@ def register_components(extra_components: List[str]):
     for component in extra_components:
         # Load external class ignored its requirements.
         ep = pkg_resources.EntryPoint.parse('external_cls=%s' % component)
-        cls = ep.load(require=False)
+        cls = ep.resolve()
         config.register(cls)

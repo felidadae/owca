@@ -13,7 +13,7 @@
 # limitations under the License.
 import logging
 import os
-from typing import Optional
+from typing import Optional, List
 
 from dataclasses import dataclass
 
@@ -27,6 +27,7 @@ CPU_USAGE = 'cpuacct.usage'
 CPU_QUOTA = 'cpu.cfs_quota_us'
 CPU_PERIOD = 'cpu.cfs_period_us'
 CPU_SHARES = 'cpu.shares'
+TASKS = 'tasks'
 BASE_SUBSYSTEM_PATH = '/sys/fs/cgroup/cpu'
 
 
@@ -122,3 +123,8 @@ class Cgroup:
             self._set_normalized_quota(allocations[AllocationType.QUOTA])
         if AllocationType.SHARES in allocations:
             self._set_normalized_shares(allocations[AllocationType.SHARES])
+
+    def get_tasks(self) -> List[int]:
+        with open(os.path.join(self.cgroup_fullpath, TASKS)) as f:
+            return list(map(int, f.read().splitlines()))
+

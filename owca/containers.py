@@ -40,6 +40,14 @@ def flatten_measurements(measurements: List[Measurements]):
         all_measurements_flat.update(measurement)
     return all_measurements_flat
 
+def _convert_cgroup_path_to_resgroup_name(cgroup_path):
+    """Return resgroup compatbile name for cgroup path (remove special characters like /)."""
+    assert cgroup_path.startswith('/'), 'Provide cgroup_path with leading /'
+    # cgroup path without leading '/'
+    relative_cgroup_path = cgroup_path[1:]  
+    # Resctrl group is flat so flatten then cgroup hierarchy.
+    return relative_cgroup_path.replace('/', '-')
+
 
 @dataclass
 class Container:
@@ -48,6 +56,7 @@ class Container:
     platform_cpus: int
     allocation_configuration: Optional[AllocationConfiguration] = None
     rdt_enabled: bool = True
+    task_name: str = None  # defaults to flatten value of provided cgroup_path
 
     def __post_init__(self):
         self.cgroup = Cgroup(
@@ -55,17 +64,21 @@ class Container:
             platform_cpus=self.platform_cpus,
             allocation_configuration=self.allocation_configuration,
         )
+        self.task_name = self.task_name or _convert_cgroup_path_to_resgroup_name(self.cgroup_path)
         self.perf_counters = PerfCounters(self.cgroup_path, event_names=DEFAULT_EVENTS)
-        self.resgroup = ResGroup(self.cgroup_path) if self.rdt_enabled else None
+        self.resgroup = ResGroup(name=self.cgroup_path) if self.rdt_enabled else None
+    
+    def get_pids(self) -> List[int]:
+        return self.cgroup.get_tasks()
 
     def sync(self):
         if self.rdt_enabled:
-            self.resgroup.sync()
+            self.resgroup.add_tasks(self.get_pids(), self.task_name)
 
     def get_measurements(self) -> Measurements:
         return flatten_measurements([
             self.cgroup.get_measurements(),
-            self.resgroup.get_measurements() if self.rdt_enabled else {},
+            self.resgroup.get_measurements(self.task_name) if self.rdt_enabled else {},
             self.perf_counters.get_measurements(),
         ])
 
