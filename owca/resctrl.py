@@ -124,35 +124,55 @@ class ResGroup:
         return pids
 
     def _add_pids_to_tasks_file(self, pids, tasks_filepath):
-        with open(os.path.join(tasks_filepath, 'tasks')) as ftasks:
+        with open(tasks_filepath, 'w') as ftasks:
             for pid in pids:
-                ftasks.write(pid + '\n')
+                try:
+                    ftasks.write(pid)
+                    ftasks.flush()
+                except ProcessLookupError:
+                    log.warning('Could not write pid %s to resctrl (%r). '
+                                'Process probably does not exist. '
+                                % (pid, tasks_filepath))
 
     def add_tasks(self, pids, mongroup_name):
+        """Adds the pids to the resctrl group and creates mongroup with the pids.
+           If the resctrl group does not exists creates it (lazy creation).
+           If already the mongroup exists just add the pids (no error will be thrown)."""
+        if not check_resctr():
+            return
+
         # create control group directory
         if not self.is_root_group:
-            os.makedirs(self.fullpath)
+            try:
+                log.log(logger.TRACE, 'resctrl: makedirs(%s)', self.fullpath)
+                os.makedirs(self.fullpath, exist_ok=True)
+            except OSError as e:
+                if e.errno == errno.ENOSPC:  # "No space left on device"
+                    raise Exception("Limit of workloads reached! (Oot of available CLoSes/RMIDs!)")
+                raise
 
         # add pids to /tasks file
-        with open(os.path.join(self.fullpath, 'tasks')) as ftasks:
-            for pid in pids:
-                ftasks.write(pid + '\n')
+        self._add_pids_to_tasks_file(pids, os.path.join(self.fullpath, 'tasks'))
 
         # create mongroup and write tasks there
         mongroup_fullpath = self._get_mongroup_fullpath(mongroup_name)
-        os.makedirs(mongroup_fullpath)
+        os.makedirs(mongroup_fullpath, exist_ok=True)
         self._add_pids_to_tasks_file(pids, os.path.join(mongroup_fullpath, 'tasks'))
 
     def remove_tasks(self, mongroup_name):
+        """Removes the mongroup and all pids inside it from the resctrl group."""
+        if not check_resctr():
+            return
+
         # read tasks that belongs to the mongroup
         mongroup_fullpath = self._get_mongroup_fullpath(mongroup_name)
         pids = self._read_pids_from_tasks_file(os.path.join(mongroup_fullpath, 'tasks'))
 
         # remove the mongroup directory
-        os.rmdir(self.mongroup_fullpath)
+        os.rmdir(mongroup_fullpath)
 
         # removes tasks from the group by adding it to the root group
-        self._add_pids_to_tasks_file(pids, os.path.join(self.fullpath, 'tasks'))
+        self._add_pids_to_tasks_file(pids, os.path.join(BASE_RESCTRL_PATH, 'tasks'))
 
     def get_measurements(self, mongroup_name) -> Measurements:
         """
