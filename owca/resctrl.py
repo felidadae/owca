@@ -138,7 +138,7 @@ class ResGroup:
         """Adds the pids to the resctrl group and creates mongroup with the pids.
            If the resctrl group does not exists creates it (lazy creation).
            If already the mongroup exists just add the pids (no error will be thrown)."""
-        if not check_resctr():
+        if not check_resctrl():
             return
 
         # create control group directory
@@ -161,7 +161,7 @@ class ResGroup:
 
     def remove_tasks(self, mongroup_name):
         """Removes the mongroup and all pids inside it from the resctrl group."""
-        if not check_resctr():
+        if not check_resctrl():
             return
 
         # read tasks that belongs to the mongroup
@@ -217,4 +217,7 @@ class ResGroup:
 
     def cleanup(self):
         log.log(logger.TRACE, 'resctrl: rmdir(%s)', self.fullpath)
-        os.rmdir(self.fullpath)
+        try:
+            os.rmdir(self.fullpath)
+        except FileNotFoundError:
+            pass

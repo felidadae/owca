@@ -55,6 +55,8 @@ class AllocationConfiguration:
     # Number of shares to set, when ``cpu_shares`` allocation is set to 1.0.
     cpu_shares_max: int = 10000
 
+    # Default Allocation for default root group
+    default_rdt_allocation: RDTAllocation = None
 
 class Allocator(ABC):
 
