@@ -343,7 +343,7 @@ class AllocationRunner(Runner, BaseRunnerMixin):
             allocations_package.add_metrics(
                 allocations_metrics,
                 extra_metrics,
-                self.get_allocations_statistics_metrics(all_allocations, allocate_duration),
+                self.get_allocations_statistics_metrics(new_tasks_allocations, allocate_duration),
             )
             allocations_package.send(common_labels)
 

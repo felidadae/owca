@@ -19,6 +19,7 @@ import hashlib
 from owca.metrics import Metric
 from owca.detectors import (TasksMeasurements, ContentionAnomaly,
                             ContendedResource, AnomalyDetector, TasksResources, TasksLabels)
+from owca.allocators import Allocator
 from owca.platforms import Platform
 
 import logging
@@ -140,3 +141,11 @@ class ExampleDetector(AnomalyDetector):
         ]
 
         return anomalies, debugging_metrics
+
+
+class ExampleAllocator(Allocator):
+
+    def allocate(self, platform, tasks_measurements, tasks_resources,
+                 tasks_labels, tasks_allocations):
+        log.debug('allocated called with tasks_allocations: %r', tasks_allocations)
+        return [], [], []

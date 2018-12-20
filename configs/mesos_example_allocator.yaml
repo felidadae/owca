@@ -20,8 +20,11 @@ runner: !AllocationRunner
     mesos_agent_endpoint: 'http://127.0.0.1:5051'
   action_delay: 1.
   metrics_storage: !LogStorage
+    output_filename: metrics.logs
   anomalies_storage: !LogStorage
+    output_filename: anomalies.logs
   allocations_storage: !LogStorage
-  allocator: !NOPAllocator
+    output_filename: allocations.logs
+  allocator: !ExampleAllocator
   rdt_enabled: True
   allocation_configuration: !AllocationConfiguration

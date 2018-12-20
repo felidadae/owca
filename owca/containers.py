@@ -66,14 +66,16 @@ class Container:
         )
         self.task_name = self.task_name or _convert_cgroup_path_to_resgroup_name(self.cgroup_path)
         self.perf_counters = PerfCounters(self.cgroup_path, event_names=DEFAULT_EVENTS)
-        self.resgroup = ResGroup(name=self.cgroup_path) if self.rdt_enabled else None
+        self.resgroup = ResGroup(name=self.task_name) if self.rdt_enabled else None
     
     def get_pids(self) -> List[int]:
         return self.cgroup.get_tasks()
 
     def sync(self):
         if self.rdt_enabled:
-            self.resgroup.add_tasks(self.get_pids(), self.task_name)
+            tasks = list(map(str, self.get_pids()))
+            log.debug('sync %d tasks to %r', len(tasks), self.task_name)
+            self.resgroup.add_tasks(tasks, self.task_name)
 
     def get_measurements(self) -> Measurements:
         return flatten_measurements([

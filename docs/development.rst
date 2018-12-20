@@ -108,6 +108,16 @@ You can run without building a distribution like this:
     
     sudo env PYTHONPATH=. `which python3.6` owca/main.py -c configs/mesos_example.yaml --root
 
+
+Using example allocator:
+
+
+.. code-block:: shell
+
+    python3.6 -mpipenv shell
+    ulimit -n 10000
+    PYTHONPATH=. python owca/main.py -c configs/mesos_example_allocator.yaml -0 -linfo -r example.external_package:ExampleAllocator -l example:debug
+
 Fast distribution rebuild
 -------------------------
 

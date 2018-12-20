@@ -75,7 +75,7 @@ class Allocator(ABC):
 class NOPAllocator(Allocator):
 
     def allocate(self, platform, tasks_measurements, tasks_resources,
-                 tasks_labels, task_allocations):
+                 tasks_labels, tasks_allocations):
         return [], [], []
 
 

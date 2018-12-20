@@ -188,7 +188,7 @@ class ResGroup:
 
         # mon_dir contains event files for specific socket:
         # llc_occupancy, mbm_total_bytes, mbm_local_bytes
-        for mon_dir in os.listdir(os.path.join(self.fullpath, mongroup_name, MON_DATA)):
+        for mon_dir in os.listdir(os.path.join(self.fullpath, MON_GROUPS, mongroup_name, MON_DATA)):
             with open(_get_event_file(mon_dir, MBM_TOTAL)) as mbm_total_file:
                 mbm_total += int(mbm_total_file.read())
             with open(_get_event_file(mon_dir, LLC_OCCUPANCY)) as llc_occupancy_file:

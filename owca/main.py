@@ -112,6 +112,7 @@ def main():
     runner = configuration['runner']
 
     # Prepare and run the "main loop".
+
     runner.run()
 
 
