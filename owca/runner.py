@@ -288,6 +288,7 @@ class MetricPackage:
 
 @dataclass
 class AllocationRunner(Runner, BaseRunnerMixin):
+
     node: nodes.Node
     allocator: Allocator
     metrics_storage: storage.Storage

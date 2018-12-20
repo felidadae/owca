@@ -1,6 +1,7 @@
 from owca.resctrl import ResGroup
 
-import subprocess, re, os
+import subprocess
+import re
 import time
 
 
@@ -47,43 +48,87 @@ class SampleProcess:
 def test_simple():
     """Creates one stress-ng process. Creates new resctrl group with the pid of the process."""
     stressng_ = SampleProcess()
-    assert(stressng_.is_alive() == True)
+    assert stressng_.is_alive()
     resgroup_ = ResGroup('grupa_szymona')
     resgroup_.add_tasks([], 'mongrupa_januszka')
     resgroup_.cleanup()
+
+    # pids are in the files
     resgroup_.add_tasks(stressng_.get_pids(), 'mongrupa_januszka')
-    assert(if_file_contains('/sys/fs/resctrl/grupa_szymona/tasks', stressng_.get_pids()) == True)
-    assert(if_file_contains('/sys/fs/resctrl/grupa_szymona/mon_groups/mongrupa_januszka/tasks', stressng_.get_pid()) == True)
+    assert if_file_contains('/sys/fs/resctrl/grupa_szymona/tasks', stressng_.get_pids())
+    assert if_file_contains('/sys/fs/resctrl/grupa_szymona/mon_groups/mongrupa_januszka/tasks', stressng_.get_pid())
+
+    # pids are not longer in the tasks files
     resgroup_.remove_tasks('mongrupa_januszka')
-    assert(if_file_contains('/sys/fs/resctrl/grupa_szymona/tasks', stressng_.get_pid()) == False)
-    assert(if_file_contains('/sys/fs/resctrl/tasks', stressng_.get_pid()) == True)
-    assert(stressng_.is_alive() == True)
+    assert not if_file_contains('/sys/fs/resctrl/grupa_szymona/tasks', stressng_.get_pid())
+
+    # but still available in root ctrlgroup
+    assert if_file_contains('/sys/fs/resctrl/tasks', stressng_.get_pid())
+    assert stressng_.is_alive()
+
+    # cleanup
     stressng_.kill()
-    assert(stressng_.is_alive() == False)
+    assert not stressng_.is_alive()
+
+    assert not if_file_contains('/sys/fs/resctrl/tasks', stressng_.get_pid())
+    resgroup_.cleanup()
 
 
 def test_complex_1():
     """Move tasks between resctrl groups. """
-    stressngs = [SampleProcess(), SampleProcess(), SampleProcess()]
-    assert(all(p.is_alive() == True for p in stressngs))
+    p0, p1, p2 = SampleProcess(), SampleProcess(), SampleProcess()
+    processes = [p0, p1, p2]
 
-    resgroups = [ResGroup('group_a'), ResGroup('group_b')]
-    for rg in resgroups: rg.cleanup()
+    assert all(p.is_alive() for p in processes)
 
-    resgroups[0].add_tasks(stressngs[0].get_pids(), 'mongroup_0')
-    resgroups[0].add_tasks(stressngs[1].get_pids(), 'mongroup_1')
-    resgroups[1].add_tasks(stressngs[2].get_pids(), 'mongroup_0')
+    resgroups = [ResGroup('g0'), ResGroup('g1')]
+    g0, g1 = resgroups
+    for rg in resgroups:
+        rg.cleanup()
 
-    assert(if_file_contains('/sys/fs/resctrl/group_a/tasks', stressngs[0].get_pids()) == True)
-    assert(if_file_contains('/sys/fs/resctrl/group_a/tasks', stressngs[1].get_pids()) == True)
-    assert(if_file_contains('/sys/fs/resctrl/group_b/tasks', stressngs[2].get_pids()) == True)
+    # p0 and p1 to r0
+    g0.add_tasks(p0.get_pids(), 'p0')
+    g0.add_tasks(p1.get_pids(), 'p1')
 
-    resgroups[0].remove_tasks('mongroup_1')
-    resgroups[1].add_tasks(stressngs[1].get_pids(), 'mongroup_1')
+    # p2 to r1
+    g1.add_tasks(p2.get_pids(), 'p2')
 
-    assert(if_file_contains('/sys/fs/resctrl/group_a/tasks', stressngs[0].get_pids()) == True)
-    assert(if_file_contains('/sys/fs/resctrl/group_a/mon_groups/mongroup_0/tasks', stressngs[0].get_pids()) == True)
-    assert(if_file_contains('/sys/fs/resctrl/group_b/tasks', stressngs[1].get_pids()) == True)
-    assert(if_file_contains('/sys/fs/resctrl/group_b/mon_groups/mongroup_1/tasks', stressngs[1].get_pids()) == True)
-    assert(if_file_contains('/sys/fs/resctrl/group_b/tasks', stressngs[2].get_pids()) == True)
-    assert(if_file_contains('/sys/fs/resctrl/group_b/mon_groups/mongroup_0/tasks', stressngs[2].get_pids()) == True)
+    # check ctrl cgroups pids
+    assert if_file_contains('/sys/fs/resctrl/g0/tasks', p0.get_pids())
+    assert if_file_contains('/sys/fs/resctrl/g0/tasks', p1.get_pids())
+    assert if_file_contains('/sys/fs/resctrl/g1/tasks', p2.get_pids())
+
+    # move p1 from g0 to g1
+    g0.remove_tasks('p1')
+    g1.add_tasks(p1.get_pids(), 'p1')
+
+    # g0/p0 still contains p0
+    assert if_file_contains('/sys/fs/resctrl/g0/tasks', p0.get_pids())
+    assert if_file_contains('/sys/fs/resctrl/g0/mon_groups/p0/tasks', p0.get_pids())
+
+    # there is no g0/p1 anymore
+    # p1 is in g1/p1 now
+    assert if_file_contains('/sys/fs/resctrl/g1/tasks', p1.get_pids())
+    assert if_file_contains('/sys/fs/resctrl/g1/mon_groups/p1/tasks', p1.get_pids())
+
+    # p2 is still in g1/p2
+    assert if_file_contains('/sys/fs/resctrl/g1/tasks', p2.get_pids())
+    assert if_file_contains('/sys/fs/resctrl/g1/mon_groups/p2/tasks', p2.get_pids())
+
+    for p in processes:
+        p.kill()
+
+    time.sleep(1)
+    for p in processes:
+        assert not p.is_alive()
+
+    assert not if_file_contains('/sys/fs/resctrl/g0/tasks', p0.get_pid())
+    assert not if_file_contains('/sys/fs/resctrl/g0/mon_groups/p0/tasks', p0.get_pid())
+    assert not if_file_contains('/sys/fs/resctrl/g1/tasks', p1.get_pid())
+    assert not if_file_contains('/sys/fs/resctrl/g1/mon_groups/p1/tasks', p1.get_pid())
+    assert not if_file_contains('/sys/fs/resctrl/g1/tasks', p2.get_pid())
+    assert not if_file_contains('/sys/fs/resctrl/g1/mon_groups/p2/tasks', p2.get_pid())
+
+    for rg in resgroups:
+        rg.cleanup()
+
