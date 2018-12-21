@@ -58,6 +58,18 @@ def test_simple():
     assert if_file_contains('/sys/fs/resctrl/grupa_szymona/tasks', stressng_.get_pids())
     assert if_file_contains('/sys/fs/resctrl/grupa_szymona/mon_groups/mongrupa_januszka/tasks', stressng_.get_pid())
 
+    # set rdt allocations
+    from owca.allocators import RDTAllocation
+    task_allocations = { 
+        'cpu_quota': 0.6,
+		'cpu_shares': 0.8,
+		'rdt': RDTAllocation(name='hp_group', l3='L3:0=00001;1=00001', mb='MB:0=20;1=5')
+	}
+    resgroup_.perform_allocations(task_allocations)
+
+    # check if properly set
+    # @TODO
+
     # pids are not longer in the tasks files
     resgroup_.remove_tasks('mongrupa_januszka')
     assert not if_file_contains('/sys/fs/resctrl/grupa_szymona/tasks', stressng_.get_pid())
@@ -132,3 +144,7 @@ def test_complex_1():
     for rg in resgroups:
         rg.cleanup()
 
+
+def test_set_allocations():
+    
+      

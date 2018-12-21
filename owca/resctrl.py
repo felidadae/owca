@@ -21,6 +21,7 @@ from owca import logger
 from owca.cgroups import BASE_SUBSYSTEM_PATH
 from owca.metrics import Measurements, MetricName
 from owca.security import SetEffectiveRootUid
+from owca.allocators import TaskAllocations, TasksAllocations, AllocationType
 
 BASE_RESCTRL_PATH = '/sys/fs/resctrl'
 MON_GROUPS = 'mon_groups'
@@ -197,23 +198,34 @@ class ResGroup:
         return {MetricName.MEM_BW: mbm_total, MetricName.LLC_OCCUPANCY: llc_occupancy}
 
     def get_allocations(self):
-        task_allocations = {}
+        rdt_allocations = RDTAllocation()
         with open(os.path.join(self.fullpath, SCHEMATA)) as schemata:
             for line in schemata:
                 if 'MB' in line:
-                    task_allocations[RDT_MB] = line
+                    rdt_allocations.mb = line
                 elif 'L3' in line:
-                    task_allocations[RDT_LC] = line
+                    rdt_allocations.l3 = line
 
-        return task_allocations
+        return {AllocationType.RDT: rdt_allocations}
 
-    def set_allocations(self, task_allocations):
+    def perform_allocations(self, task_allocations: TaskAllocations):
         with open(os.path.join(self.fullpath, SCHEMATA)) as schemata:
-            if task_allocations.get(RDT_MB):
-                schemata.write(task_allocations[RDT_MB])
+            if (AllocationType.RDT in task_allocations and 
+                    task_allocations[AllocationType.RDT].mb is not None):
+                try:
+                    schemata.write(task_allocations[AllocationType.RDT].mb)
+                except Exception as e:
+                    # @TODO differience between wrong argument and not supported
+                    __import__('ipdb').set_trace()
+                    log.debug('Cannot set rdt memory bandwith allocation: not supported.')
 
-            if task_allocations.get(RDT_LC):
-                schemata.write(task_allocations[RDT_LC])
+            if task_allocations.get(AllocationType.RDT).l3:
+                try:
+                    schemata.write(task_allocations[AllocationType.RDT].l3)
+                except Exception as e:
+                    # @TODO differience between wrong argument and not supported
+                    __import__('ipdb').set_trace()
+                    log.debug('Cannot set l3 memory bandwith allocation: not supported.')
 
     def cleanup(self):
         log.log(logger.TRACE, 'resctrl: rmdir(%s)', self.fullpath)
