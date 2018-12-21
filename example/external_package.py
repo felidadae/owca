@@ -19,7 +19,7 @@ import hashlib
 from owca.metrics import Metric
 from owca.detectors import (TasksMeasurements, ContentionAnomaly,
                             ContendedResource, AnomalyDetector, TasksResources, TasksLabels)
-from owca.allocators import Allocator, AllocationType
+from owca.allocators import Allocator, AllocationType, RDTAllocation
 from owca.platforms import Platform
 
 import logging
@@ -152,7 +152,8 @@ class ExampleAllocator(Allocator):
         if tasks_measurements:
             task_id = list(tasks_measurements.keys())[0]
             tasks_allocations[task_id] = {
-                AllocationType.QUOTA: 0.5
+                AllocationType.QUOTA: 0.5,
+                AllocationType.RDT: RDTAllocation(l3='L3:0=ffff0;1=ffff0'),
             }
 
         return tasks_allocations, [], []
