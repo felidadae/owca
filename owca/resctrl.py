@@ -211,7 +211,7 @@ class ResGroup:
         with open(os.path.join(self.fullpath, SCHEMATA), 'wb') as schemata:
             if (AllocationType.RDT in task_allocations and
                     task_allocations[AllocationType.RDT].mb is not None):
-                value = task_allocations[AllocationType.RDT].mb +'\n'
+                value = task_allocations[AllocationType.RDT].mb + '\n'
                 log.log(logger.TRACE, 'resctrl: write(%s): %r', schemata.name, value)
                 try:
                     schemata.write(bytes(value, encoding='utf8'))
@@ -220,7 +220,7 @@ class ResGroup:
                     log.error('Cannot set rdt memory bandwith allocation: not supported: %s', e)
 
             if task_allocations.get(AllocationType.RDT).l3:
-                value = task_allocations[AllocationType.RDT].l3 +'\n'
+                value = task_allocations[AllocationType.RDT].l3 + '\n'
                 log.log(logger.TRACE, 'resctrl: write(%s): %r', schemata.name, value)
                 try:
                     schemata.write(bytes(value, encoding='utf8'))
