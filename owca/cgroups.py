@@ -63,7 +63,7 @@ class Cgroup:
     def _write(self, cgroup_control_file: str, value: int):
         """Write helper to store any int value in cgroup control file."""
         with open(os.path.join(self.cgroup_fullpath, cgroup_control_file), 'wb') as f:
-            raw_value = str(value)
+            raw_value = bytes(str(value), encoding='utf8')
             log.log(logger.TRACE, 'cgroup: write %s=%r', f.name, raw_value)
             f.write(raw_value)
 
@@ -103,7 +103,7 @@ class Cgroup:
 
         # synchornize quota if nessesary
         if current_period != self.allocation_configuration.cpu_quota_period:
-            self._write(CPU_QUOTA, self.allocation_configuration.cpu_quota_period)
+            self._write(CPU_PERIOD, self.allocation_configuration.cpu_quota_period)
         quota = int(quota_normalized * self.allocation_configuration.cpu_quota_period *
                     self.platform_cpus)
         self._write(CPU_QUOTA, quota)
@@ -127,4 +127,3 @@ class Cgroup:
     def get_tasks(self) -> List[int]:
         with open(os.path.join(self.cgroup_fullpath, TASKS)) as f:
             return list(map(int, f.read().splitlines()))
-

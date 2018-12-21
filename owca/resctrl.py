@@ -18,10 +18,8 @@ import logging
 import os
 
 from owca import logger
-from owca.cgroups import BASE_SUBSYSTEM_PATH
 from owca.metrics import Measurements, MetricName
-from owca.security import SetEffectiveRootUid
-from owca.allocators import TaskAllocations, TasksAllocations, AllocationType
+# from owca.security import SetEffectiveRootUid  # TODO: where is the root handling ???
 
 BASE_RESCTRL_PATH = '/sys/fs/resctrl'
 MON_GROUPS = 'mon_groups'
@@ -208,7 +206,7 @@ class ResGroup:
 
         return {AllocationType.RDT: rdt_allocations}
 
-    def perform_allocations(self, task_allocations: TaskAllocations):
+    def perform_allocations(self, task_allocations):
         with open(os.path.join(self.fullpath, SCHEMATA)) as schemata:
             if (AllocationType.RDT in task_allocations and 
                     task_allocations[AllocationType.RDT].mb is not None):

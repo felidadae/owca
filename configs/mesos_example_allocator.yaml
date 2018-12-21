@@ -26,5 +26,5 @@ runner: !AllocationRunner
   allocations_storage: !LogStorage
     output_filename: allocations.logs
   allocator: !ExampleAllocator
-  rdt_enabled: True
+  rdt_enabled: true
   allocation_configuration: !AllocationConfiguration

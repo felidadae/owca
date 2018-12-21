@@ -13,13 +13,14 @@
 # limitations under the License.
 
 
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict
 import logging
 
 from dataclasses import dataclass
 
 from owca import logger
-from owca.allocators import AllocationConfiguration, TaskAllocations, TasksAllocations
+from owca.allocators import AllocationConfiguration, TaskAllocations, TasksAllocations, \
+    _calculate_tasks_allocations
 from owca.nodes import Task
 from owca.resctrl import ResGroup
 from owca.cgroups import Cgroup
@@ -40,11 +41,12 @@ def flatten_measurements(measurements: List[Measurements]):
         all_measurements_flat.update(measurement)
     return all_measurements_flat
 
+
 def _convert_cgroup_path_to_resgroup_name(cgroup_path):
     """Return resgroup compatbile name for cgroup path (remove special characters like /)."""
     assert cgroup_path.startswith('/'), 'Provide cgroup_path with leading /'
     # cgroup path without leading '/'
-    relative_cgroup_path = cgroup_path[1:]  
+    relative_cgroup_path = cgroup_path[1:]
     # Resctrl group is flat so flatten then cgroup hierarchy.
     return relative_cgroup_path.replace('/', '-')
 
@@ -67,7 +69,7 @@ class Container:
         self.task_name = self.task_name or _convert_cgroup_path_to_resgroup_name(self.cgroup_path)
         self.perf_counters = PerfCounters(self.cgroup_path, event_names=DEFAULT_EVENTS)
         self.resgroup = ResGroup(name=self.task_name) if self.rdt_enabled else None
-    
+
     def get_pids(self) -> List[int]:
         return self.cgroup.get_tasks()
 
@@ -193,19 +195,13 @@ class ContainerManager:
         :param new_allocations:
         :return:
         """
-        all_allocations, resulting_allocations = self._calculate_resulting_allocations(
+        all_allocations, resulting_allocations = _calculate_tasks_allocations(
                 old_allocations, new_allocations)
         log.log(logger.TRACE, 'Resulting allocations to execute: %r', resulting_allocations)
 
         self._perfom_allocations(resulting_allocations)
 
         return all_allocations
-
-    def _calculate_resulting_allocations(
-            self, old_allocations: TasksAllocations, new_allocations: TasksAllocations) \
-            -> Tuple[TasksAllocations, TasksAllocations]:
-        # TODO: implement me!!!!
-        return {}, {}
 
 
 def _calculate_desired_state(

@@ -108,9 +108,10 @@ mesos_tasks_mocks = [
     )
 ]
 
+
 @pytest.mark.skip('WIP')
 @mock.patch('sys.argv', ['owca', '-c', 'configs/see_yaml_config_variable_above.yaml',
-                         '-r', 'example.external_package:ExampleDetector', '-l', 'trace', 
+                         '-r', 'example.external_package:ExampleDetector', '-l', 'trace',
                          '--root'])
 @mock.patch('os.rmdir')
 @mock.patch('owca.config.exists', return_value=True)

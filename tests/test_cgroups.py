@@ -44,7 +44,7 @@ def test_cgroup_write():
     with patch('builtins.open', open_mock):
         cgroup._write('some_ctrl_file', 5)
     ctrl_file_mock.assert_called_once_with(full_path, 'wb')
-    ctrl_file_mock.assert_has_calls([call().__enter__().write('5')])
+    ctrl_file_mock.assert_has_calls([call().__enter__().write(b'5')])
 
 
 @patch('owca.containers.Cgroup._read', return_value=1000)
@@ -63,7 +63,7 @@ def test_get_normalized_quota():
                     allocation_configuration=AllocationConfiguration())
     assert cgroup._get_normalized_quota() == float('inf')
 
-    
+
 @patch('builtins.open', create_open_mock({
     '/sys/fs/cgroup/cpu/some/foo1/tasks': '101\n102',
     '/sys/fs/cgroup/cpu/foo2/tasks': '',
