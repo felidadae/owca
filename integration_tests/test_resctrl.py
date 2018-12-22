@@ -1,4 +1,5 @@
 from owca.resctrl import ResGroup
+from owca.allocators import RDTAllocation
 
 import subprocess
 import re
@@ -46,7 +47,8 @@ class SampleProcess:
 
 
 def test_simple():
-    """Creates one stress-ng process. Creates new resctrl group with the pid of the process."""
+    """Creates one stress-ng process.
+       Creates new resctrl group with the pid of the process."""
     stressng_ = SampleProcess()
     assert stressng_.is_alive()
     resgroup_ = ResGroup('grupa_szymona')
@@ -58,17 +60,17 @@ def test_simple():
     assert if_file_contains('/sys/fs/resctrl/grupa_szymona/tasks', stressng_.get_pids())
     assert if_file_contains('/sys/fs/resctrl/grupa_szymona/mon_groups/mongrupa_januszka/tasks', stressng_.get_pid())
 
-    # set rdt allocations
-    from owca.allocators import RDTAllocation
-    task_allocations = { 
-        'cpu_quota': 0.6,
-		'cpu_shares': 0.8,
-		'rdt': RDTAllocation(name='hp_group', l3='L3:0=00001;1=00001', mb='MB:0=20;1=5')
-	}
-    resgroup_.perform_allocations(task_allocations)
-
-    # check if properly set
-    # @TODO
+    # set and check rdt allocations
+    l3_ = ('L3:0=000ff;1=000ff', 'L3:0=00fff;1=00fff')
+    for i in range(2):
+        task_allocations = { 
+            'cpu_quota': 0.6,
+            'cpu_shares': 0.8,
+            'rdt': RDTAllocation(name='hp_group', l3=l3_[i])
+        }
+        resgroup_.perform_allocations(task_allocations)
+        assert resgroup_.get_allocations()['rdt'].l3.strip() == l3_[i]
+        assert if_file_contains('/sys/fs/resctrl/grupa_szymona/schemata', l3_[i])
 
     # pids are not longer in the tasks files
     resgroup_.remove_tasks('mongrupa_januszka')
@@ -143,8 +145,3 @@ def test_complex_1():
 
     for rg in resgroups:
         rg.cleanup()
-
-
-def test_set_allocations():
-    
-      
