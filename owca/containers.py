@@ -20,9 +20,9 @@ from dataclasses import dataclass
 
 from owca import logger
 from owca.allocators import AllocationConfiguration, TaskAllocations, TasksAllocations, \
-    _calculate_tasks_allocations
+    _calculate_tasks_allocations, AllocationType
 from owca.nodes import Task
-from owca.resctrl import ResGroup
+from owca.resctrl import ResGroup, ResGroupName
 from owca.cgroups import Cgroup
 from owca.perf import PerfCounters
 from owca.metrics import Measurements, MetricName
@@ -59,6 +59,7 @@ class Container:
     allocation_configuration: Optional[AllocationConfiguration] = None
     rdt_enabled: bool = True
     task_name: str = None  # defaults to flatten value of provided cgroup_path
+    resgroup: ResGroup = None # do not manage self.resgroup object, just reference it
 
     def __post_init__(self):
         self.cgroup = Cgroup(
@@ -68,12 +69,21 @@ class Container:
         )
         self.task_name = self.task_name or _convert_cgroup_path_to_resgroup_name(self.cgroup_path)
         self.perf_counters = PerfCounters(self.cgroup_path, event_names=DEFAULT_EVENTS)
-        self.resgroup = ResGroup(name=self.task_name) if self.rdt_enabled else None
 
     def get_pids(self) -> List[int]:
         return self.cgroup.get_tasks()
 
     def sync(self):
+        if self.rdt_enabled:
+            tasks = list(map(str, self.get_pids()))
+            log.debug('sync %d tasks to %r', len(tasks), self.task_name)
+            self.resgroup.add_tasks(tasks, self.task_name)
+
+    def change_resgroup(self, new_resgroup):
+        """Remove tasks from current group and add to the new one."""
+        if self.rdt_enabled:
+            self.resgroup.remove_tasks(self.task_name)
+        self.resgroup = new_resgroup
         if self.rdt_enabled:
             tasks = list(map(str, self.get_pids()))
             log.debug('sync %d tasks to %r', len(tasks), self.task_name)
@@ -87,9 +97,9 @@ class Container:
         ])
 
     def cleanup(self):
-        if self.rdt_enabled:
-            self.resgroup.cleanup()
         self.perf_counters.cleanup()
+        if self.rdt_enabled:
+            self.resgroup.remove_tasks(self.task_name)
 
     def get_allocations(self) -> TaskAllocations:
         # In only detect mode, without allocation configuration return nothing.
@@ -106,6 +116,9 @@ class Container:
         if self.rdt_enabled:
             self.resgroup.perform_allocations(allocations)
 
+    def __hash__(self):
+        return hash(str(self.cgroup_path))
+
 
 class ContainerManager:
     """Main engine of synchornizing state between found orechestratios software tasks,
@@ -121,10 +134,23 @@ class ContainerManager:
     def __init__(self, rdt_enabled: bool, platform_cpus: int,
                  allocation_configuration: Optional[AllocationConfiguration]):
         self.containers: Dict[Task, Container] = {}
-        self.resgroups: Dict[ResGroup, List[Container]] = {}
+
+        root_resgroup_name = ResGroup.get_root_group_name()
+        self.resgroups_containers_relation: Dict[ResGroupName, (ResGroup, Set[Container])] = \
+            {root_resgroup_name: (ResGroup(name=root_resgroup_name), set())}
+
         self.rdt_enabled = rdt_enabled
         self.platform_cpus = platform_cpus
         self.allocation_configuration = allocation_configuration
+
+    def _get_container_by_taskid(self, task_id):
+        for task, container in self.containers.items():
+            if task.task_id == task_id:
+                return container
+        return None
+
+    def _get_resgroup_by_name(self, name):
+        return self.resgroups_containers_relation[name][0]
 
     def sync_containers_state(self, tasks) -> Dict[Task, Container]:
         """Sync internal state of runner by removing orphaned containers, and creating containers
@@ -148,6 +174,16 @@ class ContainerManager:
         # Cleanup and remove orphaned containers (cleanup).
         for container_to_cleanup in containers_to_cleanup:
             container_to_cleanup.cleanup()
+
+            resgroup = self.container_to_cleanup.resgroup
+            self.resgroups_containers_relation[resgroup.name][1].remove(container_to_cleanup)
+            if resgroup is not None and not resgroup.is_root_group:
+                if not len(self.resgroups[resgroup]):
+                    resgroup.cleanup()
+                    log.debug('removing resgroup {}'.format(resgroup.name))
+                    del self.resgroups_containers_relation[resgroup.name]
+
+        # Recreate self.containers.
         self.containers = {task: container
                            for task, container in self.containers.items()
                            if task in tasks}
@@ -162,8 +198,10 @@ class ContainerManager:
                 new_task.cgroup_path,
                 rdt_enabled=self.rdt_enabled,
                 platform_cpus=self.platform_cpus,
-                allocation_configuration=self.allocation_configuration
+                allocation_configuration=self.allocation_configuration,
+                resgroup=self._get_resgroup_by_name(ResGroup.get_root_group_name())
             )
+            self.resgroups_containers_relation[ResGroup.get_root_group_name()][1].add(self.containers[new_task])
 
         # Sync state of individual containers.
         for container in self.containers.values():
@@ -176,6 +214,43 @@ class ContainerManager:
             if task.task_id in tasks_allocations:
                 task_allocations = tasks_allocations[task.task_id]
                 container.perform_allocations(task_allocations)
+
+    def _reassign_resgroups(self, tasks_allocations):
+        def relations_to_string(relations):
+            r = ""
+            for resgroup_name, (resgroup, containers) in relations.items():
+                c_ = [container.cgroup_path for container in containers]
+                r += "\t\'{}\' -> [{}]\n".format(resgroup_name, ", ".join(c_))
+            return r.rstrip()
+            
+        log.debug('Reassigning resgroups')
+        log.debug('Before reassigning resgroups self.resgroups_containers_relation:\n{}'.format(
+            relations_to_string(self.resgroups_containers_relation)))
+        for task_id, task_allocation in tasks_allocations.items():
+            if AllocationType.RDT in task_allocation:
+                # Helper vars.
+                container = self._get_container_by_taskid(task_id)
+                task_rdt_allocation = task_allocation[AllocationType.RDT]
+
+                # Firstly remove from previous resgroup and remove resgroup if not neccessary anymore.
+                self.resgroups_containers_relation[container.resgroup.name][1].remove(container)
+                if len(self.resgroups_containers_relation[container.resgroup.name][1]) == 0:
+                    self.resgroups_containers_relation[container.resgroup.name][0].cleanup()
+                    log.debug('Removing ResGroup {}'.format(container.resgroup.name))
+                    del self.resgroups_containers_relation[container.resgroup.name]
+
+                if task_rdt_allocation.name in self.resgroups_containers_relation:
+                    container.change_resgroup(self._get_resgroup_by_name(task_rdt_allocation.name))
+                    self.resgroups_containers_relation[task_rdt_allocation.name][1].add(container)
+                else:
+                    # Creation of a new resgroup.
+                    new_resgroup_name = (task_rdt_allocation.name if task_rdt_allocation.name is not None else task_id)
+                    new_resgroup = ResGroup(name=new_resgroup_name)
+                    self.resgroups_containers_relation[new_resgroup_name] = \
+                        (new_resgroup, set([container]))
+                    container.change_resgroup(new_resgroup)
+        log.debug('After reassigning resgroups self.resgroups_containers_relation:\n{}'.format(
+            relations_to_string(self.resgroups_containers_relation)))
 
     def cleanup(self):
         # cleanup
@@ -199,6 +274,7 @@ class ContainerManager:
                 old_allocations, new_allocations)
         log.log(logger.TRACE, 'Resulting allocations to execute: %r', resulting_allocations)
 
+        self._reassign_resgroups(resulting_allocations)
         self._perfom_allocations(resulting_allocations)
 
         return all_allocations

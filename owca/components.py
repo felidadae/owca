@@ -32,6 +32,7 @@ def register_components(extra_components: List[str]):
     config.register(storage.KafkaStorage)
     config.register(detectors.NOPAnomalyDetector)
     config.register(allocators.NOPAllocator)
+    config.register(allocators.TestingAllocator)
     config.register(allocators.AllocationConfiguration)
 
     for component in extra_components:

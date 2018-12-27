@@ -22,6 +22,8 @@ from owca.allocators import AllocationType, RDTAllocation
 from owca.metrics import Measurements, MetricName
 # from owca.security import SetEffectiveRootUid  # TODO: where is the root handling ???
 
+
+ROOT_NAME = ''
 BASE_RESCTRL_PATH = '/sys/fs/resctrl'
 MON_GROUPS = 'mon_groups'
 TASKS_FILENAME = 'tasks'
@@ -64,7 +66,7 @@ def cleanup_resctrl():
 
     # Remove all monitoring groups for both CLOS and RMID.
     _clean_taskless_folders(BASE_RESCTRL_PATH, '', resource_recycled='CLOS')
-    # _clean_taskless_folders(BASE_RESCTRL_PATH, MON_GROUPS, resource_recycled='RMID')
+    _clean_taskless_folders(BASE_RESCTRL_PATH, MON_GROUPS, resource_recycled='RMID')
 
 
 def check_resctrl():
@@ -97,21 +99,25 @@ def check_resctrl():
     return True
 
 
+ResGroupName = str
+
+
 class ResGroup:
-    """Represent a resctrl group.
-    If self.name == "" the object represents the root resctrl group.
-    """
+    @staticmethod
+    def get_root_group_name() -> ResGroupName:
+        return ROOT_NAME
 
-    def __init__(self, name):
-        """Note: lazy create resctrl control group in add_tasks method."""
-        self.name = name
-        self.is_root_group = name == ""
+    def __init__(self, name: str):
+        self.name: ResGroupName = name
+        self.is_root_group = name == ResGroup.get_root_group_name()
         self.fullpath = BASE_RESCTRL_PATH + ("/" + name if name != "" else "")
+        log.debug('creating restrcl group \'{}\''.format(self.name))
+        self._create_controlgroup_directory()
 
-    def is_root_group(self):
+    def is_root_group(self) -> bool:
         return self.is_root_group
 
-    def _get_mongroup_fullpath(self, mongroup_name):
+    def _get_mongroup_fullpath(self, mongroup_name) -> str:
         return os.path.join(self.fullpath, MON_GROUPS, mongroup_name)
 
     def _read_pids_from_tasks_file(self, tasks_filepath):
@@ -134,13 +140,8 @@ class ResGroup:
                                 'Process probably does not exist. '
                                 % (pid, tasks_filepath))
 
-    def add_tasks(self, pids, mongroup_name):
-        """Adds the pids to the resctrl group and creates mongroup with the pids.
-           If the resctrl group does not exists creates it (lazy creation).
-           If already the mongroup exists just add the pids (no error will be thrown)."""
-        if not check_resctrl():
-            return
 
+    def _create_controlgroup_directory(self):
         # create control group directory
         if not self.is_root_group:
             try:
@@ -151,27 +152,40 @@ class ResGroup:
                     raise Exception("Limit of workloads reached! (Oot of available CLoSes/RMIDs!)")
                 raise
 
+
+    def add_tasks(self, pids, mongroup_name):
+        """Adds the pids to the resctrl group and creates mongroup with the pids.
+           If the resctrl group does not exists creates it (lazy creation).
+           If already the mongroup exists just add the pids (no error will be thrown)."""
+
         # add pids to /tasks file
+        log.debug('Add {} pids to {} '.format(len(pids), os.path.join(self.fullpath, 'tasks')))
         self._add_pids_to_tasks_file(pids, os.path.join(self.fullpath, 'tasks'))
 
         # create mongroup and write tasks there
         mongroup_fullpath = self._get_mongroup_fullpath(mongroup_name)
         os.makedirs(mongroup_fullpath, exist_ok=True)
+        log.debug('Add {} pids to {} '.format(len(pids), os.path.join(mongroup_fullpath, 'tasks')))
         self._add_pids_to_tasks_file(pids, os.path.join(mongroup_fullpath, 'tasks'))
 
     def remove_tasks(self, mongroup_name):
-        """Removes the mongroup and all pids inside it from the resctrl group."""
-        if not check_resctrl():
+        """Removes the mongroup and all pids inside it from the resctrl group 
+           (by adding all the pids to the ROOT resctrl group).
+           If the mongroup path does not points to existing directory just immediatelly returning."""
+
+        mongroup_fullpath = self._get_mongroup_fullpath(mongroup_name)
+
+        if not os.path.isdir(mongroup_fullpath):
+            log.debug('Trying to remove {} but the directory does not exist.'.format(mongroup_fullpath))
             return
 
-        # read tasks that belongs to the mongroup
-        mongroup_fullpath = self._get_mongroup_fullpath(mongroup_name)
+        # Read tasks that belongs to the mongroup.
         pids = self._read_pids_from_tasks_file(os.path.join(mongroup_fullpath, 'tasks'))
 
-        # remove the mongroup directory
+        # Remove the mongroup directory.
         os.rmdir(mongroup_fullpath)
 
-        # removes tasks from the group by adding it to the root group
+        # Removes tasks from the group by adding it to the root group.
         self._add_pids_to_tasks_file(pids, os.path.join(BASE_RESCTRL_PATH, 'tasks'))
 
     def get_measurements(self, mongroup_name) -> Measurements:
@@ -231,8 +245,12 @@ class ResGroup:
                     log.error('Cannot set l3 cache allocation: {}'.format(e))
 
     def cleanup(self):
-        log.log(logger.TRACE, 'resctrl: rmdir(%s)', self.fullpath)
         try:
-            os.rmdir(self.fullpath)
+            if not self.is_root_group:
+                log.log(logger.TRACE, 'resctrl: rmdir(%s)', self.fullpath)
+                os.rmdir(self.fullpath)
+            else:
+                log.log(logger.TRACE, 'Calling cleanup but ignoring as the group '
+                                      'is the root group.')
         except FileNotFoundError:
             pass
