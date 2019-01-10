@@ -183,4 +183,3 @@ class ResGroup:
             os.rmdir(self.resgroup_dir)
         except FileNotFoundError:
             log.debug('cleanup: directory already does not exist %s', self.resgroup_dir)
-
