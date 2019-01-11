@@ -67,26 +67,20 @@ def test_missing_statuses():
     mesos_json_response = json.load(
         open(relative_module_path(__file__,
                                   'fixtures/missing_executor_pid_in_mesos_response.json')))
-    # customizing of the mock for the test
     for task in mesos_json_response['get_state']['get_tasks']['launched_tasks']:
         del task['statuses']
-
     with patch('requests.post',
                return_value=Mock(json=Mock(return_value=mesos_json_response),
                                  status_code=200)):
         node = MesosNode()
         tasks = node.get_tasks()
-
         assert len(tasks) == 0
 
-    # customizing of the mock for the test
     for task in mesos_json_response['get_state']['get_tasks']['launched_tasks']:
         task['statuses'] = []
-
     with patch('requests.post',
                return_value=Mock(json=Mock(return_value=mesos_json_response),
                                  status_code=200)):
         node = MesosNode()
         tasks = node.get_tasks()
-
         assert len(tasks) == 0
