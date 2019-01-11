@@ -71,8 +71,8 @@ def test_missing_statuses():
     for task in mesos_json_response['get_state']['get_tasks']['launched_tasks']:
         del task['statuses']
 
-    with patch('requests.post', 
-               return_value=Mock(json=Mock(return_value=mesos_json_response), 
+    with patch('requests.post',
+               return_value=Mock(json=Mock(return_value=mesos_json_response),
                                  status_code=200)):
         node = MesosNode()
         tasks = node.get_tasks()
@@ -83,11 +83,10 @@ def test_missing_statuses():
     for task in mesos_json_response['get_state']['get_tasks']['launched_tasks']:
         task['statuses'] = []
 
-    with patch('requests.post', 
-               return_value=Mock(json=Mock(return_value=mesos_json_response), 
+    with patch('requests.post',
+               return_value=Mock(json=Mock(return_value=mesos_json_response),
                                  status_code=200)):
         node = MesosNode()
         tasks = node.get_tasks()
 
         assert len(tasks) == 0
-

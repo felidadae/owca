@@ -105,7 +105,7 @@ class MesosNode(Node):
             return []
 
         for launched_task in state['get_state']['get_tasks']['launched_tasks']:
-            if 'statuses' not in launched_task or (len(launched_task['statuses']) == 0):
+            if 'statuses' not in launched_task or not len(launched_task['statuses']):
                 continue
 
             statuses = launched_task['statuses']
