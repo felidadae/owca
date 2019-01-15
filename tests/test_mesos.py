@@ -56,8 +56,8 @@ def test_get_tasks(find_cgroup_mock, post_mock):
 
 @pytest.mark.parametrize(
     "json_mock", [create_json_fixture_mock('missing_executor_pid_in_mesos_response'),
-                   create_json_fixture_mock('missing_statuses_in_mesos_response'),
-                   create_json_fixture_mock('empty_statuses_in_mesos_response')])
+                  create_json_fixture_mock('missing_statuses_in_mesos_response'),
+                  create_json_fixture_mock('empty_statuses_in_mesos_response')])
 def test_not_enough_data_in_response(json_mock):
     """MesosNode get_tasks should return none tasks as vital data in mesos response is missing."""
     with patch('requests.post', return_value=json_mock):
