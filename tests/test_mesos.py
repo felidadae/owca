@@ -20,10 +20,14 @@ from unittest.mock import patch, Mock
 from owca.testing import relative_module_path
 
 
+def get_json_fixture(name):
+    """ Helper function to shorten the notation. """
+    return json.load(open(relative_module_path(__file__, 'fixtures/' + name + '.json')))
+
+
 @patch('requests.post', return_value=Mock(
     json=Mock(
-        return_value=json.load(
-            open(relative_module_path(__file__, 'fixtures/mesos_get_state.json'))),
+        return_value=get_json_fixture('mesos_get_state'),
         status_code=200)))
 @patch('owca.mesos.find_cgroup', return_value='mesos/120-123')
 def test_get_tasks(find_cgroup_mock, post_mock):
@@ -52,35 +56,29 @@ def test_get_tasks(find_cgroup_mock, post_mock):
 
 @patch('requests.post', return_value=Mock(
     json=Mock(
-        return_value=json.load(
-            open(relative_module_path(__file__,
-                                      'fixtures/missing_executor_pid_in_mesos_response.json'))),
+        return_value=get_json_fixture('missing_executor_pid_in_mesos_response'),
         status_code=200)))
 def test_missing_executor_pid(post):
     node = MesosNode()
     tasks = node.get_tasks()
-
     assert len(tasks) == 0
 
 
-def test_missing_statuses():
-    mesos_json_response = json.load(
-        open(relative_module_path(__file__,
-                                  'fixtures/missing_executor_pid_in_mesos_response.json')))
-    for task in mesos_json_response['get_state']['get_tasks']['launched_tasks']:
-        del task['statuses']
-    with patch('requests.post',
-               return_value=Mock(json=Mock(return_value=mesos_json_response),
-                                 status_code=200)):
-        node = MesosNode()
-        tasks = node.get_tasks()
-        assert len(tasks) == 0
+@patch('requests.post', return_value=Mock(
+    json=Mock(
+        return_value=get_json_fixture('missing_statuses_in_mesos_response'),
+        status_code=200)))
+def test_missing_statuses(post):
+    node = MesosNode()
+    tasks = node.get_tasks()
+    assert len(tasks) == 0
 
-    for task in mesos_json_response['get_state']['get_tasks']['launched_tasks']:
-        task['statuses'] = []
-    with patch('requests.post',
-               return_value=Mock(json=Mock(return_value=mesos_json_response),
-                                 status_code=200)):
-        node = MesosNode()
-        tasks = node.get_tasks()
-        assert len(tasks) == 0
+
+@patch('requests.post', return_value=Mock(
+    json=Mock(
+        return_value=get_json_fixture('empty_statuses_in_mesos_response'),
+        status_code=200)))
+def test_empty_statuses(post):
+    node = MesosNode()
+    tasks = node.get_tasks()
+    assert len(tasks) == 0
