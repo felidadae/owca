@@ -240,7 +240,7 @@ class ContainerManager:
 
     @trace(log)
     def _perfom_allocations(self, tasks_allocations):
-        executed_rdt_allocations = set()
+        executed_rdt_allocations: Set(str) = set()
         for task, container in self.containers.items():
             if task.task_id in tasks_allocations:
                 task_allocations = tasks_allocations[task.task_id]
@@ -248,9 +248,9 @@ class ContainerManager:
                 # Do not execute the same rdt allocation (with the same name)
                 # over and over again.
                 if task_allocations.get('rdt') is not None and \
-                        not task_allocations['rdt'] in executed_rdt_allocations:
+                        not task_allocations['rdt'].name in executed_rdt_allocations:
                     allocate_rdt = True
-                    executed_rdt_allocations.add(task_allocations['rdt'])
+                    executed_rdt_allocations.add(task_allocations['rdt'].name)
                 else:
                     allocate_rdt = False
 

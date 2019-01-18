@@ -14,6 +14,7 @@
 
 
 from abc import ABC, abstractmethod
+import copy
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Tuple
 import logging
@@ -362,6 +363,21 @@ class AllocationRunner(Runner, BaseRunnerMixin):
                                      if t not in task_ids_to_remove}
         return ignored_allocations, new_tasks_allocations
 
+    # @TODO think about better name
+    # @TODO here we have quite important problem: RDTAllocation object is used both as
+    #       datastructure for client input (allocate call) and for our internal use.
+    #       Because of possible usage of name=None we need make deepcopies.
+    def postprocess_allocations(self, new_tasks_allocations):
+        """Replace None with task_id for RDTAllocation and make deep copies
+        of allocations, as sender might have deliberately compressed notation."""
+        unified_allocations = {}
+        for task_id, allocations in new_tasks_allocations.items():
+            allocations_ = copy.deepcopy(allocations)
+            if allocations.get('rdt') is not None and allocations['rdt'].name is None:
+                allocations_['rdt'].name = task_id
+            unified_allocations[task_id] = allocations_
+        return unified_allocations
+
     @trace(log)
     def run(self):
         if not self.configure_rdt(self.rdt_enabled, self.ignore_privileges_check):
@@ -380,6 +396,8 @@ class AllocationRunner(Runner, BaseRunnerMixin):
                 platform, tasks_measurements, tasks_resources, tasks_labels,
                 current_tasks_allocations)
             allocate_duration = time.time() - allocate_start
+
+            new_tasks_allocations = self.postprocess_allocations(new_tasks_allocations)
 
             ignored_allocations, new_tasks_allocations = \
                 self._ignore_invalid_allocations(platform, new_tasks_allocations)
@@ -415,5 +433,3 @@ class AllocationRunner(Runner, BaseRunnerMixin):
 
             if not self.wait_or_finish(self.action_delay):
                 break
-
-        self.cleanup()

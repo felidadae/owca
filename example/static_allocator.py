@@ -1,3 +1,4 @@
+import copy
 import os
 import re
 import ruamel
@@ -126,7 +127,7 @@ class StaticAllocator(Allocator):
                 this_rule_tasks_allocations = {}
 
                 for match_task_id in match_task_ids:
-                    this_rule_tasks_allocations[match_task_id] = new_task_allocations
+                    this_rule_tasks_allocations[match_task_id] = copy.deepcopy(new_task_allocations)
 
                 new_tasks_allocations, this_task_allocations_changeset = \
                     _calculate_tasks_allocations_changeset(new_tasks_allocations,
