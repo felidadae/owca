@@ -90,10 +90,14 @@ class BaseRunnerMixin:
             # Resctrl is enabled and available - cleanup previous runs.
             platform, _, _ = platforms.collect_platform_information()
             max_rdt_l3, max_rdt_mb = get_max_rdt_values(platform.rdt_cbm_mask, platform.sockets)
-            root_rtd_l3 = self.allocation_configuration.default_rdt_l3 or max_rdt_l3
-            if self.rdt_mb_control_enabled:
-                root_rdt_mb = self.allocation_configuration.default_rdt_mb or max_rdt_mb
+            if self.allocation_configuration is not None:
+                root_rtd_l3 = self.allocation_configuration.default_rdt_l3 or max_rdt_l3
+                if self.rdt_mb_control_enabled:
+                    root_rdt_mb = self.allocation_configuration.default_rdt_mb or max_rdt_mb
+                else:
+                    root_rdt_mb = None
             else:
+                root_rtd_l3 = max_rdt_l3
                 root_rdt_mb = None
             cleanup_resctrl(root_rtd_l3, root_rdt_mb)
 
