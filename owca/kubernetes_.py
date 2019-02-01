@@ -81,7 +81,7 @@ def find_cgroup(pod_id, container_id, qos):
     :param qos: quality of service for pod
     :return: cgroup path relative to 'cpu'
     """
-    return ('/sys/fs/cgroup/cpu/kubepods.slice/'
+    return ('/kubepods.slice/'
             'kubepods-{qos}.slice/'
             'kubepods-{qos}-pod{pod_id}.slice/'
             'docker-{container_id}.scope'.format(qos=qos.lower(),
