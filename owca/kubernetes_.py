@@ -32,7 +32,9 @@ class KubernetesTask:
 
     # inferred
     cgroup_path: str  # Starts with leading "/"
+    task_id: str # compability with MesosTask
     labels: Dict[str, str] = field(default_factory=dict)
+    resources: Dict[str, float] = field(default_factory=dict)
 
     def __str__(self):
         descr = "KubernetesTask: {}\n".format(self.name)
@@ -41,6 +43,13 @@ class KubernetesTask:
         descr += "\tqos: {}\n".format(self.qos)
         descr += "\tcgroup_path: {}\n".format(self.cgroup_path)
         return descr
+
+    def __hash__(self):
+        """Every instance of mesos task is uniqully identified by cgroup_path.
+        Assumption here is that every mesos task is represented by one main cgroup.
+        """
+        return id(self.name)
+
 
 @dataclass
 class KubernetesNode(Node):
@@ -66,6 +75,7 @@ class KubernetesNode(Node):
                     tasks.append(
                         KubernetesTask(
                             name=container_name,
+                            task_id=pod_id,
                             container_id=container_id,
                             pod_id=pod_id,
                             qos=qos.lower(),
