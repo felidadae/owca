@@ -32,7 +32,7 @@ class KubernetesTask:
 
     # inferred
     cgroup_path: str  # Starts with leading "/"
-    task_id: str # compability with MesosTask
+    task_id: str  # compability with MesosTask
     labels: Dict[str, str] = field(default_factory=dict)
     resources: Dict[str, float] = field(default_factory=dict)
 
@@ -66,12 +66,13 @@ class KubernetesNode(Node):
                 if container.state.running:
                     container_name = container.name
                     # @TODO temporary solution to cgroups bug
-                    if "nginx" not in container_name:
+                    if "stressng" not in container_name:
                         continue
-                    container_id = container.container_id.strip('docker://')
+                    container_id = container.container_id.split('docker://')[1]
                     pod_id = pod.metadata.uid.replace('-', '_')
                     qos = pod.status.qos_class
-                    labels = pod.metadata.labels
+                    labels = {sanitize_label(key): value for key, value in
+                              pod.metadata.labels.items()}
                     tasks.append(
                         KubernetesTask(
                             name=container_name,
@@ -97,6 +98,14 @@ def find_cgroup(pod_id, container_id, qos):
             'docker-{container_id}.scope'.format(qos=qos.lower(),
                                                  container_id=container_id,
                                                  pod_id=pod_id))
+
+
+def sanitize_label(label_key):
+    # Prometheus labels cannot contain "." and "-".
+    label_key = label_key.replace('.', '_')
+    label_key = label_key.replace('-', '_')
+
+    return label_key
 
 
 if __name__ == "__main__":
