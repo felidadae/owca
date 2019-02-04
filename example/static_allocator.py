@@ -1,20 +1,20 @@
-import copy
+import logging
 import os
+import pprint
 import re
 import ruamel
-import pprint
 from typing import List
-import logging
 
 import dataclasses
 from dataclasses import dataclass
 
-from owca.allocators import Allocator, TasksAllocations, RDTAllocation, \
-    _calculate_tasks_allocations_changeset, AllocationType
+from owca.allocations import AllocationsDict, create_default_registry
+from owca.allocators import Allocator, TasksAllocations, AllocationType
 from owca.config import load_config
 from owca.detectors import TasksMeasurements, TasksResources, TasksLabels, Anomaly
 from owca.metrics import Metric
 from owca.platforms import Platform
+from owca.resctrl import RDTAllocation, RDTAllocationValue, ResGroup
 
 log = logging.getLogger(__name__)
 
@@ -30,9 +30,7 @@ class StaticAllocator(Allocator):
     - allocations
 
     if there is not labels or any label match to task labels, then allocations are exectuted.
-    If there is multiple matching rules all allocations are merged using
-    _calculate_task_allocations_changeset.
-
+    If there is multiple matching rules all allocations are merged.
     """
 
     config: str
@@ -80,7 +78,7 @@ class StaticAllocator(Allocator):
             if type(rules) != list:
                 log.warning('StaticAllocator: improper format of config (expected list of rules)')
                 return {}, [], []
-            new_tasks_allocations = {}
+            target_tasks_allocations = {}
             all_tasks_ids = (set(tasks_labels.keys())
                              | set(tasks_resources.keys()) | set(tasks_allocations.keys()))
 
@@ -120,22 +118,38 @@ class StaticAllocator(Allocator):
                     log.debug('StaticAllocator(%s):  match all tasks', rule_idx)
                     match_task_ids.update(all_tasks_ids)
 
-                # for matching tasks calculcate and remember new_tasks_allocations
+                # for matching tasks calculcate and remember target_tasks_allocations
                 log.info('StaticAllocator(%s):  applaying allocations for %i tasks', rule_idx,
                          len(match_task_ids))
 
                 this_rule_tasks_allocations = {}
 
                 for match_task_id in match_task_ids:
-                    this_rule_tasks_allocations[match_task_id] = copy.deepcopy(new_task_allocations)
+                    this_rule_tasks_allocations[match_task_id] = new_task_allocations
 
-                new_tasks_allocations, this_task_allocations_changeset = \
-                    _calculate_tasks_allocations_changeset(new_tasks_allocations,
-                                                           this_rule_tasks_allocations)
+                registry = create_default_registry()
 
-                log.debug('StaticAllocator(%s): this rule allocations changeset: \n %s', rule_idx,
-                          pprint.pformat(this_task_allocations_changeset))
+                def dummy_construsctor(rdt_value, ctx, registry):
+                    resgroup_name = rdt_value.name or 'unknown'
+                    resgroup = ResGroup(resgroup_name)
+                    return RDTAllocationValue(resgroup_name, rdt_value, resgroup, None, 0, False,
+                                              '', '')
 
-            log.debug('StaticAllocator: final tasks allocations: \n %s',
-                      pprint.pformat(new_tasks_allocations))
-            return new_tasks_allocations, [], []
+                registry.register_automapping_type(RDTAllocation, dummy_construsctor)
+
+                # Get the difference
+                target_tasks_allocations, _, errors = \
+                    AllocationsDict(this_rule_tasks_allocations,
+                                    registry=registry).calculate_changeset(
+                        AllocationsDict(target_tasks_allocations, registry=registry), )
+
+                if errors:
+                    log.warning('There are some errors in rules: %s', errors)
+
+                target_tasks_allocations = target_tasks_allocations.unwrap_to_simple()
+                log.debug('StaticAllocator(%s):  after this rule final tasks allocations: \n %s',
+                          rule_idx, pprint.pformat(target_tasks_allocations))
+
+            log.info('StaticAllocator: final tasks allocations: \n %s',
+                     pprint.pformat(target_tasks_allocations))
+            return target_tasks_allocations, [], []

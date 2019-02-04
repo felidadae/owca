@@ -33,6 +33,9 @@ class MetricType(str, Enum):
     GAUGE = 'gauge'      # arbitrary value (can go up and down)
     COUNTER = 'counter'  # monotonically increasing counter
 
+    def __repr__(self):
+        return repr(self.value)
+
 
 MetricValue = Union[float, int]
 
@@ -89,7 +92,7 @@ class Metric:
     name: Union[str, MetricName]
     value: MetricValue
     labels: Dict[str, str] = field(default_factory=dict)
-    type: MetricType = None
+    type: Union[MetricType, str] = None
     help: str = None
 
     @staticmethod

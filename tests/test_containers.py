@@ -16,22 +16,9 @@ from unittest.mock import patch, Mock
 
 import pytest
 
-from owca.allocators import RDTAllocation, AllocationType
-from owca.containers import ContainerManager, Container, _calculate_desired_state
-from owca.metrics import Metric
-from owca.runner import DetectionRunner
-from owca.testing import task
-
-
-def container(cgroup_path):
-    """Helper method to create container with patched subsystems."""
-    with patch('owca.containers.ResGroup'), patch('owca.containers.PerfCounters'):
-        return Container(cgroup_path, rdt_enabled=False, platform_cpus=1)
-
-
-def metric(name, labels=None):
-    """Helper method to create metric with default values. Value is ignored during tests."""
-    return Metric(name=name, value=1234, labels=labels or {})
+from owca.containers import _calculate_desired_state
+from owca.runners.detection import DetectionRunner
+from owca.testing import task, container
 
 
 @pytest.mark.parametrize(
@@ -59,7 +46,6 @@ def test_calculate_desired_state(
         containers,
         expected_new_tasks,
         expected_containers_to_delete):
-
     new_tasks, containers_to_delete = _calculate_desired_state(
         discovered_tasks, containers
     )
@@ -71,7 +57,6 @@ def test_calculate_desired_state(
 @patch('owca.containers.ResGroup')
 @patch('owca.containers.PerfCounters')
 @patch('owca.containers.Container.sync')
-@patch('owca.containers.Container.cleanup')
 @patch('owca.platforms.collect_topology_information', return_value=(1, 1, 1))
 @pytest.mark.parametrize('tasks,existing_containers,expected_running_containers', (
     ([], {},
@@ -85,11 +70,10 @@ def test_calculate_desired_state(
     ([], {task('/t1'): container('/t1'), task('/t2'): container('/t2')},
      {}),
 ))
-def test_sync_containers_state(platform_mock, cleanup_mock, sync_mock,
+def test_sync_containers_state(platform_mock, sync_mock,
                                PerfCoutners_mock, ResGroup_mock,
                                tasks, existing_containers,
                                expected_running_containers):
-
     # Mocker runner, because we're only interested in one sync_containers_state function.
     runner = DetectionRunner(
         node=Mock(),
@@ -106,70 +90,7 @@ def test_sync_containers_state(platform_mock, cleanup_mock, sync_mock,
     got_containers = runner.containers_manager.sync_containers_state(tasks)
 
     # Check internal state ...
-    assert expected_running_containers == got_containers
+    assert got_containers == expected_running_containers
 
     # Check other side effects like calling sync() on external objects.
     assert sync_mock.call_count == len(expected_running_containers)
-    number_of_removed_containers = len(set(existing_containers) - set(expected_running_containers))
-    assert cleanup_mock.call_count == number_of_removed_containers
-
-
-@patch('owca.mesos.MesosTask')
-@pytest.mark.parametrize(
-    'tasks_allocations,expected_resgroup_reallocation_count',
-    (
-        # No RDT allocations.
-        (
-           {
-               'task_id_1': {AllocationType.QUOTA: 0.6},
-           },
-           0
-        ),
-        # The both task in the same resctrl group.
-        (
-           {
-               'task_id_1': {'rdt': RDTAllocation(name='be', l3='ff')},
-               'task_id_2': {'rdt': RDTAllocation(name='be', l3='ff')}
-           },
-           1
-        ),
-        # The tasks in seperate resctrl group.
-        (
-           {
-               'task_id_1': {'rdt': RDTAllocation(name='be', l3='ff')},
-               'task_id_2': {'rdt': RDTAllocation(name='le', l3='ff')}
-           },
-           2
-        ),
-    )
-)
-def test_cm_perform_allocations(MesosTaskMock, tasks_allocations,
-                                expected_resgroup_reallocation_count):
-    """Checks if allocation of resctrl group is performed only once if more than one
-       task_allocations has RDTAllocation with the same name. In other words,
-       check if unnecessary reallocation of resctrl group does not take place.
-
-       The goal is achieved by checking how many times
-       Container.perform_allocations is called with allocate_rdt=True."""
-    # Minimal MesosTask mock needed for the test.
-    tasks = []
-    tasks_ = {}
-    for task_id in tasks_allocations.keys():
-        task = Mock(task_id=task_id)
-        tasks.append(task)
-        tasks_[task_id] = task
-
-    container_manager = ContainerManager(True, True, 1, None)
-    container_manager.containers = {task: Mock() for task in tasks}
-
-    # Call the main function to test.
-    container_manager._perfom_allocations(tasks_allocations)
-
-    count_ = 0
-    for task_id, _ in tasks_allocations.items():
-        perform_allocations_mock = container_manager.containers[tasks_[task_id]].perform_allocations
-        assert len(perform_allocations_mock.mock_calls) == 1
-        args, kwargs = perform_allocations_mock.call_args_list[0]
-        _, allocate_rdt_called = args
-        count_ = count_ + 1 if allocate_rdt_called else count_
-    assert expected_resgroup_reallocation_count == count_

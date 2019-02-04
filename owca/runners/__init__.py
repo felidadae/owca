@@ -11,23 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-from unittest import mock
-
-from owca import main
-
-yaml_config = '''
-runner: !DummyRunner
-'''
-
-
-@mock.patch('sys.argv', ['owca', '-c', 'configs/see_yaml_config_variable_above.yaml',
-                         '-r', 'owca.testing:DummyRunner', '-l', 'critical',
-                         '--root'])
-@mock.patch('os.rmdir')
-@mock.patch('owca.config.exists', return_value=True)
-@mock.patch('owca.config.open', mock.mock_open(read_data=yaml_config))
-@mock.patch('owca.containers.PerfCounters')
-def test_main(*mocks):
-    main.main()

@@ -18,6 +18,7 @@ from typing import Optional, List
 from dataclasses import dataclass
 
 from owca import logger
+from owca.allocations import BoxedNumeric
 from owca.allocators import TaskAllocations, AllocationType, AllocationConfiguration
 from owca.metrics import Measurements, MetricName
 
@@ -30,10 +31,11 @@ CPU_SHARES = 'cpu.shares'
 TASKS = 'tasks'
 BASE_SUBSYSTEM_PATH = '/sys/fs/cgroup/cpu'
 
+QUOTA_CLOSE_TO_ZERO_SENSITIVITY = 0.01
+
 
 @dataclass
 class Cgroup:
-
     cgroup_path: str
 
     # Values used for normlization of allocations
@@ -67,27 +69,25 @@ class Cgroup:
             f.write(raw_value)
 
     def _get_normalized_shares(self) -> float:
-        """Return normalized using cpu_shreas_min and cpu_shares_max for normalization."""
+        """Return normalized using cpu_shreas_min and cpu_shares_unit for normalization."""
         assert self.allocation_configuration is not None, \
             'normalization configuration cannot be used without configuration!'
         shares = self._read(CPU_SHARES)
-        return ((shares - self.allocation_configuration.cpu_shares_min) /
-                self.allocation_configuration.cpu_shares_max)
+        return (shares / self.allocation_configuration.cpu_shares_unit)
 
-    def _set_normalized_shares(self, shares_normalized):
+    def set_normalized_shares(self, shares_normalized):
         """Store shares normalized values in cgroup files system. For denormalization
         we use reverse formule to _get_normalized_shares."""
         assert self.allocation_configuration is not None, \
             'allocation configuration cannot be used without configuration!'
 
-        shares_range = self.allocation_configuration.cpu_shares_max - \
-            self.allocation_configuration.cpu_shares_min
-        shares = int(shares_normalized * shares_range) + \
-            self.allocation_configuration.cpu_shares_min
+        shares = int(shares_normalized * self.allocation_configuration.cpu_shares_unit)
+        if shares < 2:
+            shares = 2
 
         self._write(CPU_SHARES, shares)
 
-    def _get_normalized_quota(self) -> float:
+    def get_normalized_quota(self) -> float:
         """Read normlalized quota against configured period and number of available cpus."""
         assert self.allocation_configuration is not None, \
             'normalization configuration cannot be used without configuration!'
@@ -98,35 +98,79 @@ class Cgroup:
         # Period 0 is invalid arugment for cgroup cpu subsystem. so division is safe.
         return current_quota / current_period / self.platform_cpus
 
-    def _set_normalized_quota(self, quota_normalized: float):
+    def set_normalized_quota(self, quota_normalized: float):
         """Unconditionally sets quota and period if nessesary."""
         assert self.allocation_configuration is not None, \
-            'allocation configuration cannot be used without configuration!'
+            'setting quota cannot be used without configuration!'
         current_period = self._read(CPU_PERIOD)
 
-        # synchornize quota if nessesary
         if current_period != self.allocation_configuration.cpu_quota_period:
             self._write(CPU_PERIOD, self.allocation_configuration.cpu_quota_period)
-        quota = int(quota_normalized * self.allocation_configuration.cpu_quota_period *
-                    self.platform_cpus)
+
+        if quota_normalized >= 1.0:
+            quota = -1
+        else:
+            # synchornize period if nessesary
+            quota = int(quota_normalized * self.allocation_configuration.cpu_quota_period *
+                        self.platform_cpus)
+            # Minimum quota detected
+            if quota < 1000:
+                quota = 1000
+
         self._write(CPU_QUOTA, quota)
 
     def get_allocations(self) -> TaskAllocations:
         assert self.allocation_configuration is not None, \
             'reading normalized allocations is not possible without configuration!'
         return {
-           AllocationType.QUOTA: self._get_normalized_quota(),
-           AllocationType.SHARES: self._get_normalized_shares(),
+            AllocationType.QUOTA: self.get_normalized_quota(),
+            AllocationType.SHARES: self._get_normalized_shares(),
         }
 
-    def perform_allocations(self, allocations: TaskAllocations):
-        assert self.allocation_configuration is not None, \
-            'performing normalized allocations is not possible without configuration!'
-        if AllocationType.QUOTA in allocations:
-            self._set_normalized_quota(allocations[AllocationType.QUOTA])
-        if AllocationType.SHARES in allocations:
-            self._set_normalized_shares(allocations[AllocationType.SHARES])
-
-    def get_tasks(self) -> List[int]:
+    def get_pids(self) -> List[str]:
         with open(os.path.join(self.cgroup_fullpath, TASKS)) as f:
-            return list(map(int, f.read().splitlines()))
+            return list(f.read().splitlines())
+
+
+#
+# --- Allocations ---
+#
+
+class QuotaAllocationValue(BoxedNumeric):
+
+    def __init__(self, normalized_quota: float, cgroup: Cgroup):
+        self.normalized_quota = normalized_quota
+        self.cgroup = cgroup
+        super().__init__(value=normalized_quota, min_value=0, max_value=1.0)
+
+    def generate_metrics(self):
+        metrics = super().generate_metrics()
+        for metric in metrics:
+            metric.labels.update(allocation_type=AllocationType.QUOTA)
+        return metrics
+
+    def perform_allocations(self):
+        self.cgroup.set_normalized_quota(self.value)
+
+    def __repr__(self):
+        return '%s(normalized_quota=%r)' % (self.__class__.__name__, self.normalized_quota)
+
+
+class SharesAllocationValue(BoxedNumeric):
+
+    def __init__(self, normalized_shares: float, cgroup: Cgroup):
+        self.normalized_shares = normalized_shares
+        self.cgroup = cgroup
+        super().__init__(value=normalized_shares, min_value=0)
+
+    def generate_metrics(self):
+        metrics = super().generate_metrics()
+        for metric in metrics:
+            metric.labels.update(allocation_type=AllocationType.SHARES)
+        return metrics
+
+    def perform_allocations(self):
+        self.cgroup.set_normalized_shares(self.value)
+
+    def __repr__(self):
+        return '%s(normalized_shares=%r)' % (self.__class__.__name__, self.normalized_shares)

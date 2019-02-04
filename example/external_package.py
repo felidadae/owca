@@ -19,7 +19,8 @@ import hashlib
 from owca.metrics import Metric
 from owca.detectors import (TasksMeasurements, ContentionAnomaly,
                             ContendedResource, AnomalyDetector, TasksResources, TasksLabels)
-from owca.allocators import Allocator, AllocationType, RDTAllocation
+from owca.allocators import Allocator, AllocationType
+from owca.resctrl import RDTAllocation
 from owca.platforms import Platform
 
 import logging

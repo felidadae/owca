@@ -18,18 +18,18 @@ Module is responsible for exposing functionality of storing labeled metrics
 in durable external storage.
 """
 import abc
-import sys
 import itertools
-import time
 import logging
-from typing import List, Tuple, Dict
 import re
+import sys
+import time
+from typing import List, Tuple, Dict
 
 import confluent_kafka
 from dataclasses import dataclass, field
 
-from owca.metrics import Metric, MetricType
 from owca import logger
+from owca.metrics import Metric, MetricType
 
 log = logging.getLogger(__name__)
 
@@ -44,7 +44,6 @@ class Storage(abc.ABC):
 
 @dataclass
 class LogStorage(Storage):
-
     output_filename: str = None  # Defaults to stderr.
 
     def __post_init__(self):
@@ -107,12 +106,16 @@ def is_convertable_to_prometheus_exposition_format(metrics: List[Metric]) -> (bo
         if not _METRIC_NAME_RE.match(metric.name):
             return (False, "Wrong metric name {}.".format(metric.name))
         for label_key, label_val in metric.labels.items():
+            if not isinstance(label_val, str):
+                return (False, "Label (at key {}) should be str type got {!r}"
+                        .format(label_key, metric.name, type(label_val)))
+
             if not _METRIC_LABEL_NAME_RE.match(label_key):
                 return (False, "Used wrong label name {} in metric {}."
-                               .format(label_key, metric.name))
+                        .format(label_key, metric.name))
             if _RESERVED_METRIC_LABEL_NAME_RE.match(label_key):
                 return (False, "Used reserved label name {} in metric {}."
-                               .format(label_key, metric.name))
+                        .format(label_key, metric.name))
 
         # Its our internal OWCA requirement to use only GAUGE or COUNTER.
         #   However, as in that function we do validation that code also
@@ -120,7 +123,7 @@ def is_convertable_to_prometheus_exposition_format(metrics: List[Metric]) -> (bo
         if metric.type is not None and (metric.type != MetricType.GAUGE and
                                         metric.type != MetricType.COUNTER):
             return (False, "Wrong metric type (used type {})."
-                           .format(metric.type))
+                    .format(metric.type))
 
     return (True, "")
 
@@ -179,8 +182,8 @@ def convert_to_prometheus_exposition_format(metrics: List[Metric], timestamp) ->
 
             label_str = '{{{0}}}'.format(','.join(
                 ['{0}="{1}"'.format(
-                 k, v.replace('\\', r'\\').replace('\n', r'\n').replace('"', r'\"'))
-                 for k, v in sorted(metric.labels.items())]))
+                    k, v.replace('\\', r'\\').replace('\n', r'\n').replace('"', r'\"'))
+                    for k, v in sorted(metric.labels.items())]))
 
             # Do not send empty labels.
             if label_str == '{}':
@@ -239,12 +242,10 @@ class KafkaStorage(Storage):
         if err is not None:
             self.error_from_callback = err
             log.error(
-                    'KafkaStorage failed to send message; error message: {}'
-                    .format(err))
+                'KafkaStorage failed to send message; error message: {}'.format(err))
         else:
             log.log(logger.TRACE,
-                    'KafkaStorage succeeded to send message; message: {}'
-                    .format(msg))
+                    'KafkaStorage succeeded to send message; message: {}'.format(msg))
 
     def store(self, metrics: List[Metric]) -> None:
         """Stores synchronously metrics in kafka.
@@ -280,12 +281,11 @@ class KafkaStorage(Storage):
         # check if timeout expired
         if r > 0:
             raise FailedDeliveryException(
-                "Maximum timeout {} for sending message has passed out."
-                .format(self.max_timeout_in_seconds))
+                "Maximum timeout {} for sending message has passed out.".format(
+                    self.max_timeout_in_seconds))
 
         # check if any failed to be delivered
         if self.error_from_callback is not None:
-
             # before reseting self.error_from_callback we
             # assign the original value to seperate value
             # to pass it to exception
@@ -293,8 +293,8 @@ class KafkaStorage(Storage):
             self.error_from_callback = None
 
             raise FailedDeliveryException(
-                "Message has failed to be writen to kafka. API error message: {}."
-                .format(error_from_callback__original_ref))
+                "Message has failed to be writen to kafka. API error message: {}.".format(
+                    error_from_callback__original_ref))
 
         log.debug('message size=%i with timestamp=%s stored in kafka topic=%r',
                   len(msg), timestamp, self.topic)
@@ -305,6 +305,7 @@ class KafkaStorage(Storage):
 class MetricPackage:
     """Wraps storage to pack metrics from diffrent sources and apply common labels
     before send."""
+
     def __init__(self, storage: Storage):
         self.storage = storage
         self.metrics: List[Metric] = []

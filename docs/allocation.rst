@@ -22,10 +22,21 @@ configuration file  ``config.yaml``:
 
 .. code:: yaml
 
+    # Basic minimal configuration to dump metrics on stderr with NOPAnomaly detector
     runner: !AllocationRunner
+      ignore_privileges_check: true
       node: !MesosNode
-      action_delay: 1                                  # [s]
-      allocator: !ExampleAllocator
+        mesos_agent_endpoint: 'http://127.0.0.1:5051'
+      action_delay: 4.
+      metrics_storage: !LogStorage
+        output_filename: metrics.logs
+      anomalies_storage: !LogStorage
+        output_filename: anomalies.logs
+      allocations_storage: !LogStorage
+        output_filename: allocations.logs
+      allocator: !StaticAllocator
+        config: /home/ppalucki/owca/example/static_alloc_config.yaml
+      rdt_enabled: true
 
 Provided  ``AllocationRunner`` class has the following required and optional attributes.
 
@@ -35,16 +46,21 @@ Provided  ``AllocationRunner`` class has the following required and optional att
     class AllocationRunner:
 
         # Required
-        node: MesosNode
+        node: nodes.Node
         allocator: Allocator
+        metrics_storage: storage.Storage                # stores internal and input metrics for allocation algorithm
+        anomalies_storage: storage.Storage              # stores any detected anomalies during allocation iteration
+        allocations_storage: storage.Storage            # stores any allocations issued on tasks
 
-        # Optional with default values
+        # Optional
         action_delay: float = 1.                        # callback function call interval [s]
-        # Default static configuration for allocation
-        allocations: AllocationConfiguration = AllocationConfiguration()
-        metrics_storage: Storage = LogStorage()         # stores internal and input metrics for allocation algorithm
-        allocations_storage: Storage = LogStorage()     # stores any allocations issued on tasks
-        anomalies_storage: Storage = LogStorage()       # stores any detected anomalies during allocation iteration
+        rdt_enabled: bool = True
+        rdt_mb_control_enabled: bool = None  # None means will be automatically set during configure_rdt
+        extra_labels: Dict[str, str] = field(default_factory=dict)
+        ignore_privileges_check: bool = False
+        allocation_configuration: AllocationConfiguration = \
+            field(default_factory=AllocationConfiguration)
+
 
 ``AllocationConfigurations`` structure contains static configuration to perform normalization of specific resource allocations.
 
@@ -53,13 +69,18 @@ Provided  ``AllocationRunner`` class has the following required and optional att
     @dataclass
     class AllocationConfiguration:
 
-        # Default value for cpu.cpu_period [us] (used as denominator).
-        cpu_quota_period : int = 100000
+        # Default value for cpu.cpu_period [ms]
+        cpu_quota_period: int = 1000
 
-        # Number of minimum shares, when ``cpu_shares`` allocation is set to 0.0.
-        cpu_shares_min: int = 2                   
-        # Number of shares to set, when ``cpu_shares`` allocation is set to 1.0.
-        cpu_shares_max: int = 10000               
+        # Multipler of AllocationType.CPU_SHARES allocation value. E.g. setting
+        # 'CPU_SHARES' to 2.0 will set 2000 (with default values) effectively
+        # in cgroup cpu controlller.
+        cpu_shares_unit: int = 1000
+
+        # Default Allocation for default root group during initilization.
+        # It will be used as default for all tasks (None will set to maximum available value).
+        default_rdt_l3: str = None
+        default_rdt_mb: str = None
 
 ``Allocator`` structure and ``allocate`` resource callback function
 --------------------------------------------------------------------
@@ -70,15 +91,16 @@ Provided  ``AllocationRunner`` class has the following required and optional att
 
     class Allocator(ABC):
 
-        def allocate(self,
+        @abstractmethod
+        def allocate(
+                self,
                 platform: Platform,
                 tasks_measurements: TasksMeasurements,
                 tasks_resources: TasksResources,
                 tasks_labels: TasksLabels,
-                tasks_allocations: TasksAllocations,             
-            ) -> (TasksAllocations, List[Anomaly], List[Metric]):
+                tasks_allocations: TasksAllocations,
+        ) -> (TasksAllocations, List[Anomaly], List[Metric]):
             ...
-
 
 Allocation interface reuses existing ``Detector`` input and metric structures. Please refer to `detection document <detection.rst>`_ 
 for further reference on ``Platform``, ``TaskResources``, ``TasksMeasurements``, ``Anomaly`` and ``TaskLabels`` structures.
@@ -153,29 +175,30 @@ using CFS bandwidth control.
 For example, with default ``cpu_period`` set to **100ms** on machine with **16** logical processor, setting ``cpu_quota`` to **0.25**, means that
 hard limit on quarter on the available CPU resources, will effectively translated into **400ms** quota.
 
+Setting it to or above 1.0, means disabling the hard limit at all (effectivelty set to it to -1 in tego cgroup filesystem).
+Setting to to 0.0 or close to zero, limit the allowed time to mimimum (1ms).
+
 Base ``cpu_period`` value is configured in ``AllocationConfiguration`` structure during ``AllocationRunner`` initialization.
 
 Formula for calculating quota for cgroup subsystem:
 
 .. code-block:: python
 
-    effective_cpu_quota = task_cpu_quota_normalized * configured_cpu_period * platform_cpus  
+    effective_cpu_quota = cpu_quota_normalized * allocation_configuration.cpu_quota_period * platform_cpus
 
 Refer to `Kernel sched-bwc.txt <https://www.kernel.org/doc/Documentation/scheduler/sched-bwc.txt>`_ document for further reference.
 
 cpu_shares
 ^^^^^^^^^^
 
-``cpu_shares`` value is normalized against all cores available on the platform so:
+``cpu_shares`` value is normalized against configured ``AllocationConfiguration.cpu_shares_unit``.
 
-- **1.0** will be translated into ``AllocationConfiguration.cpu_shares_max``
-- **0.0** will be translated into ``AllocationConfiguration.cpu_shares_min``
-
-and values between will be normalized according following formula:
+- **1.0** will be translated into ``AllocationConfiguration.cpu_shares_unit``
+- **0.0** will be translated into mimimum numper of shares allowed by system (effectively "2").
 
 .. code-block:: python
 
-    effective_cpu_shares = task_cpu_shares_normalized * (cpu_shares_max - cpu_shares_min) + cpu_shares_min
+    effective_cpu_shares = cpu_shares_normalized * AllocationConfiguration.cpu_shares_unit
 
 Refer to `Kernel sched-design <https://www.kernel.org/doc/Documentation/scheduler/sched-design-CFS.txt>`_ document for further reference.
 
@@ -254,10 +277,11 @@ based on ``/sys/fs/resctrl/info/`` and ``procfs``
     class Platform:
         ...
 
-        # example
-        rdt_min_cbm_bits: str  # /sys/fs/resctrl/info/L3/min_cbm_bits
-        rdt_cbm_mask: str  #  /sys/fs/resctrl/info/L3/cbm_mask
-        rdt_min_bandwidth: str  # /sys/fs/resctrl/info/MB/min_bandwidth
+        # rdt information
+        rdt_mb_control_enabled: bool     # based on 'MB:' in /sys/fs/resctrl/schemata
+        rdt_cbm_mask: Optional[str]      # based on /sys/fs/resctrl/info/L3/cbm_mask
+        rdt_min_cbm_bits: Optional[str]  # based on /sys/fs/resctrl/info/L3/min_cbm_bits
+
         ...
 
 
@@ -272,5 +296,19 @@ When stored using ``KafkaStorage`` returned ``TaskAllocations`` will be encoded 
 
 .. code-block:: ini
 
-    allocation(task_id='some-task-id', type='llc_cache', ...<other common and task specific labels>) 0.2 1234567890000
-    allocation(task_id='some-task-id', type='cpu_quota', ...<other common and task specific labels>) 0.2 1234567890000
+    # TYPE allocation gauge
+    allocation{allocation_type="cpu_quota",cores="28",cpus="56",host="igk-0107",owca_version="0.1.dev252+g7f83b7f",sockets="2",task_id="root-staging13-stress_ng-default--0-0-6d1f2268-c3dd-44fd-be0b-a83bd86b328d"} 1.0 1547663933289
+    allocation{allocation_type="cpu_shares",cores="28",cpus="56",host="igk-0107",owca_version="0.1.dev252+g7f83b7f",sockets="2",task_id="root-staging13-stress_ng-default--0-0-6d1f2268-c3dd-44fd-be0b-a83bd86b328d"} 0.5 1547663933289
+    allocation{allocation_type="rdt_l3_cache_ways",cores="28",cpus="56",domain_id="0",group_name="be",host="igk-0107",owca_version="0.1.dev252+g7f83b7f",sockets="2",task_id="root-staging13-stress_ng-default--0-0-6d1f2268-c3dd-44fd-be0b-a83bd86b328d"} 1 1547663933289
+    allocation{allocation_type="rdt_l3_cache_ways",cores="28",cpus="56",domain_id="1",group_name="be",host="igk-0107",owca_version="0.1.dev252+g7f83b7f",sockets="2",task_id="root-staging13-stress_ng-default--0-0-6d1f2268-c3dd-44fd-be0b-a83bd86b328d"} 1 1547663933289
+    allocation{allocation_type="rdt_l3_mask",cores="28",cpus="56",domain_id="0",group_name="be",host="igk-0107",owca_version="0.1.dev252+g7f83b7f",sockets="2",task_id="root-staging13-stress_ng-default--0-0-6d1f2268-c3dd-44fd-be0b-a83bd86b328d"} 2 1547663933289
+    allocation{allocation_type="rdt_l3_mask",cores="28",cpus="56",domain_id="1",group_name="be",host="igk-0107",owca_version="0.1.dev252+g7f83b7f",sockets="2",task_id="root-staging13-stress_ng-default--0-0-6d1f2268-c3dd-44fd-be0b-a83bd86b328d"} 2 1547663933289
+
+    # TYPE allocation_duration gauge
+    allocation_duration{cores="28",cpus="56",host="igk-0107",owca_version="0.1.dev252+g7f83b7f",sockets="2"} 0.002111196517944336 1547663933289
+
+    # TYPE allocations_count counter
+    allocations_count{cores="28",cpus="56",host="igk-0107",owca_version="0.1.dev252+g7f83b7f",sockets="2"} 660 1547663933289
+
+    # TYPE allocations_ignored_count counter
+    allocations_ignored_count{cores="28",cpus="56",host="igk-0107",owca_version="0.1.dev252+g7f83b7f",sockets="2"} 0 1547663933289

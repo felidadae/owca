@@ -51,7 +51,7 @@ def test_cgroup_write():
 def test_get_normalized_shares(_read_mock):
     cgroup = Cgroup('/some/foo1', platform_cpus=1,
                     allocation_configuration=AllocationConfiguration())
-    assert cgroup._get_normalized_shares() == pytest.approx(0.1, 0.01)
+    assert cgroup._get_normalized_shares() == pytest.approx(1, 0.01)
 
 
 @patch('builtins.open', create_open_mock({
@@ -61,31 +61,31 @@ def test_get_normalized_shares(_read_mock):
 def test_get_normalized_quota():
     cgroup = Cgroup('/some/foo1', platform_cpus=1,
                     allocation_configuration=AllocationConfiguration())
-    assert cgroup._get_normalized_quota() == float('inf')
+    assert cgroup.get_normalized_quota() == float('inf')
 
 
 @patch('builtins.open', create_open_mock({
     '/sys/fs/cgroup/cpu/some/foo1/tasks': '101\n102',
     '/sys/fs/cgroup/cpu/foo2/tasks': '',
 }))
-def test_cgroup_get_tasks():
-    assert Cgroup('/some/foo1', platform_cpus=1).get_tasks() == [101, 102]
-    assert Cgroup('/foo2', platform_cpus=1).get_tasks() == []
+def test_cgroup_get_pids():
+    assert Cgroup('/some/foo1', platform_cpus=1).get_pids() == ['101', '102']
+    assert Cgroup('/foo2', platform_cpus=1).get_pids() == []
 
 
 @pytest.mark.parametrize(
     'normalized_shares, allocation_configuration, expected_shares_write', [
-        (0., AllocationConfiguration(), 2),  # based on cpu_shares_min
-        (1., AllocationConfiguration(), 10000),  # based on cpu_shares_max
-        (1., AllocationConfiguration(cpu_shares_min=500, cpu_shares_max=1000), 1000),
-        (2., AllocationConfiguration(cpu_shares_min=500, cpu_shares_max=1000), 1500),
+        (0., AllocationConfiguration(), 2),
+        (1., AllocationConfiguration(), 1000),  # based on cpu_shares_unit (default 1000)
+        (1., AllocationConfiguration(cpu_shares_unit=10000), 10000),
+        (2., AllocationConfiguration(cpu_shares_unit=10000), 20000),
     ]
 )
 def test_set_normalized_shares(normalized_shares, allocation_configuration, expected_shares_write):
     with patch('owca.containers.Cgroup._write') as write_mock:
         cgroup = Cgroup('/some/foo1', platform_cpus=1,
                         allocation_configuration=allocation_configuration)
-        cgroup._set_normalized_shares(normalized_shares)
+        cgroup.set_normalized_shares(normalized_shares)
         write_mock.assert_called_with('cpu.shares', expected_shares_write)
 
 
@@ -93,15 +93,17 @@ def test_set_normalized_shares(normalized_shares, allocation_configuration, expe
     'normalized_quota, cpu_quota_period, platforms_cpu, initial_period_value, '
     'expected_period_write, expected_quota_write', [
             (0., 2000, 1, 1000,
-             2000, 0),
+             2000, 1000),
             (1., 2000, 1, 1000,
-             2000, 2000),
+             2000, -1),
             (2., 1000, 1, 1000,
-             None, 2000),
-            (8., 1000, 8, 1000,
-             None, 64000),
-            (8., 1000, 8, 1000,
-             None, 64000),
+             None, -1),
+            (1., 1000, 8, 1000,
+             None, -1),
+            (.5, 1000, 8, 1000,
+             None, 4000),
+            (.25, 10000, 8, 1000,
+             None, 20000),
     ]
 )
 def test_set_normalized_quota(normalized_quota, cpu_quota_period, platforms_cpu,
@@ -111,7 +113,7 @@ def test_set_normalized_quota(normalized_quota, cpu_quota_period, platforms_cpu,
             cgroup = Cgroup('/some/foo1', platform_cpus=platforms_cpu,
                             allocation_configuration=AllocationConfiguration(
                                 cpu_quota_period=cpu_quota_period))
-            cgroup._set_normalized_quota(normalized_quota)
+            cgroup.set_normalized_quota(normalized_quota)
             write_mock.assert_has_calls([call('cpu.cfs_quota_us', expected_quota_write)])
             if expected_period_write:
                 write_mock.assert_has_calls([call('cpu.cfs_period_us', expected_period_write)])

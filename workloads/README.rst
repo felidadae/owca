@@ -68,7 +68,7 @@ workload_version_name    no (default)             Used to seperate between diffe
                                                   thread count and target QPS -
                                                   then two versions of a workload
                                                   can be created.
-application_version_name no (default)            Used for grouping mutliple instances    - big
+application_version_name no (default)             Used for grouping mutliple instances    - big
                                                   of an application among different       - small
                                                   workloads.                      
 job_name                 yes                      Used as Aurora job_name (last part      twemcache_rpcperf.default--twemcache--11211.0
