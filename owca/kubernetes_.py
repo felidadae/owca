@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from typing import Dict
 import kubernetes
 import logging
-import logger
+from owca import logger
 
 from owca.nodes import Node
 
