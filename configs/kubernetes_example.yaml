@@ -18,7 +18,9 @@ runner: !DetectionRunner
   ignore_privileges_check: true
   node: !KubernetesNode
   action_delay: 1.
-  metrics_storage: !LogStorage
-  anomalies_storage: !LogStorage
   detector: !NOPAnomalyDetector
   rdt_enabled: False
+  metrics_storage: !LogStorage
+    output_filename: metrics.logs
+  anomalies_storage: !LogStorage
+    output_filename: anomalies.logs
