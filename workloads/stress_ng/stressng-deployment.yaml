@@ -1,0 +1,22 @@
+# Sample deployment file for stressng for testing owca initial kubernetes support.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stressng-deployment
+  labels:
+    app: stressng
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: stressng
+  template:
+    metadata:
+      labels:
+        app: stressng
+    spec:
+      containers:
+      - name: stressng
+        image: "alexeiled/stress-ng"
+        command: ["/stress-ng"]
+        args: ["--cpu", "4", "--io", "2", "--vm", "1", "--vm-bytes", "1G", "--timeout", "60s", "--metrics-brief"]
