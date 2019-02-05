@@ -22,6 +22,7 @@ from owca import config
 from owca import detectors
 from owca import allocators
 from owca import mesos
+from owca import kubernetes_
 from owca import storage
 
 
@@ -29,6 +30,7 @@ def register_components(extra_components: List[str]):
     config.register(owca.runners.detection.DetectionRunner)
     config.register(owca.runners.allocation.AllocationRunner)
     config.register(mesos.MesosNode)
+    config.register(kubernetes_.KubernetesNode)
     config.register(storage.LogStorage)
     config.register(storage.KafkaStorage)
     config.register(detectors.NOPAnomalyDetector)

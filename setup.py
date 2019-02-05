@@ -33,7 +33,8 @@ setup(
           'colorlog==3.1.4',
           'logging-tree==1.7',
           'dataclasses==0.6',
-          'confluent-kafka==0.11.4'
+          'confluent-kafka==0.11.4',
+          'kubernetes==8.0.1'
     ],
     tests_require=[
           'pytest',
