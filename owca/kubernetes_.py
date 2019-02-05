@@ -17,7 +17,6 @@ from dataclasses import dataclass, field
 from typing import Dict
 import kubernetes
 import logging
-from owca import logger
 
 from owca.nodes import Node
 
@@ -83,7 +82,7 @@ class KubernetesNode(Node):
                             qos=qos.lower(),
                             labels=labels,
                             cgroup_path=find_cgroup(pod_id, container_id, qos)))
-        log.log(logger.TRACE, "found %d tasks", len(tasks))
+        log.debug("found %d tasks", len(tasks))
         return tasks
 
 
