@@ -15,10 +15,15 @@
 
 from dataclasses import dataclass, field
 from typing import Dict
+import os
 import kubernetes
 import logging
 
+from owca.metrics import MetricName
 from owca.nodes import Node
+from owca.perf import PerfCounters
+
+DEFAULT_EVENTS = (MetricName.INSTRUCTIONS, MetricName.CYCLES, MetricName.CACHE_MISSES)
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +34,7 @@ class KubernetesTask:
     container_id: str
     pod_id: str
     qos: str  # Quality of Service
+    # subcgroups: List[str] = None
 
     # inferred
     cgroup_path: str  # Starts with leading "/"
@@ -52,6 +58,46 @@ class KubernetesTask:
 
 
 @dataclass
+class KubernetesPod:
+    name: str
+    containers: Dict[str, str]  # key: container_id, value: cgroup
+    pod_id: str
+    qos: str  # Quality of Service
+    TASKS = 'tasks'
+
+    def __post_init__(self):
+        self.perf_counters = []
+        for container_id, cgroup in self.containers.items():
+            self.perf_counters.append(PerfCounters(cgroup, event_names=DEFAULT_EVENTS))
+
+    def get_pids(self):
+        all_pids = []
+        for container_id, cgroup in self.containers.items():
+            with open(os.path.join(cgroup, self.TASKS)) as f:
+                pids = f.read().splitlines()
+            all_pids.extend(pids)
+        return all_pids
+
+    def __str__(self):
+        descr = "KubernetesPod: {}\n".format(self.name)
+        descr += "\tpod_id: {}\n".format(self.pod_id)
+        descr += "\tqos: {}\n".format(self.qos)
+        return descr
+
+    def get_measurements(self):
+        measurements = dict()
+        for perf_counter in self.perf_counters:
+            for metric_name, metric_value in \
+                    perf_counter.get_measurements().items():
+                if metric_name in measurements:
+                    measurements[metric_name] += metric_value
+                else:
+                    measurements[metric_name] = metric_value
+
+        return measurements
+
+
+@dataclass
 class KubernetesNode(Node):
     def get_tasks(self):
         """ only return running tasks"""
@@ -62,15 +108,20 @@ class KubernetesNode(Node):
         tasks = []
 
         for pod in pods.items:
+            containers = dict()
             for container in pod.status.container_statuses:
                 if container.state.running:
                     container_name = container.name
+
                     # @TODO temporary solution to cgroups bug
                     if "stressng" not in container_name:
                         continue
+
                     container_id = container.container_id.split('docker://')[1]
                     pod_id = pod.metadata.uid.replace('-', '_')
                     qos = pod.status.qos_class
+                    containers[container_id] = find_cgroup(pod_id, container_id, qos)
+
                     labels = {sanitize_label(key): value for key, value in
                               pod.metadata.labels.items()}
                     tasks.append(
