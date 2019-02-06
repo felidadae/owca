@@ -19,4 +19,4 @@ spec:
       - name: stressng
         image: "alexeiled/stress-ng"
         command: ["/stress-ng"]
-        args: ["--cpu", "4", "--io", "2", "--vm", "1", "--vm-bytes", "1G", "--timeout", "60s", "--metrics-brief"]
+        args: ["--cpu", "4", "--io", "2", "--vm", "1", "--vm-bytes", "1G", "--timeout", "6000s", "--metrics-brief"]
