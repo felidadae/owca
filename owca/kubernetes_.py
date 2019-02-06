@@ -19,6 +19,7 @@ import os
 import kubernetes
 import logging
 
+from owca import logger
 from owca.metrics import MetricName
 from owca.nodes import Node
 from owca.perf import PerfCounters
@@ -134,6 +135,8 @@ class KubernetesNode(Node):
                             labels=labels,
                             cgroup_path=find_cgroup(pod_id, container_id, qos)))
         log.debug("found %d tasks", len(tasks))
+        log.log(logger.TRACE, "found %d kubernetes tasks with pod_id: %s",
+                  len(tasks), ", ".join([str(task.pod_id) for task in tasks]))
         return tasks
 
 
