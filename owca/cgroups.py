@@ -18,7 +18,6 @@ from typing import Optional, List
 from dataclasses import dataclass
 
 from owca import logger
-from owca.allocations import BoxedNumeric
 from owca.allocators import TaskAllocations, AllocationType, AllocationConfiguration
 from owca.metrics import Measurements, MetricName
 
@@ -94,7 +93,7 @@ class Cgroup:
         current_quota = self._read(CPU_QUOTA)
         current_period = self._read(CPU_PERIOD)
         if current_quota == -1:
-            return float('Inf')  # quota is not set (TODO: consider using 0)
+            return 1.0
         # Period 0 is invalid arugment for cgroup cpu subsystem. so division is safe.
         return current_quota / current_period / self.platform_cpus
 
@@ -130,47 +129,3 @@ class Cgroup:
     def get_pids(self) -> List[str]:
         with open(os.path.join(self.cgroup_fullpath, TASKS)) as f:
             return list(f.read().splitlines())
-
-
-#
-# --- Allocations ---
-#
-
-class QuotaAllocationValue(BoxedNumeric):
-
-    def __init__(self, normalized_quota: float, cgroup: Cgroup):
-        self.normalized_quota = normalized_quota
-        self.cgroup = cgroup
-        super().__init__(value=normalized_quota, min_value=0, max_value=1.0)
-
-    def generate_metrics(self):
-        metrics = super().generate_metrics()
-        for metric in metrics:
-            metric.labels.update(allocation_type=AllocationType.QUOTA)
-        return metrics
-
-    def perform_allocations(self):
-        self.cgroup.set_normalized_quota(self.value)
-
-    def __repr__(self):
-        return '%s(normalized_quota=%r)' % (self.__class__.__name__, self.normalized_quota)
-
-
-class SharesAllocationValue(BoxedNumeric):
-
-    def __init__(self, normalized_shares: float, cgroup: Cgroup):
-        self.normalized_shares = normalized_shares
-        self.cgroup = cgroup
-        super().__init__(value=normalized_shares, min_value=0)
-
-    def generate_metrics(self):
-        metrics = super().generate_metrics()
-        for metric in metrics:
-            metric.labels.update(allocation_type=AllocationType.SHARES)
-        return metrics
-
-    def perform_allocations(self):
-        self.cgroup.set_normalized_shares(self.value)
-
-    def __repr__(self):
-        return '%s(normalized_shares=%r)' % (self.__class__.__name__, self.normalized_shares)

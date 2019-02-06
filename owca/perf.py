@@ -22,11 +22,50 @@ from typing import List, Dict, BinaryIO
 from owca import perf_const as pc
 from owca.metrics import Measurements, MetricName
 
-LIBC = ctypes.CDLL('libc.so.6', use_errno=True)
+try:
+    LIBC = ctypes.CDLL('libc.so.6', use_errno=True)
+except OSError:
+    LIBC = None
 
 log = logging.getLogger(__name__)
 
 SCALING_RATE_WARNING_THRESHOLD = 1.50
+
+
+def _get_cpu_model() -> pc.CPUModel:
+    with open("/dev/cpu/0/cpuid", "rb") as f:
+            b = f.read(32)
+            print(type(b))
+            eax = int(b[16]) + (int(b[17]) << 8) + (int(b[18]) << 16) + (int(b[19]) << 24)
+            print(b[16], b[17], b[18], b[19])
+            model = (eax >> 4) & 0xF
+            family = (eax >> 8) & 0xF
+            extended_model = (eax >> 16) & 0xF
+            extended_family = (eax >> 20) & 0xFF
+            display_family = family
+            if family == 0xF:
+                    display_family += extended_family
+            display_model = model
+            if family == 0x6 or family == 0xF:
+                    display_model += (extended_model << 4)
+            if display_model in [0x4E, 0x5E, 0x55]:
+                return pc.CPUModel.SKYLAKE
+            elif display_model in [0x3D, 0x47, 0x4F, 0x56]:
+                return pc.CPUModel.BROADWELL
+            else:
+                return pc.CPUModel.UNKNOWN
+
+
+def _get_memstall_config() -> int:
+    model = _get_cpu_model()
+    event, umask, cmask = (0, 0, 0)
+    if model == pc.CPUModel.SKYLAKE:
+        event, umask, cmask = (0xA3, 0x14, 20)
+    elif model == pc.CPUModel.BROADWELL:
+        event, umask, cmask = (0xA3, 0x06, 6)
+    elif model == pc.CPUModel.UNKNOWN:
+        event, umask, cmask = (0, 0, 0)
+    return event | (umask << 8) | (cmask << 24)
 
 
 def _get_online_cpus() -> List[int]:
@@ -120,8 +159,12 @@ def _create_event_attributes(event_name, disabled):
     """Creates perf_event_attr structure for perf_event_open syscall"""
     attr = pc.PerfEventAttr()
     attr.size = pc.PERF_ATTR_SIZE_VER5
-    attr.type = pc.PerfType.PERF_TYPE_HARDWARE
-    attr.config = pc.HardwareEventNameMap[event_name]
+    if event_name == MetricName.MEMSTALL:
+        attr.type = pc.PerfType.PERF_TYPE_RAW
+        attr.config = _get_memstall_config()
+    else:
+        attr.type = pc.PerfType.PERF_TYPE_HARDWARE
+        attr.config = pc.HardwareEventNameMap[event_name]
     attr.sample_type = pc.PERF_SAMPLE_IDENTIFIER
     attr.read_format = (pc.PERF_FORMAT_GROUP |
                         pc.PERF_FORMAT_TOTAL_TIME_ENABLED |

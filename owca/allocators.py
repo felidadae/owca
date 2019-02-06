@@ -14,7 +14,7 @@
 import logging
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Union
 
 from dataclasses import dataclass
 
@@ -35,7 +35,17 @@ class AllocationType(str, Enum):
         return repr(self.value)
 
 
-TaskAllocations = Dict[AllocationType, Union[float, int, Any]]
+@dataclass(unsafe_hash=True, frozen=True)
+class RDTAllocation:
+    # defaults to TaskId from TasksAllocations
+    name: str = None
+    # CAT: optional - when no provided doesn't change the existing allocation
+    l3: str = None
+    # MBM: optional - when no provided doesn't change the existing allocation
+    mb: str = None
+
+
+TaskAllocations = Dict[AllocationType, Union[float, int, RDTAllocation]]
 TasksAllocations = Dict[TaskId, TaskAllocations]
 
 
@@ -47,7 +57,7 @@ class AllocationConfiguration:
     # Number of shares to set, when ``cpu_shares`` allocation is set to 1.0.
     cpu_shares_unit: int = 1000
 
-    # Default Allocation for default root group during initilization.
+    # Default Allocation for default root group during initialization.
     # It will be used as default for all tasks (None will set to maximum available value).
     default_rdt_l3: str = None
     default_rdt_mb: str = None

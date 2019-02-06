@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from typing import Dict, List
-from unittest.mock import patch, mock_open, call, Mock
+from unittest.mock import patch, mock_open, call
 
 import pytest
 
-from owca.allocations import create_default_registry, AllocationsDict, \
-    CommonLablesAllocationValue
-from owca.allocators import AllocationConfiguration
-from owca.cgroups import Cgroup
-from owca.resctrl import ResGroup, RDTAllocation, RDTAllocationValue
+from owca.allocators import RDTAllocation
+from owca.resctrl import ResGroup
+from owca.resctrl_allocations import RDTAllocationValue, RDTGroups
 from owca.testing import create_open_mock, allocation_metric
 
 
@@ -97,20 +95,22 @@ def test_resgroup_perform_allocations(resgroup_args, write_schemata_args,
 def test_rdt_allocations_changeset(
         current, new,
         expected_target, expected_changeset):
-    cgroup = Cgroup(cgroup_path='/test', platform_cpus=2,
-                    allocation_configuration=AllocationConfiguration())
-
     container_name = 'some_container-xx2'
     resgroup = ResGroup(name=container_name)
+    rdt_groups = RDTGroups(16)
 
     def convert(rdt_allocation):
         if rdt_allocation is not None:
             return RDTAllocationValue(container_name,
-                                      rdt_allocation, resgroup, cgroup,
+                                      rdt_allocation,
+                                      resgroup,
+                                      lambda: ['1'],
                                       platform_sockets=1,
                                       rdt_mb_control_enabled=False,
                                       rdt_cbm_mask='fffff',
-                                      rdt_min_cbm_bits='1'
+                                      rdt_min_cbm_bits='1',
+                                      rdt_groups=rdt_groups,
+                                      common_labels={},
                                       )
         else:
             return None
@@ -118,64 +118,11 @@ def test_rdt_allocations_changeset(
     current_value = convert(current)
     new_value = convert(new)
 
-    got_target_value, got_changeset_value, errors = \
+    got_target, got_changeset = \
         new_value.calculate_changeset(current_value)
-    assert not errors
-    got_rdt_alloction_changeset = got_changeset_value.unwrap() if got_changeset_value else None
-    got_target_value = got_target_value.unwrap()
 
-    assert got_target_value == expected_target
-    assert got_rdt_alloction_changeset == expected_changeset
-
-
-@pytest.mark.parametrize(
-    'current, new, expected_target, expected_changeset', [
-        ({}, {"rdt": RDTAllocation(name='', l3='ff')},
-         {"rdt": RDTAllocation(name='', l3='ff')}, {"rdt": RDTAllocation(name='', l3='ff')}),
-        ({"rdt": RDTAllocation(name='', l3='ff')}, {},
-         {"rdt": RDTAllocation(name='', l3='ff')}, None),
-        ({"rdt": RDTAllocation(name='', l3='ff')}, {"rdt": RDTAllocation(name='x', l3='ff')},
-         {"rdt": RDTAllocation(name='x', l3='ff')}, {"rdt": RDTAllocation(name='x', l3='ff')}),
-        ({"rdt": RDTAllocation(name='x', l3='ff')}, {"rdt": RDTAllocation(name='x', l3='dd')},
-         {"rdt": RDTAllocation(name='x', l3='dd')}, {"rdt": RDTAllocation(name='x', l3='dd')}),
-        ({"rdt": RDTAllocation(name='x', l3='dd', mb='ff')},
-         {"rdt": RDTAllocation(name='x', mb='ff')},
-         {"rdt": RDTAllocation(name='x', l3='dd', mb='ff')}, None),
-    ]
-)
-def test_rdt_allocations_dict_changeset(current, new, expected_target, expected_changeset):
-    # Extra mapping
-    from owca.resctrl import RDTAllocationValue
-
-    CgroupMock = Mock(spec=Cgroup)
-    ResGroupMock = Mock(spec=ResGroup)
-
-    def rdt_allocation_value_constructor(value, ctx, registry):
-        return RDTAllocationValue('c1', value, CgroupMock(), ResGroupMock(),
-                                  platform_sockets=1, rdt_mb_control_enabled=False,
-                                  rdt_cbm_mask='fff', rdt_min_cbm_bits='1',
-                                  )
-
-    registry = create_default_registry()
-    registry.register_automapping_type(('rdt', RDTAllocation), rdt_allocation_value_constructor)
-
-    def convert_dict(d):
-        return AllocationsDict(d, None, registry)
-
-    # Conversion
-    current_dict = convert_dict(current)
-    new_dict = convert_dict(new)
-
-    # Merge
-    got_target_dict, got_changeset_dict, errors = new_dict.calculate_changeset(current_dict)
-    assert not errors
-    got_target_dict_simple = got_target_dict.unwrap_to_simple()
-
-    assert got_target_dict_simple == expected_target
-
-    got_changeset = got_changeset_dict.unwrap_to_simple() if got_changeset_dict is not None else \
-        None
-    assert got_changeset == expected_changeset
+    assert got_target == convert(expected_target)
+    assert got_changeset == convert(expected_changeset)
 
 
 @pytest.mark.parametrize('rdt_allocation, extra_labels, expected_metrics', (
@@ -217,8 +164,8 @@ def test_rdt_allocation_generate_metrics(rdt_allocation: RDTAllocation, extra_la
         resgroup=ResGroup(name=rdt_allocation.name or ''),
         platform_sockets=1, rdt_mb_control_enabled=False,
         rdt_cbm_mask='fff', rdt_min_cbm_bits='1',
+        common_labels=extra_labels,
+        rdt_groups=RDTGroups(10),
     )
-    if extra_labels:
-        rdt_allocation_value = CommonLablesAllocationValue(rdt_allocation_value, **extra_labels)
     got_metrics = rdt_allocation_value.generate_metrics()
     assert got_metrics == expected_metrics

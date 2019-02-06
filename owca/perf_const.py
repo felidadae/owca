@@ -75,6 +75,12 @@ class EventType:
     EVTYPE_IBS = 3
 
 
+class CPUModel:
+    UNKNOWN = 0
+    BROADWELL = 1
+    SKYLAKE = 2
+
+
 class EventTypeConfig:
     PERF_COUNT_HW_CPU_CYCLES = 0
     PERF_COUNT_HW_INSTRUCTIONS = 1
@@ -86,12 +92,18 @@ class EventTypeConfig:
     PERF_COUNT_HW_STALLED_CYCLES_FRONTEND = 7
     PERF_COUNT_HW_STALLED_CYCLES_BACKEND = 8
     PERF_COUNT_HW_REF_CPU_CYCLES = 9
+    PERF_CYCLE_ACTIVITY_STALLS_MEM_ANY = -1
 
 
 HardwareEventNameMap = {
     MetricName.CYCLES: EventTypeConfig.PERF_COUNT_HW_CPU_CYCLES,
     MetricName.INSTRUCTIONS: EventTypeConfig.PERF_COUNT_HW_INSTRUCTIONS,
     MetricName.CACHE_MISSES: EventTypeConfig.PERF_COUNT_HW_CACHE_MISSES,
+}
+
+
+RawEventNameMap = {
+    MetricName.MEMSTALL: EventTypeConfig.PERF_CYCLE_ACTIVITY_STALLS_MEM_ANY,
 }
 
 

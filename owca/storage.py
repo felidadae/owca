@@ -25,7 +25,10 @@ import sys
 import time
 from typing import List, Tuple, Dict
 
-import confluent_kafka
+try:
+    import confluent_kafka
+except ImportError:
+    confluent_kafka = None
 from dataclasses import dataclass, field
 
 from owca import logger

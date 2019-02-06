@@ -61,7 +61,7 @@ def test_get_normalized_shares(_read_mock):
 def test_get_normalized_quota():
     cgroup = Cgroup('/some/foo1', platform_cpus=1,
                     allocation_configuration=AllocationConfiguration())
-    assert cgroup.get_normalized_quota() == float('inf')
+    assert cgroup.get_normalized_quota() == 1.0
 
 
 @patch('builtins.open', create_open_mock({

@@ -12,124 +12,95 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-import pprint
 import time
-from typing import Dict
+from typing import Dict, Callable, Any
 
 from dataclasses import dataclass, field
 
-from owca import platforms, nodes, storage
-from owca.allocations import AllocationsDict, Registry, InvalidAllocationValue, \
-    CommonLablesAllocationValue, ContextualErrorAllocationValue
-from owca.allocators import TasksAllocations, AllocationConfiguration, AllocationType, Allocator
-from owca.cgroups import SharesAllocationValue, QuotaAllocationValue
+from owca import nodes, storage
+from owca.allocations import AllocationsDict, InvalidAllocations, AllocationValue
+from owca.allocators import TasksAllocations, AllocationConfiguration, AllocationType, Allocator, \
+    TaskAllocations, RDTAllocation
+from owca.cgroup_allocations import QuotaAllocationValue, SharesAllocationValue
 from owca.containers import Container
 from owca.detectors import convert_anomalies_to_metrics, \
     update_anomalies_metrics_with_task_information
-from owca.logger import TRACE, trace
-from owca.nodes import Task
-from owca.resctrl import RDTAllocation, RDTAllocationValue, DeduplicatingRDTAllocationsValue
+from owca.logger import trace
+from owca.resctrl_allocations import RDTAllocationValue, RDTGroups
 from owca.runners.base import Runner, BaseRunnerMixin
 from owca.storage import MetricPackage
 
 log = logging.getLogger(__name__)
 
+RegistryType = Dict[AllocationType, Callable[[Any, Container, dict], AllocationValue]]
 
-def convert_to_allocations_values(tasks_allocations: TasksAllocations,
-                                  containers: Dict[Task, Container],
-                                  platform: platforms.Platform,
-                                  allocation_configuration: AllocationConfiguration
-                                  ) -> AllocationsDict:
-    """Convert plain raw object TasksAllocations to boxed inteligent AllocationsDict
-    that can be serialized to metrics, validated and perform contained allocations.
 
-    Simple tasks allocations objects are augumented using runner and container manager
-    context to implement their resposiblities.
-    """
-    registry = Registry()
-    registry.register_automapping_type(dict, AllocationsDict)
-    task_id_to_containers = {task.task_id: container for task, container in containers.items()}
+class TaskAllocationsValues(AllocationsDict):
 
-    def context_aware_adapter(specific_constructor):
-        def generic_constructor(raw_value, ctx, registry):
-            if len(ctx) != 2:
-                return InvalidAllocationValue(
-                    raw_value, 'expected context to be task_id/allocation_type got %s' % ','.join(
-                        ctx))
-            task_id = ctx[0]
+    @staticmethod
+    def create(task_allocations: TaskAllocations,
+               container: Container,
+               registry: RegistryType,
+               common_labels: Dict[str, str]):
+        simple_dict = {}
+        for allocation_type, raw_value in task_allocations.items():
+            if allocation_type not in registry:
+                raise InvalidAllocations('unknown allocation type')
+            constructor = registry[allocation_type]
+            allocation_value = constructor(raw_value, container, common_labels)
+            simple_dict[allocation_type] = allocation_value
+        return TaskAllocationsValues(simple_dict)
 
+
+class TasksAllocationsValues(AllocationsDict):
+
+    @staticmethod
+    def create(tasks_allocations: TasksAllocations, containers, platform):
+        """Convert plain raw object TasksAllocations to boxed intelligent AllocationsDict
+        that can be serialized to metrics, validated and perform contained allocations.
+
+        Simple tasks allocations objects are augmented using runner and container manager
+        context to implement their responsibilities.
+        """
+
+        # Shared object to optimize schemata write and detect CLOSids exhaustion.
+        rdt_groups = RDTGroups(closids_limit=platform.rdt_num_closids)
+
+        def rdt_allocation_value_constructor(rdt_allocation: RDTAllocation, container,
+                                             common_labels):
+            return RDTAllocationValue(
+                container.container_name,
+                rdt_allocation,
+                container.resgroup,
+                container.cgroup.get_pids,
+                platform.sockets,
+                platform.rdt_mb_control_enabled,
+                platform.rdt_cbm_mask,
+                platform.rdt_min_cbm_bits,
+                common_labels=common_labels,
+                rdt_groups=rdt_groups,
+            )
+
+        registry = {
+            AllocationType.RDT: rdt_allocation_value_constructor,
+            AllocationType.QUOTA: QuotaAllocationValue,
+            AllocationType.SHARES: SharesAllocationValue,
+        }
+
+        task_id_to_containers = {task.task_id: container for task, container in containers.items()}
+        simple_dict = {}
+        for task_id, task_allocations in tasks_allocations.items():
             if task_id not in task_id_to_containers:
-                return InvalidAllocationValue(raw_value, 'task_id %r not found (ctx=%r)' % (
-                    task_id, '.'.join(ctx)))
+                raise InvalidAllocations('invalid task id %r' % task_id)
+            else:
+                container = task_id_to_containers[task_id]
+                this_container_labels = dict(container_name=container.container_name, task=task_id)
+                allocation_value = TaskAllocationsValues.create(
+                    task_allocations, container, registry, this_container_labels)
+                allocation_value.validate()
+                simple_dict[task_id] = allocation_value
 
-            container = task_id_to_containers[task_id]
-            allocation_value = specific_constructor(raw_value, container)
-
-            errors, new_allocation_value = allocation_value.validate()
-            if new_allocation_value is None:
-                return InvalidAllocationValue(allocation_value, 'some errors during creation',
-                                              errors)
-
-            log.log(TRACE, 'adapter: specific constructor: %r -> %r', specific_constructor,
-                    allocation_value)
-            allocation_value = CommonLablesAllocationValue(
-                allocation_value,
-                container_name=container.container_name,
-            )
-            log.log(TRACE, 'adapter: common labels constructor: %r', allocation_value)
-            allocation_value = ContextualErrorAllocationValue(
-                allocation_value,
-                prefix_message='for task=%r - ' % task_id
-            )
-            log.log(TRACE, 'adapter: ContextualError constructor: %r', allocation_value)
-            return allocation_value
-
-        return generic_constructor
-
-    shared_already_executed_names = set()
-    all_resgroups_names = set()
-
-    def rdt_allocation_value_constructor(rdt_allocation: RDTAllocation, container: Container):
-        rdt_value = RDTAllocationValue(
-            container.container_name,
-            rdt_allocation, container.resgroup, container.cgroup.get_pids,
-            platform.sockets, platform.rdt_mb_control_enabled,
-            platform.rdt_cbm_mask, platform.rdt_min_cbm_bits,
-        )
-        return DeduplicatingRDTAllocationsValue(
-            rdt_value,
-            maximum_closids=platform.rdt_num_closids,
-            already_executed_resgroup_names=shared_already_executed_names,
-            existing_groups=all_resgroups_names,
-        )
-
-    registry.register_automapping_type((AllocationType.RDT, RDTAllocation),
-                                       context_aware_adapter(rdt_allocation_value_constructor))
-
-    def share_allocation_value_constructor(normalized_shares, container: Container):
-        return SharesAllocationValue(normalized_shares, container.cgroup)
-
-    registry.register_automapping_type((AllocationType.SHARES, int),
-                                       context_aware_adapter(share_allocation_value_constructor))
-    registry.register_automapping_type((AllocationType.SHARES, float),
-                                       context_aware_adapter(share_allocation_value_constructor))
-
-    def quota_allocation_value_constructor(normalized_quota, container: Container):
-        return QuotaAllocationValue(normalized_quota, container.cgroup)
-
-    registry.register_automapping_type((AllocationType.QUOTA, float),
-                                       context_aware_adapter(quota_allocation_value_constructor))
-    registry.register_automapping_type((AllocationType.QUOTA, int),
-                                       context_aware_adapter(quota_allocation_value_constructor))
-
-    def invalid_type_constructor(raw_value, ctx, registry):
-        allocation_type = ctx[1]
-        return InvalidAllocationValue(raw_value, 'unknown allocation type %r on %s' % (
-            allocation_type, '.'.join(ctx)))
-
-    registry.register_automapping_type(None, invalid_type_constructor)
-
-    return AllocationsDict(tasks_allocations, None, registry=registry)
+        return TasksAllocationsValues(simple_dict)
 
 
 @dataclass
@@ -161,10 +132,11 @@ class AllocationRunner(Runner, BaseRunnerMixin):
 
         while True:
             # Prepare algorithm inputs and send input based metrics.
-            platform, tasks_measurements, tasks_resources, \
-                tasks_labels, current_tasks_allocations, common_labels = \
+            (platform, tasks_measurements, tasks_resources, tasks_labels,
+             current_tasks_allocations, common_labels) = \
                 self._prepare_input_data_and_send_metrics_package(
                     self.node, self.metrics_storage, self.extra_labels)
+            log.debug('Tasks detected: %r', list(current_tasks_allocations.keys()))
 
             # Allocator callback
             allocate_start = time.time()
@@ -175,48 +147,44 @@ class AllocationRunner(Runner, BaseRunnerMixin):
 
             log.debug('Anomalies detected: %d', len(anomalies))
 
-            log.debug('current:\n %s', pprint.pformat(current_tasks_allocations))
-            current_allocations = convert_to_allocations_values(
-                current_tasks_allocations, self.containers_manager.containers, platform,
-                self.allocation_configuration)
+            log.debug('current: %s', current_tasks_allocations)
+            current_allocations = TasksAllocationsValues.create(
+                current_tasks_allocations, self.containers_manager.containers, platform)
 
-            log.debug('new:\n %s', pprint.pformat(new_tasks_allocations))
-            new_allocations = convert_to_allocations_values(
-                new_tasks_allocations, self.containers_manager.containers, platform,
-                self.allocation_configuration)
+            allocations_changeset = None
+            try:
 
-            validation_errors, new_allocations = new_allocations.validate()
-            if validation_errors:
-                log.warning('Validation errors: %s', validation_errors)
+                log.debug('new: %s', new_tasks_allocations)
+                new_allocations = TasksAllocationsValues.create(
+                    new_tasks_allocations, self.containers_manager.containers, platform)
 
-            # if there are left allocations to apply
-            if new_allocations is not None:
+                new_allocations.validate()
 
-                log.log(TRACE, 'new (after validation):\n %s', pprint.pformat(new_allocations))
+                # if there are left allocations to apply
+                if new_allocations is not None:
 
-                target_allocations, allocations_changeset, calculating_errors = \
-                    new_allocations.calculate_changeset(current_allocations)
+                    # log.log(TRACE, 'new (after validation):\n %s', pprint.pformat(
+                    # new_allocations))
 
-                if calculating_errors:
-                    log.warning('Calculating changeset errors: %s', calculating_errors)
+                    target_allocations, allocations_changeset = new_allocations.calculate_changeset(
+                        current_allocations)
+                    target_allocations.validate()
 
-                target_validation_errors, target_allocations = target_allocations.validate()
-                if target_validation_errors:
-                    log.warning('Validation target errors: %s', target_validation_errors)
+                else:
+                    target_allocations = current_allocations
 
-                log.log(TRACE, 'current (values):\n %s', pprint.pformat(current_allocations))
-                log.log(TRACE, 'new (values):\n %s', pprint.pformat(new_allocations))
-                log.debug('---------------------------------------')
-                log.log(TRACE, 'allocation_changeset:\n %s', pprint.pformat(allocations_changeset))
-                log.debug('---------------------------------------')
+                errors = []
 
-                # MAIN function
-                if allocations_changeset:
-                    allocations_changeset.perform_allocations()
+            except InvalidAllocations as e:
+                log.error('invalid allocations: %s', str(e))
+                errors = [str(e)]
+                target_allocations = TasksAllocationsValues.create(
+                    current_tasks_allocations, self.containers_manager.containers, platform)
 
-            else:
-                calculating_errors = []
-                target_allocations = current_allocations
+            if allocations_changeset:
+                log.debug('changeset: %s', allocations_changeset)
+                log.info('performing allocations on %d tasks', len(allocations_changeset))
+                allocations_changeset.perform_allocations()
 
             # Note: anomaly metrics include metrics found in ContentionAnomaly.metrics.
             anomaly_metrics = convert_anomalies_to_metrics(anomalies)
@@ -232,7 +200,7 @@ class AllocationRunner(Runner, BaseRunnerMixin):
             allocations_package = MetricPackage(self.allocations_storage)
 
             allocations_statistic_metrics = self.get_allocations_statistics_metrics(
-                new_tasks_allocations, allocate_duration, calculating_errors + validation_errors)
+                new_tasks_allocations, allocate_duration, errors)
             allocations_package.add_metrics(
                 allocations_metrics,
                 extra_metrics,

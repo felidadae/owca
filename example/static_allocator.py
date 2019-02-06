@@ -8,15 +8,25 @@ from typing import List
 import dataclasses
 from dataclasses import dataclass
 
-from owca.allocations import AllocationsDict, create_default_registry
-from owca.allocators import Allocator, TasksAllocations, AllocationType
+from owca.allocators import Allocator, TasksAllocations, AllocationType, RDTAllocation
 from owca.config import load_config
 from owca.detectors import TasksMeasurements, TasksResources, TasksLabels, Anomaly
 from owca.metrics import Metric
 from owca.platforms import Platform
-from owca.resctrl import RDTAllocation, RDTAllocationValue, ResGroup
 
 log = logging.getLogger(__name__)
+
+
+def merge_rules(existing_tasks_allocations: TasksAllocations,
+                new_tasks_allocations: TasksAllocations):
+    merged_tasks_allcations = {}
+    for task_id, task_allocations in new_tasks_allocations.items():
+        merged_tasks_allcations[task_id] = dict(existing_tasks_allocations.get(task_id, {}),
+                                                **task_allocations)
+    for task_id, task_allocations in existing_tasks_allocations.items():
+        if task_id not in merged_tasks_allcations:
+            merged_tasks_allcations[task_id] = dict(task_allocations)
+    return merged_tasks_allcations
 
 
 @dataclass
@@ -49,7 +59,7 @@ class StaticAllocator(Allocator):
                         | set(tasks_resources.keys()) | set(tasks_allocations.keys()))
             rules = []
             for task_id in task_ids:
-                rule = {}
+                rule = dict()
                 rule['task_id'] = task_id
                 if task_id in tasks_labels:
                     rule['labels'] = tasks_labels[task_id]
@@ -92,6 +102,10 @@ class StaticAllocator(Allocator):
                          '(%s)' % rule['name'] if 'name' in rule else '')
 
                 new_task_allocations = rule['allocations']
+                if not new_task_allocations:
+                    log.debug('StaticAllocator(%s): allocations are empty - ignore!', rule_idx)
+                    continue
+
                 if 'rdt' in new_task_allocations:
                     new_task_allocations[AllocationType.RDT] = RDTAllocation(
                         **new_task_allocations['rdt'])
@@ -127,28 +141,8 @@ class StaticAllocator(Allocator):
                 for match_task_id in match_task_ids:
                     this_rule_tasks_allocations[match_task_id] = new_task_allocations
 
-                registry = create_default_registry()
-
-                def dummy_construsctor(rdt_value, ctx, registry):
-                    resgroup_name = rdt_value.name or 'unknown'
-                    resgroup = ResGroup(resgroup_name)
-                    return RDTAllocationValue(resgroup_name, rdt_value, resgroup, None, 0, False,
-                                              '', '')
-
-                registry.register_automapping_type(RDTAllocation, dummy_construsctor)
-
-                # Get the difference
-                target_tasks_allocations, _, errors = \
-                    AllocationsDict(this_rule_tasks_allocations,
-                                    registry=registry).calculate_changeset(
-                        AllocationsDict(target_tasks_allocations, registry=registry), )
-
-                if errors:
-                    log.warning('There are some errors in rules: %s', errors)
-
-                target_tasks_allocations = target_tasks_allocations.unwrap_to_simple()
-                log.debug('StaticAllocator(%s):  after this rule final tasks allocations: \n %s',
-                          rule_idx, pprint.pformat(target_tasks_allocations))
+                target_tasks_allocations = merge_rules(target_tasks_allocations,
+                                                       this_rule_tasks_allocations)
 
             log.info('StaticAllocator: final tasks allocations: \n %s',
                      pprint.pformat(target_tasks_allocations))

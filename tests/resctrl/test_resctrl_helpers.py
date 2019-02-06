@@ -16,8 +16,9 @@ from unittest.mock import patch, mock_open, call
 
 import pytest
 
-from owca.resctrl import check_resctrl, get_max_rdt_values, check_cbm_bits, \
-    _parse_schemata_file_row, read_mon_groups_relation, clean_taskless_groups, _count_enabled_bits
+from owca.resctrl import check_resctrl, get_max_rdt_values, read_mon_groups_relation, \
+    clean_taskless_groups
+from owca.resctrl_allocations import _parse_schemata_file_row, _count_enabled_bits, check_cbm_bits
 from owca.testing import create_open_mock
 
 
@@ -39,17 +40,17 @@ def test_clean_resctrl(exists_mock, isdir_mock, rmdir_mock, listdir_mock):
 
     schemata_mock = mock_open()
 
-    with patch('builtins.open', new=create_open_mock({
-            "/sys/fs/resctrl/mesos-1/tasks": "1\n2\n",
-            # resctrl group to recycle - expected to be removed.
-            "/sys/fs/resctrl/mesos-2/tasks": "",
-            "/sys/fs/resctrl/mesos-3/tasks": "2",
-            "/sys/fs/resctrl/mon_groups/mesos-1/tasks": "1\n2\n",
-            # resctrl group to recycle - should be removed.
-            "/sys/fs/resctrl/mon_groups/mesos-2/tasks": "",
-            "/sys/fs/resctrl/mon_groups/mesos-3/tasks": "2",
-            # default values expected to be written
-            "/sys/fs/resctrl/schemata": schemata_mock})):
+    with patch('builtins.open', new=create_open_mock(
+            {"/sys/fs/resctrl/mesos-1/tasks": "1\n2\n",
+             # resctrl group to recycle - expected to be removed.
+             "/sys/fs/resctrl/mesos-2/tasks": "",
+             "/sys/fs/resctrl/mesos-3/tasks": "2",
+             "/sys/fs/resctrl/mon_groups/mesos-1/tasks": "1\n2\n",
+             # resctrl group to recycle - should be removed.
+             "/sys/fs/resctrl/mon_groups/mesos-2/tasks": "",
+             "/sys/fs/resctrl/mon_groups/mesos-3/tasks": "2",
+             # default values expected to be written
+             "/sys/fs/resctrl/schemata": schemata_mock})):
         cleanup_resctrl(root_rdt_l3='L3:0=ff', root_rdt_mb='MB:0=100', reset_resctrl=True)
 
     listdir_mock.assert_has_calls([
