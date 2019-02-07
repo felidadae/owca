@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from dataclasses import dataclass, field
+from typing import Union
 from typing import Dict
 import os
-import kubernetes
 import logging
+import requests
+import urllib.parse
 
 from owca.metrics import MetricName
 from owca.nodes import Node
@@ -99,31 +100,46 @@ class KubernetesPod:
 
 @dataclass
 class KubernetesNode(Node):
+    kubernetes_agent_enpoint: str = 'http://127.0.0.1:10255'
+
+    METHOD = 'GET_STATE'
+    pods_path = '/pods'
+
     def get_tasks(self):
         """ only return running tasks"""
-        kubernetes.config.load_kube_config()
-        v1 = kubernetes.client.CoreV1Api()
-        pods = v1.list_pod_for_all_namespaces(watch=False)
+        full_url = urllib.parse.urljoin(self.kubernetes_agent_enpoint, self.pods_path)
+        r = requests.get(
+            full_url,
+            json=dict(type=self.METHOD),
+            verify='/etc/kubernetes/pki/apiserver-kubelet-client.key')
+        r.raise_for_status()
+        state = r.json()
 
         tasks = []
 
-        for pod in pods.items:
+        for pod in state.get('items'):
             containers = dict()
-            for container in pod.status.container_statuses:
-                if container.state.running:
-                    container_name = container.name
+            container_statuses = pod.get('status').get('containerStatuses')
+            if container_statuses:
+                for container in container_statuses:
+                    container_id = container.get('containerID').split(
+                        'docker://')[1]
+                    container_name = container.get('name')
 
                     # @TODO temporary solution to cgroups bug
                     if "stressng" not in container_name:
                         continue
 
-                    container_id = container.container_id.split('docker://')[1]
-                    pod_id = pod.metadata.uid.replace('-', '_')
-                    qos = pod.status.qos_class
-                    containers[container_id] = find_cgroup(pod_id, container_id, qos)
+                    pod_id = pod.get('metadata').get('uid').replace('-', '_')
+                    qos = pod.get('status').get('qosClass')
+                    containers[container_id] = find_cgroup(
+                        pod_id, container_id, qos)
 
-                    labels = {sanitize_label(key): value for key, value in
-                              pod.metadata.labels.items()}
+                    if pod.get('metadata').get('labels'):
+                        labels = {sanitize_label(key): value for key, value in
+                                  pod.metadata.labels.items()}
+                    else:
+                        labels = {}
                     tasks.append(
                         KubernetesTask(
                             name=container_name,
