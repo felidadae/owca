@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from dataclasses import dataclass, field
 from typing import Dict, List
-import kubernetes
 import logging
 import pprint
+import requests
+import urllib.parse
 
 from owca import logger
 from owca.metrics import MetricName
@@ -45,28 +45,41 @@ class KubernetesTask:
 
 
 class KubernetesNode(Node):
+    kubernetes_agent_enpoint: str = 'http://127.0.0.1:10255'
+
+    METHOD = 'GET_STATE'
+    pods_path = '/pods'
+
     def get_tasks(self):
         """Returns only running tasks."""
-        kubernetes.config.load_kube_config()
-        v1 = kubernetes.client.CoreV1Api()
-        pods = v1.list_pod_for_all_namespaces(watch=False)
+        full_url = urllib.parse.urljoin(self.kubernetes_agent_enpoint, self.pods_path)
+        r = requests.get(full_url, json=dict(type=self.METHOD),
+                         verify='/etc/kubernetes/pki/apiserver-kubelet-client.key')
+        r.raise_for_status()
+        state = r.json()
 
         tasks = []
 
-        for pod in pods.items:
-            qos = pod.status.qos_class
-            pod_id = pod.metadata.uid.replace('-', '_')
-            labels = {sanitize_label(key): value for key, value in
-                      pod.metadata.labels.items()}
+        for pod in state.get('items'):
+            pod_id = pod.get('metadata').get('uid').replace('-', '_')
+            qos = pod.get('status').get('qosClass')
+            if pod.get('metadata').get('labels'):
+                labels = {sanitize_label(key): value
+                          for key, value in
+                          pod.metadata.labels.items()}
+            else:
+                labels = {}
 
             containers_cgroups = []
-            for container in pod.status.container_statuses:
+            container_statuses = pod.get('status').get('containerStatuses')
+            if not container_statuses:
+                continue
+            for container in container_statuses:
                 if container.state.running:
                     # @TODO cgroups bug: filter out kubernetes own pods
                     if "stressng" not in container.name:
                         continue
-
-                    container_id = container.container_id.split('docker://')[1]
+                    container_id = container.get('containerID').split('docker://')[1]
                     containers_cgroups.append(find_container_cgroup(pod_id, container_id, qos))
 
             # @TODO cgroups bug: filter out kubernetes own pods
@@ -82,7 +95,6 @@ class KubernetesNode(Node):
                     resources=find_resources(pod_id, qos),
                     cgroup_path=find_pod_cgroup(pod_id, qos),
                     sub_cgroup_paths=containers_cgroups))
-
         log.debug("found %d tasks", len(tasks))
         log.log(logger.TRACE, "found %d kubernetes tasks with pod_id: %s",
                 len(tasks), ", ".join([str(task.task_id) for task in tasks]))

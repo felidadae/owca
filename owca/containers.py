@@ -52,10 +52,11 @@ def _convert_cgroup_path_to_resgroup_name(cgroup_path):
 
 
 class ContainerSet:
-    def __init__(self, cgroup_path:str, cgroup_paths:List[str],
-                 platform_cpus:int, allocation_configuration: Optional[AllocationConfiguration] = None,
-                 resgroup: ResGroup = None, rdt_enabled: bool = True, rdt_mb_control_enabled: bool = False,
-                 name = None):
+    def __init__(self,
+                 cgroup_path: str, cgroup_paths: List[str], platform_cpus: int,
+                 allocation_configuration: Optional[AllocationConfiguration] = None,
+                 resgroup: ResGroup = None, rdt_enabled: bool = True,
+                 rdt_mb_control_enabled: bool = False, name=None):
         self.cgroup_path = cgroup_path
         self.name = (name or _convert_cgroup_path_to_resgroup_name(self.cgroup_path))
         self._allocation_configuration = allocation_configuration
@@ -73,7 +74,7 @@ class ContainerSet:
         self.children: Dict[str, Container] = {}
         for cgroup_path in cgroup_paths:
             self.children[cgroup_path] = Container(
-                cgroup_path=new_task.cgroup_path,
+                cgroup_path=cgroup_path,
                 rdt_enabled=self._rdt_enabled,
                 rdt_mb_control_enabled=self._rdt_mb_control_enabled,
                 platform_cpus=platform_cpus,
@@ -141,10 +142,10 @@ class ContainerSet:
 
 
 class Container:
-    def __init__(self, cgroup_path:str, platform_cpus:int, resgroup: ResGroup = None,
+    def __init__(self, cgroup_path: str, platform_cpus: int, resgroup: ResGroup = None,
                  allocation_configuration: Optional[AllocationConfiguration] = None,
                  rdt_enabled: bool = True, rdt_mb_control_enabled: bool = False,
-                 container_name = None):
+                 container_name=None):
         self.cgroup_path = cgroup_path
         self.container_name = (container_name or
                                _convert_cgroup_path_to_resgroup_name(self.cgroup_path))
@@ -279,7 +280,8 @@ class ContainerManager:
         for new_task in new_tasks:
             # @TODO temporarily to make owca work
             enable_multicontainer = False
-            if enable_multicontainer and new_task.cgroup_paths is not None and len(new_task.cgroup_path):
+            if (enable_multicontainer and new_task.cgroup_paths is not None and
+                    len(new_task.cgroup_path)):
                 # ContainerSet shares interface with Container.
                 container = ContainerSet(
                     cgroup_path=new_task.cgroup_path,
