@@ -44,8 +44,11 @@ class KubernetesTask:
         return id(self.task_id)
 
 
+@dataclass
 class KubernetesNode(Node):
-    kubernetes_agent_enpoint: str = 'http://127.0.0.1:10255'
+    kubernetes_agent_enpoint: str = 'https://127.0.0.1:10250'
+    client_private_key: str = None
+    client_cert: str = None
 
     METHOD = 'GET_STATE'
     pods_path = '/pods'
@@ -54,7 +57,7 @@ class KubernetesNode(Node):
         """Returns only running tasks."""
         full_url = urllib.parse.urljoin(self.kubernetes_agent_enpoint, self.pods_path)
         r = requests.get(full_url, json=dict(type=self.METHOD),
-                         verify='/etc/kubernetes/pki/apiserver-kubelet-client.key')
+                         verify=False, cert=(self.client_cert, self.client_private_key))
         r.raise_for_status()
         state = r.json()
 

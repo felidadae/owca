@@ -17,6 +17,8 @@
 runner: !DetectionRunner
   ignore_privileges_check: true
   node: !KubernetesNode
+    client_private_key: "/home/vagrant/apiserver-kubelet.client.key"
+    client_cert: "/home/vagrant/apiserver-kubelet-client.crt"
   action_delay: 1.
   detector: !NOPAnomalyDetector
   rdt_enabled: False
