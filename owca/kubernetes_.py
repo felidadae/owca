@@ -81,11 +81,11 @@ class KubernetesNode(Node):
             if not container_statuses:
                 continue
             for container in container_statuses:
-                # @TODO cgroups bug: filter out kubernetes own pods
-                if "stressng" not in container['name']:
-                    continue
-                container_id = container.get('containerID').split('docker://')[1]
-                containers_cgroups.append(find_container_cgroup(pod_id, container_id, qos))
+                if container.state.running:
+                    if pod.get('metadata').get('namespace') == 'kube-system'::
+                        continue
+                    container_id = container.get('containerID').split('docker://')[1]
+                    containers_cgroups.append(find_container_cgroup(pod_id, container_id, qos))
 
             # @TODO cgroups bug: filter out kubernetes own pods
             if len(containers_cgroups) == 0:
