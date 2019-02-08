@@ -67,6 +67,10 @@ class KubernetesNode(Node):
             # @TODO only take into consideration 
             #   running pods (all containers are in ready state)
 
+            # Ignore Kubernetes internal pods.
+            if pod.get('metadata').get('namespace') == 'kube-system':
+                continue
+
             pod_id = pod.get('metadata').get('uid').replace('-', '_')
             qos = pod.get('status').get('qosClass')
             if pod.get('metadata').get('labels'):
@@ -81,15 +85,8 @@ class KubernetesNode(Node):
             if not container_statuses:
                 continue
             for container in container_statuses:
-                if container.state.running:
-                    if pod.get('metadata').get('namespace') == 'kube-system'::
-                        continue
-                    container_id = container.get('containerID').split('docker://')[1]
-                    containers_cgroups.append(find_container_cgroup(pod_id, container_id, qos))
-
-            # @TODO cgroups bug: filter out kubernetes own pods
-            if len(containers_cgroups) == 0:
-                continue
+                container_id = container.get('containerID').split('docker://')[1]
+                containers_cgroups.append(find_container_cgroup(pod_id, container_id, qos))
 
             tasks.append(
                 KubernetesTask(
