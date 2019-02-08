@@ -17,7 +17,7 @@ import ctypes
 import logging
 import os
 import struct
-from typing import List, Dict, BinaryIO
+from typing import List, Dict, BinaryIO, Iterable
 
 from owca import perf_const as pc
 from owca.metrics import Measurements, MetricName
@@ -195,7 +195,7 @@ def _create_file_from_fd(pfd):
 class PerfCounters:
     """Perf facade on perf_event_open system call"""
 
-    def __init__(self, cgroup_path: str, event_names: List[MetricName]):
+    def __init__(self, cgroup_path: str, event_names: Iterable[MetricName]):
         # Provide cgroup_path with leading '/'
         assert cgroup_path.startswith('/')
         # cgroup path without leading '/'

@@ -17,8 +17,6 @@ import logging
 import pprint
 from typing import List, Optional, Dict
 
-from dataclasses import dataclass
-
 from owca import logger
 from owca import resctrl
 from owca.allocators import AllocationConfiguration, TaskAllocations
@@ -53,45 +51,127 @@ def _convert_cgroup_path_to_resgroup_name(cgroup_path):
     return relative_cgroup_path.replace('/', '-')
 
 
-@dataclass
-class Container:
-    cgroup_path: str
-    platform_cpus: int
-    resgroup: ResGroup = None
-    allocation_configuration: Optional[AllocationConfiguration] = None
-    rdt_enabled: bool = True
-    rdt_mb_control_enabled: bool = False
-    container_name: str = None  # defaults to flatten value of provided cgroup_path
+class ContainerSet:
+    def __init__(self, cgroup_path:str, cgroup_paths:List[str],
+                 platform_cpus:int, allocation_configuration: Optional[AllocationConfiguration] = None,
+                 resgroup: ResGroup = None, rdt_enabled: bool = True, rdt_mb_control_enabled: bool = False,
+                 name = None):
+        self.cgroup_path = cgroup_path
+        self.name = (name or _convert_cgroup_path_to_resgroup_name(self.cgroup_path))
+        self._allocation_configuration = allocation_configuration
+        self._rdt_enabled = rdt_enabled
+        self._rdt_mb_control_enabled = rdt_mb_control_enabled
+        self.resgroup = resgroup
 
-    def __post_init__(self):
+        # Create Cgroup object representing itself.
         self.cgroup = Cgroup(
-            self.cgroup_path,
-            platform_cpus=self.platform_cpus,
-            allocation_configuration=self.allocation_configuration,
-        )
-        self.container_name = (self.container_name or
-                               _convert_cgroup_path_to_resgroup_name(self.cgroup_path))
-        self.perf_counters = PerfCounters(self.cgroup_path, event_names=DEFAULT_EVENTS)
+            cgroup_path=self.cgroup_path,
+            platform_cpus=platform_cpus,
+            allocation_configuration=allocation_configuration)
+
+        # Create Cgroup objects for children.
+        self.children: Dict[str, Container] = {}
+        for cgroup_path in cgroup_paths:
+            self.children[cgroup_path] = Container(
+                cgroup_path=new_task.cgroup_path,
+                rdt_enabled=self._rdt_enabled,
+                rdt_mb_control_enabled=self._rdt_mb_control_enabled,
+                platform_cpus=platform_cpus,
+                allocation_configuration=allocation_configuration)
+
+    def get_pids(self) -> List[str]:
+        all_pids = []
+        for container in self.children.values():
+            all_pids.extend(container.get_pids())
+        return all_pids
 
     def sync(self):
         """Called every run iteration to keep pids of cgroup and resctrl in sync."""
-        if self.rdt_enabled:
-            self.resgroup.add_pids(self.cgroup.get_pids(), mongroup_name=self.container_name)
+        if self._rdt_enabled:
+            self.resgroup.add_pids(pids=self.get_pids(), mongroup_name=self.name)
 
-    # def change_resgroup(self, new_resgroup):
-    #     """Remove tasks from current group and add to the new one."""
-    #     assert self.rdt_enabled
-    #     # Remove pids from old group
-    #     self.resgroup.remove_pids(mongroup_name=self.container_name)
-    #     # Add pids to new group
-    #     new_resgroup.add_pids(self.cgroup.get_pids(), mongroup_name=self.container_name)
-    #     self.resgroup = new_resgroup
+    def get_measurements(self) -> Measurements:
+        measurements = dict()
+        try:
+            # perf counters
+            for container in self.children.values():
+                for metric_name, metric_value in \
+                        container.perf_counters.get_measurements().items():
+                    if metric_name in measurements:
+                        measurements[metric_name] += metric_value
+                    else:
+                        measurements[metric_name] = metric_value
+
+            # resgroup
+            if self._rdt_enabled:
+                measurements.update(self.resgroup.get_measurements(self.children))
+
+            # cgroup
+            # @TODO how to handle cgroups
+        except FileNotFoundError:
+            log.debug('Could not read measurements for container %s. '
+                      'Probably the mesos container has died during the current runner iteration.',
+                      self.cgroup_path)
+            # Returning empty measurements.
+            return {}
+        return measurements
+
+    def cleanup(self):
+        for container in self.children.values():
+            container.cleanup()
+        if self._rdt_enabled:
+            self.resgroup.remove(self.name)
+
+    def get_allocations(self) -> TaskAllocations:
+        # In only detect mode, without allocation configuration return nothing.
+        if not self._allocation_configuration:
+            return {}
+        allocations: TaskAllocations = dict()
+        allocations.update(self.cgroup.get_allocations())
+        if self._rdt_enabled:
+            allocations.update(self.resgroup.get_allocations())
+
+        log.debug('allocations on task=%r from resgroup=%r allocations:\n%s',
+                  self.name, self.resgroup, pprint.pformat(allocations))
+
+        return allocations
+
+    def __hash__(self):
+        return hash(str(self.cgroup_path))
+
+
+class Container:
+    def __init__(self, cgroup_path:str, platform_cpus:int, resgroup: ResGroup = None,
+                 allocation_configuration: Optional[AllocationConfiguration] = None,
+                 rdt_enabled: bool = True, rdt_mb_control_enabled: bool = False,
+                 container_name = None):
+        self.cgroup_path = cgroup_path
+        self.container_name = (container_name or
+                               _convert_cgroup_path_to_resgroup_name(self.cgroup_path))
+        self._allocation_configuration = allocation_configuration
+        self._rdt_enabled = rdt_enabled
+        self._rdt_mb_control_enabled = rdt_mb_control_enabled
+        self.resgroup = resgroup
+
+        self.cgroup = Cgroup(
+            cgroup_path=self.cgroup_path,
+            platform_cpus=platform_cpus,
+            allocation_configuration=allocation_configuration)
+        self.perf_counters = PerfCounters(self.cgroup_path, event_names=DEFAULT_EVENTS)
+
+    def get_pids(self):
+        return self.cgroup.get_pids()
+
+    def sync(self):
+        """Called every run iteration to keep pids of cgroup and resctrl in sync."""
+        if self._rdt_enabled:
+            self.resgroup.add_pids(self.cgroup.get_pids(), mongroup_name=self.container_name)
 
     def get_measurements(self) -> Measurements:
         try:
             return flatten_measurements([
                 self.cgroup.get_measurements(),
-                self.resgroup.get_measurements(self.container_name) if self.rdt_enabled else {},
+                self.resgroup.get_measurements(self.container_name) if self._rdt_enabled else {},
                 self.perf_counters.get_measurements(),
             ])
         except FileNotFoundError:
@@ -103,16 +183,16 @@ class Container:
 
     def cleanup(self):
         self.perf_counters.cleanup()
-        if self.rdt_enabled:
+        if self._rdt_enabled:
             self.resgroup.remove(self.container_name)
 
     def get_allocations(self) -> TaskAllocations:
         # In only detect mode, without allocation configuration return nothing.
-        if not self.allocation_configuration:
+        if not self._allocation_configuration:
             return {}
         allocations: TaskAllocations = dict()
         allocations.update(self.cgroup.get_allocations())
-        if self.rdt_enabled:
+        if self._rdt_enabled:
             allocations.update(self.resgroup.get_allocations())
 
         log.debug('allocations on task=%r from resgroup=%r allocations:\n%s',
@@ -178,7 +258,7 @@ class ContainerManager:
 
         # Prepare state of currently assigned resgroups
         # and remove some orphaned resgroups
-        container_name_to_mon_group = {}
+        container_name_to_resgroup_name = {}
         if self.rdt_enabled:
             mon_groups_relation = resctrl.read_mon_groups_relation()
             log.debug('mon_groups_relation: %s', pprint.pformat(mon_groups_relation))
@@ -191,28 +271,39 @@ class ContainerManager:
             # Calculate inverse relastion of task_id to res_group name based on mon_groups_relations
             for ctrl_group, container_names in mon_groups_relation.items():
                 for container_name in container_names:
-                    container_name_to_mon_group[container_name] = ctrl_group
-            log.debug('container_name_to_mon_group: %s',
-                      pprint.pformat(container_name_to_mon_group))
+                    container_name_to_resgroup_name[container_name] = ctrl_group
+            log.debug('container_name_to_resgroup_name: %s',
+                      pprint.pformat(container_name_to_resgroup_name))
 
         # Create new containers and store them.
         for new_task in new_tasks:
-            container = Container(
-                new_task.cgroup_path,
-                rdt_enabled=self.rdt_enabled,
-                rdt_mb_control_enabled=self.rdt_mb_control_enabled,
-                platform_cpus=self.platform_cpus,
-                allocation_configuration=self.allocation_configuration,
-            )
+            # @TODO temporarily to make owca work
+            enable_multicontainer = False
+            if enable_multicontainer and new_task.cgroup_paths is not None and len(new_task.cgroup_path):
+                # ContainerSet shares interface with Container.
+                container = ContainerSet(
+                    cgroup_path=new_task.cgroup_path,
+                    cgroup_paths=new_task.sub_cgroup_paths,
+                    rdt_enabled=self.rdt_enabled,
+                    rdt_mb_control_enabled=self.rdt_mb_control_enabled,
+                    platform_cpus=self.platform_cpus,
+                    allocation_configuration=self.allocation_configuration)
+            else:
+                container = Container(
+                    cgroup_path=new_task.cgroup_path,
+                    rdt_enabled=self.rdt_enabled,
+                    rdt_mb_control_enabled=self.rdt_mb_control_enabled,
+                    platform_cpus=self.platform_cpus,
+                    allocation_configuration=self.allocation_configuration)
             self.containers[new_task] = container
 
         # Sync "state" of individual containers.
         # Note: only the pids are synchronized, not the allocations.
         for container in self.containers.values():
             if self.rdt_enabled:
-                if container.container_name in container_name_to_mon_group:
+                if container.container_name in container_name_to_resgroup_name:
                     container.resgroup = ResGroup(
-                        name=container_name_to_mon_group[container.container_name],
+                        name=container_name_to_resgroup_name[container.container_name],
                         rdt_mb_control_enabled=self.rdt_mb_control_enabled)
                 else:
                     # Every newly detected containers is first assigne to root group.
