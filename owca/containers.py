@@ -14,6 +14,7 @@
 
 
 import logging
+import os
 import pprint
 from typing import List, Optional, Dict
 
@@ -30,6 +31,7 @@ log = logging.getLogger(__name__)
 
 DEFAULT_EVENTS = (MetricName.INSTRUCTIONS, MetricName.CYCLES,
                   MetricName.CACHE_MISSES, MetricName.MEMSTALL)
+CPU_USAGE = 'cpuacct.usage'
 
 
 def flatten_measurements(measurements: List[Measurements]):
@@ -58,6 +60,7 @@ class ContainerSet:
                  resgroup: ResGroup = None, rdt_enabled: bool = True,
                  rdt_mb_control_enabled: bool = False, name=None):
         self.cgroup_path = cgroup_path
+        self.cgroup_paths = cgroup_paths
         self.name = (name or _convert_cgroup_path_to_resgroup_name(self.cgroup_path))
         self._allocation_configuration = allocation_configuration
         self._rdt_enabled = rdt_enabled
@@ -108,7 +111,16 @@ class ContainerSet:
                 measurements.update(self.resgroup.get_measurements(self.children))
 
             # cgroup
-            # @TODO how to handle cgroups
+            for cgroup in self.cgroup_paths:
+                with open(os.path.join('/sys/fs/cgroup/cpu', cgroup[1:],
+                                       CPU_USAGE)) as cpu_usage_file:
+                    cpu_usage = int(cpu_usage_file.read())
+                    if MetricName.CPU_USAGE_PER_TASK not in measurements:
+                        measurements[MetricName.CPU_USAGE_PER_TASK] = cpu_usage
+                    else:
+                        measurements[MetricName.CPU_USAGE_PER_TASK] += cpu_usage
+
+
         except FileNotFoundError:
             log.debug('Could not read measurements for container %s. '
                       'Probably the mesos container has died during the current runner iteration.',
