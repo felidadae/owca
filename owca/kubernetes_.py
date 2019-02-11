@@ -64,7 +64,7 @@ class KubernetesNode(Node):
         tasks = []
 
         for pod in state.get('items'):
-            # @TODO only take into consideration 
+            # @TODO only take into consideration
             #   running pods (all containers are in ready state)
 
             # Ignore Kubernetes internal pods.
@@ -97,9 +97,10 @@ class KubernetesNode(Node):
                     resources=find_resources(pod_id, qos),
                     cgroup_path=find_pod_cgroup(pod_id, qos),
                     sub_cgroup_paths=containers_cgroups))
-        log.debug("found %d tasks", len(tasks))
-        log.log(logger.TRACE, "found %d kubernetes tasks with pod_id: %s",
-                len(tasks), ", ".join([str(task.task_id) for task in tasks]))
+        log.debug("Found %d kubernetes tasks (cumulatively %d cgroups leafs).",
+                  len(tasks), sum([len(task.sub_cgroup_paths) for task in tasks]))
+        log.log(logger.TRACE, "Found kubernetes tasks with (pod_id, sub_cgroup_paths): %s.",
+                ", ".join(['(' + str(task.task_id) + ", " + str(task.sub_cgroup_paths) + ')' for task in tasks]))
         return tasks
 
 

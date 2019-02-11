@@ -137,6 +137,10 @@ class ContainerSet:
 
         return allocations
 
+    def __repr__(self):
+        return "ContainerSet(cgroup_path={}, resgroup={})".format(
+            self.cgroup_path, self.resgroup)
+
     def __hash__(self):
         return hash(str(self.cgroup_path))
 
@@ -279,8 +283,8 @@ class ContainerManager:
         # Create new containers and store them.
         for new_task in new_tasks:
             # @TODO temporarily to make owca work
-            enable_multicontainer = False
-            if (enable_multicontainer and new_task.cgroup_paths is not None and
+            enable_multicontainer = True
+            if (enable_multicontainer and hasattr(new_task, "sub_cgroup_paths") and
                     len(new_task.cgroup_path)):
                 # ContainerSet shares interface with Container.
                 container = ContainerSet(
