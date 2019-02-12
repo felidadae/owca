@@ -60,7 +60,6 @@ class ContainerSet:
                  resgroup: ResGroup = None, rdt_enabled: bool = True,
                  rdt_mb_control_enabled: bool = False, name=None):
         self.cgroup_path = cgroup_path
-        self.cgroup_paths = cgroup_paths
         self.name = (name or _convert_cgroup_path_to_resgroup_name(self.cgroup_path))
         self._allocation_configuration = allocation_configuration
         self._rdt_enabled = rdt_enabled
@@ -111,14 +110,12 @@ class ContainerSet:
                 measurements.update(self.resgroup.get_measurements(self.children))
 
             # cgroup
-            for cgroup in self.cgroup_paths:
-                with open(os.path.join('/sys/fs/cgroup/cpu', cgroup[1:],
-                                       CPU_USAGE)) as cpu_usage_file:
-                    cpu_usage = int(cpu_usage_file.read())
-                    if MetricName.CPU_USAGE_PER_TASK not in measurements:
-                        measurements[MetricName.CPU_USAGE_PER_TASK] = cpu_usage
-                    else:
-                        measurements[MetricName.CPU_USAGE_PER_TASK] += cpu_usage
+            for cgroup, child in self.children.items():
+                cpu_usage = child.cgroup.get_measurements()
+                if MetricName.CPU_USAGE_PER_TASK not in measurements:
+                    measurements[MetricName.CPU_USAGE_PER_TASK] = cpu_usage
+                else:
+                    measurements[MetricName.CPU_USAGE_PER_TASK] += cpu_usage
 
 
         except FileNotFoundError:
