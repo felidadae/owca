@@ -13,14 +13,14 @@
 # limitations under the License.
 from owca.allocations import BoxedNumeric
 from owca.allocators import AllocationType
-from owca.containers import Container
+from owca.containers import ContainerInterface
 
 
 class QuotaAllocationValue(BoxedNumeric):
 
-    def __init__(self, normalized_quota: float, container: Container, common_labels: dict):
+    def __init__(self, normalized_quota: float, container: ContainerInterface, common_labels: dict):
         self.normalized_quota = normalized_quota
-        self.cgroup = container.cgroup
+        self.cgroup = container.get_cgroup()
         super().__init__(value=normalized_quota, common_labels=common_labels,
                          min_value=0, max_value=1.0)
 
@@ -36,9 +36,9 @@ class QuotaAllocationValue(BoxedNumeric):
 
 class SharesAllocationValue(BoxedNumeric):
 
-    def __init__(self, normalized_shares: float, container: Container, common_labels: dict):
+    def __init__(self, normalized_shares: float, container: ContainerInterface, common_labels: dict):
         self.normalized_shares = normalized_shares
-        self.cgroup = container.cgroup
+        self.cgroup = container.get_cgroup()
         super().__init__(value=normalized_shares, common_labels=common_labels, min_value=0)
 
     def generate_metrics(self):

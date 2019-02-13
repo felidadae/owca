@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from abc import ABC, abstractmethod
 import logging
 import pprint
 from typing import List, Optional, Dict
@@ -52,7 +53,41 @@ def _convert_cgroup_path_to_resgroup_name(cgroup_path):
     return relative_cgroup_path.replace('/', '-')
 
 
-class ContainerSet:
+class ContainerInterface(ABC):
+    @abstractmethod
+    def set_resgroup(self, resgroup: ResGroup):
+        ...
+
+    @abstractmethod
+    def get_cgroup(self) -> Cgroup:
+        ...
+
+    @abstractmethod
+    def get_pids(self) -> List[str]:
+        ...
+
+    @abstractmethod
+    def sync(self) -> None:
+        ...
+
+    @abstractmethod
+    def get_measurements(self) -> Measurements:
+        ...
+
+    @abstractmethod
+    def cleanup(self) -> None:
+        ...
+
+    @abstractmethod
+    def get_allocations(self) -> TaskAllocations:
+        ...
+
+    @abstractmethod
+    def __hash__(self):
+        ...
+
+
+class ContainerSet(ContainerInterface):
     def __init__(self,
                  cgroup_path: str, cgroup_paths: List[str], platform_cpus: int,
                  allocation_configuration: Optional[AllocationConfiguration] = None,
@@ -84,6 +119,9 @@ class ContainerSet:
 
     def set_resgroup(self, resgroup: ResGroup):
         self._resgroup = resgroup
+
+    def get_cgroup(self):
+        return self.cgroup
 
     def get_pids(self) -> List[str]:
         all_pids = []
@@ -161,7 +199,7 @@ class ContainerSet:
         return hash(str(self.cgroup_path))
 
 
-class Container:
+class Container(ContainerInterface):
     def __init__(self, cgroup_path: str, platform_cpus: int, resgroup: ResGroup = None,
                  if_manage_resgroup: bool = True,
                  allocation_configuration: Optional[AllocationConfiguration] = None,
@@ -195,6 +233,9 @@ class Container:
     def set_resgroup(self, resgroup: ResGroup):
         self._resgroup = resgroup
         assert (not self._if_manage_resgroup or self._resgroup is not None)
+
+    def get_cgroup(self):
+        return self.cgroup
 
     def get_pids(self):
         return self.cgroup.get_pids()
@@ -253,13 +294,13 @@ class ContainerManager:
 
     def __init__(self, rdt_enabled: bool, rdt_mb_control_enabled: bool, platform_cpus: int,
                  allocation_configuration: Optional[AllocationConfiguration]):
-        self.containers: Dict[Task, Container] = {}
+        self.containers: Dict[Task, ContainerInterface] = {}
         self.rdt_enabled = rdt_enabled
         self.rdt_mb_control_enabled = rdt_mb_control_enabled
         self.platform_cpus = platform_cpus
         self.allocation_configuration = allocation_configuration
 
-    def sync_containers_state(self, tasks) -> Dict[Task, Container]:
+    def sync_containers_state(self, tasks) -> Dict[Task, ContainerInterface]:
         """Sync internal state of runner by removing orphaned containers, and creating containers
         for newly arrived tasks, and synchronizing containers' state.
 
@@ -359,8 +400,8 @@ class ContainerManager:
 
 
 def _calculate_desired_state(
-        discovered_tasks: List[Task], known_containers: List[Container]
-) -> (List[Task], List[Container]):
+        discovered_tasks: List[Task], known_containers: List[ContainerInterface]
+) -> (List[Task], List[ContainerInterface]):
     """Prepare desired state of system by comparing actual running Mesos tasks and already
     watched containers.
 
