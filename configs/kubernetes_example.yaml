@@ -18,11 +18,14 @@ runner: !DetectionRunner
   ignore_privileges_check: true
   node: !KubernetesNode
     # Fill needed path to key and certificate to access kubelet.
-    client_private_key: "/home/USER/apiserver-kubelet.client.key"
+    client_private_key: "/home/USER/apiserver-kubelet-client.key"
     client_cert: "/home/USER/apiserver-kubelet-client.crt"
+    # Currently we need to specify the agent external IP (as it does not listen on localhost).
+    kubernetes_agent_enpoint: "https://100.64.176.34:10250"
+    cgroup_driver: "cgroupfs"
   action_delay: 1.
   detector: !NOPAnomalyDetector
-  rdt_enabled: False
+  rdt_enabled: True
   metrics_storage: !LogStorage
     output_filename: metrics.logs
   anomalies_storage: !LogStorage

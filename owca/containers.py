@@ -14,7 +14,6 @@
 
 
 import logging
-import os
 import pprint
 from typing import List, Optional, Dict
 
@@ -94,9 +93,12 @@ class ContainerSet:
             self.resgroup.add_pids(pids=self.get_pids(), mongroup_name=self.name)
 
     def get_measurements(self) -> Measurements:
+        # @TODO Maybe instead of putting logic of summing metrics here we should move
+        #   them to modules: cgroup, resctrl, perf_counters?
         measurements = dict()
         try:
-            # perf counters
+            # Perf counters. Currently resulting metric for each metric type
+            #   is calculated as a sum. This may be not true in the future.
             for container in self.children.values():
                 for metric_name, metric_value in \
                         container.perf_counters.get_measurements().items():
@@ -105,21 +107,22 @@ class ContainerSet:
                     else:
                         measurements[metric_name] = metric_value
 
-            # resgroup
+            # Resgroup. Resgroup management is entirely done in this class.
             if self._rdt_enabled:
                 measurements.update(self.resgroup.get_measurements(self.children))
 
-            # cgroup
+            # Cgroup.
+            #   Currently only MetricName.CPU_USAGE_PER_TASK is supported -
+            #   other metrics are ignored.
             for cgroup, child in self.children.items():
-                cpu_usage = child.cgroup.get_measurements()
+                cpu_usage = child.cgroup.get_measurements()[MetricName.CPU_USAGE_PER_TASK]
                 if MetricName.CPU_USAGE_PER_TASK not in measurements:
                     measurements[MetricName.CPU_USAGE_PER_TASK] = cpu_usage
                 else:
                     measurements[MetricName.CPU_USAGE_PER_TASK] += cpu_usage
 
-
         except FileNotFoundError:
-            log.debug('Could not read measurements for container %s. '
+            log.debug('Could not read measurements for container (ContainerSet) %s. '
                       'Probably the mesos container has died during the current runner iteration.',
                       self.cgroup_path)
             # Returning empty measurements.

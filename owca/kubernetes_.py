@@ -46,12 +46,33 @@ class KubernetesTask:
 
 @dataclass
 class KubernetesNode(Node):
+    # @TODO change into enum
+    CGROUP_DRIVER__SYSTEMD = "systemd"
+    CGROUP_DRIVER__CGROUPFS = "cgroupfs"
+
+    # In kubernetes code (for version stable 3.13):
+    #   https://github.com/kubernetes/kubernetes/blob/v1.13.3/pkg/kubelet/cm/cgroup_manager_linux.go#L207
+    cgroup_driver: str = 'cgroupfs'
+
+    # Cgroup parent directory; default are:
+    #   for cgroup_driver=systemd kubepods.slice,
+    #   for cgroup_driver=cgroupfs kubepods.
+    # cgroup_parent_directory: str = 'kubepods'
+
+    # By default use localhost, however kubelet may not listen on it.
     kubernetes_agent_enpoint: str = 'https://127.0.0.1:10250'
+
+    # Key and certificate to access kubelet API.
     client_private_key: str = None
     client_cert: str = None
 
     METHOD = 'GET_STATE'
     pods_path = '/pods'
+
+    def __post_init(self):
+        if cgroup_driver not in (CGROUP_DRIVER__SYSTEMD, CGROUP_DRIVER__CGROUPFS):
+            # @TODO replace with not a generic Exception class.
+            raise Exception("Not supported cgroup_driver.")
 
     def get_tasks(self):
         """Returns only running tasks."""
@@ -71,7 +92,7 @@ class KubernetesNode(Node):
             if pod.get('metadata').get('namespace') == 'kube-system':
                 continue
 
-            pod_id = pod.get('metadata').get('uid').replace('-', '_')
+            pod_id = pod.get('metadata').get('uid')
             qos = pod.get('status').get('qosClass')
             if pod.get('metadata').get('labels'):
                 labels = {sanitize_label(key): value
@@ -86,7 +107,7 @@ class KubernetesNode(Node):
                 continue
             for container in container_statuses:
                 container_id = container.get('containerID').split('docker://')[1]
-                containers_cgroups.append(find_container_cgroup(pod_id, container_id, qos))
+                containers_cgroups.append(self.find_container_cgroup(pod_id, container_id, qos))
 
             tasks.append(
                 KubernetesTask(
@@ -95,29 +116,48 @@ class KubernetesNode(Node):
                     qos=qos.lower(),
                     labels=labels,
                     resources=find_resources(pod_id, qos),
-                    cgroup_path=find_pod_cgroup(pod_id, qos),
+                    cgroup_path=self.find_pod_cgroup(pod_id, qos),
                     sub_cgroup_paths=containers_cgroups))
         log.debug("Found %d kubernetes tasks (cumulatively %d cgroups leafs).",
                   len(tasks), sum([len(task.sub_cgroup_paths) for task in tasks]))
+        tasks_summary = ", ".join(["({} -> {})".format(task.task_id, task.sub_cgroup_paths)
+                                   for task in tasks])
         log.log(logger.TRACE, "Found kubernetes tasks with (pod_id, sub_cgroup_paths): %s.",
-                ", ".join(['(' + str(task.task_id) + ", " + str(task.sub_cgroup_paths) + ')' for task in tasks]))
+                tasks_summary)
         return tasks
 
 
-def find_pod_cgroup(pod_id, qos):
-    return ('/kubepods.slice/'
-            'kubepods-{qos}.slice/'
-            'kubepods-{qos}-pod{pod_id}.slice/'.format(qos=qos.lower(),
-                                                       pod_id=pod_id))
+    # @TODO replace with one function, twice the same logic.
+    def find_pod_cgroup(self, pod_id, qos):
+        if self.cgroup_driver == self.CGROUP_DRIVER__SYSTEMD:
+            pod_id = pod_id.replace('-', '_')
+            return ('/kubepods.slice/'
+                    'kubepods-{qos}.slice/'
+                    'kubepods-{qos}-pod{pod_id}.slice/'.format(qos=qos.lower(),
+                                                               pod_id=pod_id))
+        elif self.cgroup_driver == self.CGROUP_DRIVER__CGROUPFS:
+            return ('/kubepods/'
+                    '{qos}/'
+                    'pod{pod_id}/'.format(qos=qos.lower(),
+                                       pod_id=pod_id))
 
-
-def find_container_cgroup(pod_id, container_id, qos):
-    return ('/kubepods.slice/'
-            'kubepods-{qos}.slice/'
-            'kubepods-{qos}-pod{pod_id}.slice/'
-            'docker-{container_id}.scope'.format(qos=qos.lower(),
-                                                 container_id=container_id,
-                                                 pod_id=pod_id))
+    def find_container_cgroup(self, pod_id, container_id, qos):
+        if self.cgroup_driver == self.CGROUP_DRIVER__SYSTEMD:
+            pod_id = pod_id.replace('-', '_')
+            return ('/kubepods.slice/'
+                    'kubepods-{qos}.slice/'
+                    'kubepods-{qos}-pod{pod_id}.slice/'
+                    'docker-{container_id}.scope'.format(qos=qos.lower(),
+                                                         container_id=container_id,
+                                                         pod_id=pod_id))
+        elif self.cgroup_driver == self.CGROUP_DRIVER__CGROUPFS:
+            ""
+            return ('/kubepods/'
+                    '{qos}/'
+                    'pod{pod_id}/'
+                    '{container_id}'.format(qos=qos.lower(),
+                                          container_id=container_id,
+                                          pod_id=pod_id))
 
 
 def find_resources(pod_id, qos):
