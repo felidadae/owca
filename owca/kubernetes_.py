@@ -69,8 +69,8 @@ class KubernetesNode(Node):
     METHOD = 'GET_STATE'
     pods_path = '/pods'
 
-    def __post_init(self):
-        if cgroup_driver not in (CGROUP_DRIVER__SYSTEMD, CGROUP_DRIVER__CGROUPFS):
+    def __post_init__(self):
+        if self.cgroup_driver not in (self.CGROUP_DRIVER__SYSTEMD, self.CGROUP_DRIVER__CGROUPFS):
             # @TODO replace with not a generic Exception class.
             raise Exception("Not supported cgroup_driver.")
 
@@ -85,14 +85,16 @@ class KubernetesNode(Node):
         tasks = []
 
         for pod in state.get('items'):
-            # @TODO only take into consideration
-            #   running pods (all containers are in ready state)
+            container_statuses = pod.get('status').get('containerStatuses')
+            if not container_statuses:
+                continue
 
-            # Ignore Kubernetes internal pods.
+            # Ignore Kubernetes internal pods. Not even logging about it.
             if pod.get('metadata').get('namespace') == 'kube-system':
                 continue
 
             pod_id = pod.get('metadata').get('uid')
+            log.debug("Found pod with pod_id={}".format(pod_id))
             qos = pod.get('status').get('qosClass')
             if pod.get('metadata').get('labels'):
                 labels = {sanitize_label(key): value
@@ -101,13 +103,19 @@ class KubernetesNode(Node):
             else:
                 labels = {}
 
+            # Apart from obvious part of the loop it checks whether all containers are in ready state - 
+            #   if at least one is not ready then skip this pod.
             containers_cgroups = []
-            container_statuses = pod.get('status').get('containerStatuses')
-            if not container_statuses:
-                continue
+            if_all_containers_ready = True
             for container in container_statuses:
                 container_id = container.get('containerID').split('docker://')[1]
                 containers_cgroups.append(self.find_container_cgroup(pod_id, container_id, qos))
+                if container.get('ready') == False:
+                    if_all_containers_ready = False
+                    break
+            if not if_all_containers_ready:
+                log.debug('Ignore pod with pod_id={} as one or more of its containers are not ready.'.format(pod_id))
+                break  # Breaking main loop iterating through pods.
 
             tasks.append(
                 KubernetesTask(
@@ -118,6 +126,7 @@ class KubernetesNode(Node):
                     resources=find_resources(pod_id, qos),
                     cgroup_path=self.find_pod_cgroup(pod_id, qos),
                     sub_cgroup_paths=containers_cgroups))
+
         log.debug("Found %d kubernetes tasks (cumulatively %d cgroups leafs).",
                   len(tasks), sum([len(task.sub_cgroup_paths) for task in tasks]))
         tasks_summary = ", ".join(["({} -> {})".format(task.task_id, task.sub_cgroup_paths)
@@ -151,7 +160,6 @@ class KubernetesNode(Node):
                                                          container_id=container_id,
                                                          pod_id=pod_id))
         elif self.cgroup_driver == self.CGROUP_DRIVER__CGROUPFS:
-            ""
             return ('/kubepods/'
                     '{qos}/'
                     'pod{pod_id}/'
