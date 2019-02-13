@@ -111,12 +111,11 @@ class ContainerSet:
 
             # cgroup
             for cgroup, child in self.children.items():
-                cpu_usage = child.cgroup.get_measurements()
+                cpu_usage = child.cgroup.get_measurements()[MetricName.CPU_USAGE_PER_TASK]
                 if MetricName.CPU_USAGE_PER_TASK not in measurements:
                     measurements[MetricName.CPU_USAGE_PER_TASK] = cpu_usage
                 else:
                     measurements[MetricName.CPU_USAGE_PER_TASK] += cpu_usage
-
 
         except FileNotFoundError:
             log.debug('Could not read measurements for container %s. '
