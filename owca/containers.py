@@ -63,7 +63,7 @@ class ContainerSet:
         self._allocation_configuration = allocation_configuration
         self._rdt_enabled = rdt_enabled
         self._rdt_mb_control_enabled = rdt_mb_control_enabled
-        self.resgroup = resgroup
+        self._resgroup = resgroup
 
         # Create Cgroup object representing itself.
         self.cgroup = Cgroup(
@@ -77,9 +77,13 @@ class ContainerSet:
             self.children[cgroup_path] = Container(
                 cgroup_path=cgroup_path,
                 rdt_enabled=self._rdt_enabled,
+                if_manage_resgroup=False,
                 rdt_mb_control_enabled=self._rdt_mb_control_enabled,
                 platform_cpus=platform_cpus,
                 allocation_configuration=allocation_configuration)
+
+    def set_resgroup(self, resgroup: ResGroup):
+        self._resgroup = resgroup
 
     def get_pids(self) -> List[str]:
         all_pids = []
@@ -90,7 +94,7 @@ class ContainerSet:
     def sync(self):
         """Called every run iteration to keep pids of cgroup and resctrl in sync."""
         if self._rdt_enabled:
-            self.resgroup.add_pids(pids=self.get_pids(), mongroup_name=self.name)
+            self._resgroup.add_pids(pids=self.get_pids(), mongroup_name=self.name)
 
     def get_measurements(self) -> Measurements:
         # @TODO Maybe instead of putting logic of summing metrics here we should move
@@ -109,7 +113,7 @@ class ContainerSet:
 
             # Resgroup. Resgroup management is entirely done in this class.
             if self._rdt_enabled:
-                measurements.update(self.resgroup.get_measurements(self.children))
+                measurements.update(self._resgroup.get_measurements(self.name))
 
             # Cgroup.
             #   Currently only MetricName.CPU_USAGE_PER_TASK is supported -
@@ -133,7 +137,7 @@ class ContainerSet:
         for container in self.children.values():
             container.cleanup()
         if self._rdt_enabled:
-            self.resgroup.remove(self.name)
+            self._resgroup.remove(self.name)
 
     def get_allocations(self) -> TaskAllocations:
         # In only detect mode, without allocation configuration return nothing.
@@ -142,16 +146,16 @@ class ContainerSet:
         allocations: TaskAllocations = dict()
         allocations.update(self.cgroup.get_allocations())
         if self._rdt_enabled:
-            allocations.update(self.resgroup.get_allocations())
+            allocations.update(self._resgroup.get_allocations())
 
         log.debug('allocations on task=%r from resgroup=%r allocations:\n%s',
-                  self.name, self.resgroup, pprint.pformat(allocations))
+                  self.name, self._resgroup, pprint.pformat(allocations))
 
         return allocations
 
     def __repr__(self):
         return "ContainerSet(cgroup_path={}, resgroup={})".format(
-            self.cgroup_path, self.resgroup)
+            self.cgroup_path, self._resgroup)
 
     def __hash__(self):
         return hash(str(self.cgroup_path))
@@ -159,16 +163,28 @@ class ContainerSet:
 
 class Container:
     def __init__(self, cgroup_path: str, platform_cpus: int, resgroup: ResGroup = None,
+                 if_manage_resgroup: bool = True,
                  allocation_configuration: Optional[AllocationConfiguration] = None,
                  rdt_enabled: bool = True, rdt_mb_control_enabled: bool = False,
                  container_name=None):
+        """
+        if_manage_resgroup: bool -
+            if false do not call any methods on resgroup object;
+            if True assert that self.resgroup is not None and manage
+            the lifecycle of the resgroup object
+        """
         self.cgroup_path = cgroup_path
-        self.container_name = (container_name or
-                               _convert_cgroup_path_to_resgroup_name(self.cgroup_path))
+        self.name = (container_name or
+                     _convert_cgroup_path_to_resgroup_name(self.cgroup_path))
         self._allocation_configuration = allocation_configuration
         self._rdt_enabled = rdt_enabled
         self._rdt_mb_control_enabled = rdt_mb_control_enabled
-        self.resgroup = resgroup
+        self._resgroup = resgroup
+        self._if_manage_resgroup = if_manage_resgroup
+
+        # Assert that implication is true:
+        #   self.if_manage_resgroup ==> self.resgroup is not None
+        assert (not self._if_manage_resgroup or self._resgroup is not None)
 
         self.cgroup = Cgroup(
             cgroup_path=self.cgroup_path,
@@ -176,19 +192,23 @@ class Container:
             allocation_configuration=allocation_configuration)
         self.perf_counters = PerfCounters(self.cgroup_path, event_names=DEFAULT_EVENTS)
 
+    def set_resgroup(self, resgroup: ResGroup):
+        self._resgroup = resgroup
+        assert (not self._if_manage_resgroup or self._resgroup is not None)
+
     def get_pids(self):
         return self.cgroup.get_pids()
 
     def sync(self):
         """Called every run iteration to keep pids of cgroup and resctrl in sync."""
-        if self._rdt_enabled:
-            self.resgroup.add_pids(self.cgroup.get_pids(), mongroup_name=self.container_name)
+        if self._rdt_enabled and self._if_manage_resgroup:
+            self._resgroup.add_pids(self.cgroup.get_pids(), mongroup_name=self.name)
 
     def get_measurements(self) -> Measurements:
         try:
             return flatten_measurements([
                 self.cgroup.get_measurements(),
-                self.resgroup.get_measurements(self.container_name) if self._rdt_enabled else {},
+                self._resgroup.get_measurements(self.name) if self._rdt_enabled and self._if_manage_resgroup else {},
                 self.perf_counters.get_measurements(),
             ])
         except FileNotFoundError:
@@ -200,8 +220,8 @@ class Container:
 
     def cleanup(self):
         self.perf_counters.cleanup()
-        if self._rdt_enabled:
-            self.resgroup.remove(self.container_name)
+        if self._rdt_enabled and self._if_manage_resgroup:
+            self._resgroup.remove(self.name)
 
     def get_allocations(self) -> TaskAllocations:
         # In only detect mode, without allocation configuration return nothing.
@@ -209,11 +229,11 @@ class Container:
             return {}
         allocations: TaskAllocations = dict()
         allocations.update(self.cgroup.get_allocations())
-        if self._rdt_enabled:
-            allocations.update(self.resgroup.get_allocations())
+        if self._rdt_enabled and self._if_manage_resgroup:
+            allocations.update(self._resgroup.get_allocations())
 
         log.debug('allocations on task=%r from resgroup=%r allocations:\n%s',
-                  self.container_name, self.resgroup, pprint.pformat(allocations))
+                  self.name, self._resgroup, pprint.pformat(allocations))
 
         return allocations
 
@@ -319,16 +339,15 @@ class ContainerManager:
         # Note: only the pids are synchronized, not the allocations.
         for container in self.containers.values():
             if self.rdt_enabled:
-                if container.container_name in container_name_to_resgroup_name:
-                    container.resgroup = ResGroup(
-                        name=container_name_to_resgroup_name[container.container_name],
-                        rdt_mb_control_enabled=self.rdt_mb_control_enabled)
+                if container.name in container_name_to_resgroup_name:
+                    container.set_resgroup(ResGroup(
+                        name=container_name_to_resgroup_name[container.name],
+                        rdt_mb_control_enabled=self.rdt_mb_control_enabled))
                 else:
                     # Every newly detected containers is first assigne to root group.
-                    container.resgroup = ResGroup(
+                    container.set_resgroup(ResGroup(
                         name='',
-                        rdt_mb_control_enabled=self.rdt_mb_control_enabled
-                    )
+                        rdt_mb_control_enabled=self.rdt_mb_control_enabled))
             container.sync()
 
         return self.containers
