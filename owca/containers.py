@@ -222,7 +222,7 @@ class Container(ContainerInterface):
 
         # Assert that implication is true:
         #   self.if_manage_resgroup ==> self.resgroup is not None
-        assert (not self._if_manage_resgroup or self._resgroup is not None)
+        #assert (not self._if_manage_resgroup or self._resgroup is not None)
 
         self.cgroup = Cgroup(
             cgroup_path=self.cgroup_path,

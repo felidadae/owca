@@ -34,8 +34,6 @@ SCALING_RATE_WARNING_THRESHOLD = 1.50
 
 
 def _get_cpu_model() -> pc.CPUModel:
-    # @TODO fast fix to not run as root user
-    return pc.CPUModel.UNKNOWN
     with SetEffectiveRootUid():
         with open("/dev/cpu/0/cpuid", "rb") as f:
             b = f.read(32)
