@@ -123,7 +123,7 @@ def container(cgroup_path, resgroup_name=None, with_config=False):
     """Helper method to create container with patched subsystems."""
     with patch('owca.containers.ResGroup'), patch('owca.containers.PerfCounters'):
         return Container(
-            cgroup_path,
+            cgroup_path=cgroup_path,
             rdt_enabled=False, platform_cpus=1,
             allocation_configuration=AllocationConfiguration() if with_config else None,
             resgroup=ResGroup(name=resgroup_name) if resgroup_name is not None else None

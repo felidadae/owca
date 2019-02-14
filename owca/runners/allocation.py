@@ -69,9 +69,9 @@ class TasksAllocationsValues(AllocationsDict):
         def rdt_allocation_value_constructor(rdt_allocation: RDTAllocation, container,
                                              common_labels):
             return RDTAllocationValue(
-                container.container_name,
+                container.get_name(),
                 rdt_allocation,
-                container.resgroup,
+                container.get_resgroup(),
                 container.cgroup.get_pids,
                 platform.sockets,
                 platform.rdt_mb_control_enabled,
@@ -94,7 +94,7 @@ class TasksAllocationsValues(AllocationsDict):
                 raise InvalidAllocations('invalid task id %r' % task_id)
             else:
                 container = task_id_to_containers[task_id]
-                this_container_labels = dict(container_name=container.container_name, task=task_id)
+                this_container_labels = dict(container_name=container.get_name(), task=task_id)
                 allocation_value = TaskAllocationsValues.create(
                     task_allocations, container, registry, this_container_labels)
                 allocation_value.validate()

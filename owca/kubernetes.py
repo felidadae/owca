@@ -41,7 +41,7 @@ class KubernetesTask:
 
     def __hash__(self):
         """Every instance of kubernetes task is uniqully identified by pod cgroup_path."""
-        return id(self.task_id)
+        return hash(self.task_id)
 
 
 @dataclass
@@ -71,7 +71,7 @@ class KubernetesNode(Node):
 
     def __post_init__(self):
         if self.cgroup_driver not in (self.CGROUP_DRIVER__SYSTEMD, self.CGROUP_DRIVER__CGROUPFS):
-            # @TODO replace with not a generic Exception class.
+            # No to be catch exception (error while parsing YAML config file).
             raise Exception("Not supported cgroup_driver.")
 
     def get_tasks(self):

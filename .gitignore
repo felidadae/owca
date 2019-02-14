@@ -24,3 +24,6 @@ config-*.sh
 /workloads/specjbb/specjbb
 run_workloads.retry
 .pex-build
+tags
+.ycm_extra_conf.py
+mappings.vim
