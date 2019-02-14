@@ -27,8 +27,9 @@ from owca import storage
 from owca.containers import Container
 from owca.detectors import (TasksMeasurements, TasksResources,
                             TasksLabels, convert_anomalies_to_metrics)
-from owca.mesos import MesosTask, create_metrics, sanitize_mesos_label
+from owca.mesos import create_metrics, sanitize_mesos_label
 from owca.metrics import Metric, MetricType
+from owca.nodes import Task
 from owca.resctrl import check_resctrl, cleanup_resctrl
 from owca.security import are_privileges_sufficient
 
@@ -36,8 +37,8 @@ log = logging.getLogger(__name__)
 
 
 def _calculate_desired_state(
-        discovered_tasks: List[MesosTask], known_containers: List[Container]
-) -> (List[MesosTask], List[Container]):
+        discovered_tasks: List[Task], known_containers: List[Container]
+) -> (List[Task], List[Container]):
     """Prepare desired state of system by comparing actual running Mesos tasks and already
     watched containers.
 
@@ -87,7 +88,7 @@ class DetectionRunner(Runner):
     extra_labels: Dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self):
-        self.containers: Dict[MesosTask, Container] = {}
+        self.containers: Dict[Task, Container] = {}
         self.anomaly_counter: int = 0
         self.anomaly_last_occurence: Optional[int] = None
 

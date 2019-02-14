@@ -13,18 +13,16 @@
 # limitations under the License.
 
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Union
-import urllib.parse
 import logging
 import os
+import urllib.parse
+from typing import List, Union
 
 import requests
+from dataclasses import dataclass
 
-# Mesos tasks id
-from owca.nodes import Node, TaskId
 from owca.metrics import Measurements, Metric
-
+from owca.nodes import Node, Task
 
 MESOS_TASK_STATE_RUNNING = 'TASK_RUNNING'
 CGROUP_DEFAULT_SUBSYSTEM = 'cpu'
@@ -33,30 +31,18 @@ log = logging.getLogger(__name__)
 
 
 @dataclass
-class MesosTask:  # implements nodes.Task but abstractclasses cannot be implemented by dataclasses
+class MesosTask(Task):
 
-    name: str
-
+    # Fields only used debugging purposes.
     executor_pid: int
     container_id: str  # Mesos containerizer identifier "ID used to uniquely identify a container"
-    task_id: TaskId  # Mesos-level task identifier
-
-    # for debugging purposes
     executor_id: str
     agent_id: str
 
-    # inferred
-    cgroup_path: str  # Starts with leading "/"
-    labels: Dict[str, str] = field(default_factory=dict)
-
-    # Resources assigned accorind Mesos/Aurora task definition.
-    resources: Dict[str, float] = field(default_factory=dict)
-
     def __hash__(self):
-        """Every instance of mesos task is uniqully identified by cgroup_path.
-        Assumption here is that every mesos task is represented by one main cgroup.
+        """Reuse __hash__ method from base class, because dataclasses by default
         """
-        return id(self.cgroup_path)
+        return super().__hash__()
 
 
 def find_cgroup(pid):
@@ -75,7 +61,6 @@ def find_cgroup(pid):
 
 @dataclass
 class MesosNode(Node):
-
     mesos_agent_endpoint: str = 'https://127.0.0.1:5051'
     ssl_verify: Union[bool, str] = True  # requests: Can be used to pass cert CA bundle.
 

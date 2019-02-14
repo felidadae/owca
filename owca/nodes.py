@@ -13,35 +13,34 @@
 # limitations under the License.
 
 
-from abc import ABC, abstractproperty, abstractmethod
+from abc import ABC, abstractmethod
 from typing import List, Dict
+
+from dataclasses import dataclass
 
 TaskId = str
 
 
-class Task(ABC):
-    """Base task container based class."""
+@dataclass
+class Task:
+    # Human-friendly name of task
+    name: str
 
-    @abstractproperty
-    def name(self) -> str:
-        """Human-friendly name of task."""
+    # Orchestration-level task identifier
+    task_id: TaskId
 
-    @abstractproperty
-    def task_id(self) -> TaskId:
-        """Orchestration-level task identifier."""
+    # Path to cgroup that all processes reside in. Starts with leading "/".
+    cgroup_path: str
 
-    @abstractproperty
-    def cgroup_path(self) -> str:
-        """Path to cgroup that all processes reside in.
-           Starts with leading "/"."""
+    # Task metadata expressed as labels.
+    labels: Dict[str, str]
 
-    @abstractproperty
-    def labels(self) -> Dict[str, str]:
-        """Task metadata expressed as labels."""
+    # Initial resources assigned at orchestation level.
+    resources: Dict[str, str]
 
-    @abstractproperty
-    def resources(self) -> Dict[str, str]:
-        """Initial resources assigned accorind task definition. """
+    def __hash__(self):
+        """Every instance of task is uniqully identified by cgroup_path."""
+        return hash(self.cgroup_path)
 
 
 class Node(ABC):

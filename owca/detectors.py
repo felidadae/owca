@@ -21,7 +21,7 @@ from enum import Enum
 from typing import List, Dict
 
 from owca.metrics import Metric, Measurements, MetricType
-from owca.mesos import TaskId
+from owca.nodes import TaskId
 from owca.platforms import Platform
 
 

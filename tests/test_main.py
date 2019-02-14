@@ -103,6 +103,8 @@ mesos_tasks_mocks = [
         agent_id='some_mesos_agent_id',
         executor_id='some_mesos_executor_id',
         cgroup_path='/mesos/xxxx-yyy',
+        labels=dict(),
+        resources=dict()
     )
 ]
 

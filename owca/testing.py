@@ -20,7 +20,7 @@ from typing import List, Dict, Union
 from unittest.mock import mock_open, Mock
 
 from owca.detectors import ContendedResource, ContentionAnomaly, _create_uuid_from_tasks_ids
-from owca.mesos import MesosTask, TaskId
+from owca.nodes import TaskId, Task
 from owca.metrics import Metric, MetricType
 
 
@@ -98,14 +98,10 @@ def anomaly(contended_task_id: TaskId, contending_task_ids: List[TaskId],
 
 def task(cgroup_path, labels=None, resources=None):
     """Helper method to create task with default values."""
-    return MesosTask(
+    return Task(
         cgroup_path=cgroup_path,
         name='name-' + cgroup_path,
-        executor_pid=1,
-        container_id='container_id-' + cgroup_path,
         task_id='task-id-' + cgroup_path,
-        executor_id='executor-id-' + cgroup_path,
-        agent_id='agent-id-' + cgroup_path,
         labels=labels or dict(),
         resources=resources or dict()
     )
