@@ -31,5 +31,5 @@ RUN yum install -y epel-release
 RUN yum makecache
 RUN yum install -y python36
 RUN useradd -M stress-ng
-ADD /dist/wrapper.pex /wrapper.pex
+ADD /dist/stress_ng_wrapper.pex /usr/bin/stress_ng_wrapper.pex
 COPY --from=stress-ng /stress-ng-0.09.28/stress-ng /usr/bin/stress-ng

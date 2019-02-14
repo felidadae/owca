@@ -1,27 +1,27 @@
 - name: default rule for all
   allocations:
-    cpu_shares: 0
-    cpu_quota: .7
-    rdt:
-        name: 
-        l3: 'L3:0=00fff;1=0ffff'
-
-- name: first task with label0
-  labels:
-    job_uniq_id: '[01]'
-  allocations:
-    # cpu_shares: 0.5
-    cpu_quota: 0.3
+    cpu_shares: 10
+    cpu_quota: 1.0
     rdt:
         name: 'be'
-        l3: 'L3:0=0ffff;1=0ffff'
-#
-- name: 1-9 tasks
-  labels:
-    job_uniq_id: '[23456789]'
-  allocations:
-    # cpu_shares: 0.1
-    cpu_quota: 1.
-    rdt:
-        name: 'onetoten'
-        l3: 'L3:0=00001;1=00001'
+        l3: 'L3:0=00fff;1=0ffff'
+
+# - name: first task with label0
+#   labels:
+#     job_uniq_id: '[01]'
+#   allocations:
+#     # cpu_shares: 0.5
+#     cpu_quota: 0.3
+#     rdt:
+#         name: 'be'
+#         l3: 'L3:0=0ffff;1=0ffff'
+# #
+# - name: 1-9 tasks
+#   labels:
+#     job_uniq_id: '[23456789]'
+#   allocations:
+#     # cpu_shares: 0.1
+#     cpu_quota: 1.
+#     rdt:
+#         name: 'onetoten'
+#         l3: 'L3:0=00001;1=00001'

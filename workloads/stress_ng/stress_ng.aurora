@@ -22,22 +22,39 @@ include('../common.aurora')
 # Params which can be modified by exporting environment variables.
 ###
 
-# Port that stressed application listens on.
-stress_ng_params = os.environ.get('stress_ng_params', '--stream 1')
+timeout = int(os.environ.get('timeout') or 30)
+stressor = os.environ.get('stressor') or 'stream'
+number_workers = int(os.environ.get('number_workers') or 1)
 #----------------------------------------------------------------------------------------------------
 
+stress_ng_cmd='"while true; do stress-ng --%s=%d --timeout=%d --metrics --metrics-brief -Y /dev/stdout; done"'%(
+    stressor, number_workers, timeout
+)
 
 jobs = [
-    WorkloadService(
-        task=SequentialTask(
-            name=job_name,
-            resources=Resources(cpu=cpu, ram=ram, disk=disk),
-            processes=[
-                Process(
-                    name='redis',
-                    cmdline='stress-ng %s' % stress_ng_params
-                ),
-            ],
-        ),
-    ),
+  WorkloadService(
+    task=SequentialTask(
+      name=job_name,
+      resources=Resources(cpu=cpu, ram=ram, disk=disk),
+      processes=[
+        Process(
+          name='stress_ng_run',
+          cmdline="/usr/bin/stress_ng_wrapper.pex --command '{stress_ng_cmd}' "
+              "--metric_name_prefix {metric_name_prefix} "
+              "--stderr 1 --kafka_brokers '{kafka_brokers}' --kafka_topic {kafka_topic} "
+              "--log_level {log_level} "
+              "--subprocess_shell "
+              "--labels \"{labels}\"".format(
+                  stress_ng_cmd=stress_ng_cmd,
+                  application=application,
+                  metric_name_prefix=application + "_",
+                  kafka_brokers=wrapper_kafka_brokers,
+                  kafka_topic=wrapper_kafka_topic,
+                  log_level=wrapper_log_level,
+                  labels=wrapper_labels,
+              )
+        )
+      ]
+    )
+  )
 ]

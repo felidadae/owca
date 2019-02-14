@@ -23,8 +23,11 @@ runner: !AllocationRunner
     output_filename: metrics.logs
   anomalies_storage: !LogStorage
     output_filename: anomalies.logs
-  allocations_storage: !LogStorage
-    output_filename: allocations.logs
+  allocations_storage: !KafkaStorage
+    brokers_ips:
+      - '100.64.176.12:9092'
+    topic: "owca_allocations"
+    max_timeout_in_seconds: 5.
   allocator: !StaticAllocator
     config: /home/ppalucki/owca/example/static_alloc_config.yaml
   rdt_enabled: true

@@ -144,7 +144,7 @@ def allocation_metric(allocation_type, value, **labels):
         labels = dict(allocation_type=allocation_type, **(labels or dict()))
 
     return Metric(
-        name=name,
+        name='%s_%s' % (name, allocation_type),
         type=MetricType.GAUGE,
         value=value,
         labels=labels

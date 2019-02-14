@@ -25,10 +25,7 @@ import sys
 import time
 from typing import List, Tuple, Dict
 
-try:
-    import confluent_kafka
-except ImportError:
-    confluent_kafka = None
+import confluent_kafka
 from dataclasses import dataclass, field
 
 from owca import logger
@@ -47,6 +44,7 @@ class Storage(abc.ABC):
 
 @dataclass
 class LogStorage(Storage):
+
     output_filename: str = None  # Defaults to stderr.
 
     def __post_init__(self):

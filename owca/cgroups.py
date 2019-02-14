@@ -38,7 +38,7 @@ class Cgroup:
     cgroup_path: str
 
     # Values used for normlization of allocations
-    platform_cpus: int  # required for quota normalization
+    platform_cpus: int = None  # required for quota normalization (None by default until others PRs)
     allocation_configuration: Optional[AllocationConfiguration] = None
 
     def __post_init__(self):

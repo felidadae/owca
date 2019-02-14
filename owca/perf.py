@@ -20,6 +20,7 @@ import struct
 from typing import List, Dict, BinaryIO, Iterable
 
 from owca import perf_const as pc
+from owca import logger
 from owca.metrics import Measurements, MetricName
 from owca.security import SetEffectiveRootUid
 
@@ -38,7 +39,8 @@ def _get_cpu_model() -> pc.CPUModel:
         with open("/dev/cpu/0/cpuid", "rb") as f:
             b = f.read(32)
             eax = int(b[16]) + (int(b[17]) << 8) + (int(b[18]) << 16) + (int(b[19]) << 24)
-            log.log(logging.TRACE, '16,17,18,19 bytes from /dev/cpu/0/cpuoid: %b %b %b %b', b[16], b[17], b[18], b[19])
+            log.log(logger.TRACE, '16,17,18,19th bytes from /dev/cpu/0/cpuoid: %b %b %b %b',
+                    b[16], b[17], b[18], b[19])
             model = (eax >> 4) & 0xF
             family = (eax >> 8) & 0xF
             extended_model = (eax >> 16) & 0xF

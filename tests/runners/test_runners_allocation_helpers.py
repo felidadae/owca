@@ -21,7 +21,6 @@ from owca.allocations import InvalidAllocations
 from owca.allocators import AllocationType, RDTAllocation
 from owca.cgroups import Cgroup
 from owca.containers import Container
-from owca.metrics import Metric, MetricType
 from owca.resctrl import ResGroup
 from owca.resctrl_allocations import RDTGroups, RDTAllocationValue
 from owca.runners.allocation import TasksAllocationsValues, TaskAllocationsValues
@@ -35,10 +34,8 @@ platform_mock = Mock(
 @pytest.mark.parametrize('tasks_allocations,expected_metrics', (
         ({}, []),
         ({'t1_task_id': {AllocationType.SHARES: 0.5}}, [
-            Metric(name='allocation', value=0.5,
-                   type=MetricType.GAUGE,
-                   labels={'allocation_type': 'cpu_shares', 'container_name': 't1',
-                           'task': 't1_task_id'})
+            allocation_metric('cpu_shares', value=0.5,
+                              container_name='t1', task='t1_task_id')
         ]),
         ({'t1_task_id': {AllocationType.RDT: RDTAllocation(mb='mb:0=20')}}, [
             allocation_metric('rdt_mb', 20, group_name='t1', domain_id='0', container_name='t1',
@@ -46,12 +43,7 @@ platform_mock = Mock(
         ]),
         ({'t1_task_id': {AllocationType.SHARES: 0.5,
                          AllocationType.RDT: RDTAllocation(mb='mb:0=20')}}, [
-             Metric(
-                 name='allocation', value=0.5,
-                 type=MetricType.GAUGE,
-                 labels={'allocation_type': AllocationType.SHARES, 'container_name': 't1',
-                         'task': 't1_task_id'}
-             ),
+             allocation_metric('cpu_shares', value=0.5, container_name='t1', task='t1_task_id'),
              allocation_metric('rdt_mb', 20, group_name='t1', domain_id='0', container_name='t1',
                                task='t1_task_id')
          ]),
@@ -63,20 +55,10 @@ platform_mock = Mock(
                  AllocationType.RDT: RDTAllocation(name='b', l3='L3:0=f'),
              }
          }, [
-             Metric(
-                 name='allocation', value=0.5,
-                 type=MetricType.GAUGE,
-                 labels={'allocation_type': AllocationType.SHARES, 'container_name': 't1',
-                         'task': 't1_task_id'}
-             ),
+             allocation_metric('cpu_shares', value=0.5, container_name='t1', task='t1_task_id'),
              allocation_metric('rdt_mb', 30, group_name='t1', domain_id='0', container_name='t1',
                                task='t1_task_id'),
-             Metric(
-                 name='allocation', value=0.6,
-                 type=MetricType.GAUGE,
-                 labels={'allocation_type': AllocationType.QUOTA, 'container_name': 't2',
-                         'task': 't2_task_id'}
-             ),
+             allocation_metric('cpu_quota', value=0.6, container_name='t2', task='t2_task_id'),
              allocation_metric('rdt_l3_cache_ways', 4, group_name='b',
                                domain_id='0', container_name='t2', task='t2_task_id'),
              allocation_metric('rdt_l3_mask', 15, group_name='b',

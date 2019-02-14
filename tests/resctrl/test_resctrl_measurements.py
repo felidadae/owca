@@ -43,13 +43,13 @@ def test_resgroup_add_tasks(*args):
 
         tasks_mock.assert_called_once_with(
             '/sys/fs/resctrl/best_efforts/tasks', 'w')
-        tasks_mock.assert_has_calls([call().__enter__().write('123')])
-        tasks_mock.assert_has_calls([call().__enter__().write('124')])
+        tasks_mock.assert_has_calls([call().write('123')])
+        tasks_mock.assert_has_calls([call().write('124')])
 
         mongroup_tasks_mock.assert_called_once_with(
             '/sys/fs/resctrl/best_efforts/mon_groups/task_id/tasks', 'w')
-        mongroup_tasks_mock.assert_has_calls([call().__enter__().write('123')])
-        mongroup_tasks_mock.assert_has_calls([call().__enter__().write('124')])
+        mongroup_tasks_mock.assert_has_calls([call().write('123')])
+        mongroup_tasks_mock.assert_has_calls([call().write('124')])
 
 
 @patch('owca.resctrl.log.warning')

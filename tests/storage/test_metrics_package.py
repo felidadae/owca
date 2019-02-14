@@ -16,17 +16,16 @@
 from unittest.mock import Mock
 
 from owca.storage import MetricPackage, Storage
-from owca.metrics import Metric
+from owca.testing import metric
 
 
 def test_metrics_package():
-    m1 = Metric(name='average_latency_miliseconds', value=8)
+    m1 = metric('average_latency_miliseconds')
     storage = Mock(spec=Storage)
     mp = MetricPackage(storage)
     mp.add_metrics([m1])
     mp.send(dict(foo='label_val'))
     assert storage.store.call_count == 1
-    storage.store.assert_called_once_with(
-        [Metric(name='average_latency_miliseconds', value=8,
-                labels={'foo': 'label_val'}, type=None, help=None)]
-    )
+    assert storage.store.call_args_list[0][0][0] == [
+        metric('average_latency_miliseconds', labels=dict(foo='label_val'))
+    ]

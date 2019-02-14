@@ -28,6 +28,7 @@ class QuotaAllocationValue(BoxedNumeric):
         metrics = super().generate_metrics()
         for metric in metrics:
             metric.labels.update(allocation_type=AllocationType.QUOTA)
+            metric.name = 'allocation_%s' % AllocationType.QUOTA.value
         return metrics
 
     def perform_allocations(self):
@@ -45,6 +46,7 @@ class SharesAllocationValue(BoxedNumeric):
         metrics = super().generate_metrics()
         for metric in metrics:
             metric.labels.update(allocation_type=AllocationType.SHARES)
+            metric.name = 'allocation_%s' % AllocationType.SHARES.value
         return metrics
 
     def perform_allocations(self):

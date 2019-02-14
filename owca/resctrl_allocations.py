@@ -113,7 +113,7 @@ class RDTAllocationValue(AllocationValue):
             for domain_id, raw_value in domains.items():
                 metrics.extend([
                     Metric(
-                        name='allocation', value=_count_enabled_bits(raw_value),
+                        name='allocation_rdt_l3_cache_ways', value=_count_enabled_bits(raw_value),
                         type=MetricType.GAUGE, labels=dict(
                             allocation_type='rdt_l3_cache_ways',
                             group_name=group_name,
@@ -122,7 +122,7 @@ class RDTAllocationValue(AllocationValue):
                         )
                     ),
                     Metric(
-                        name='allocation', value=int(raw_value, 16),
+                        name='allocation_rdt_l3_mask', value=int(raw_value, 16),
                         type=MetricType.GAUGE, labels=dict(
                             allocation_type='rdt_l3_mask', group_name=group_name,
                             domain_id=domain_id,
@@ -138,7 +138,7 @@ class RDTAllocationValue(AllocationValue):
                 value = int(raw_value)
                 metrics.append(
                     Metric(
-                        name='allocation', value=value, type=MetricType.GAUGE,
+                        name='allocation_rdt_mb', value=value, type=MetricType.GAUGE,
                         labels=dict(allocation_type='rdt_mb',
                                     group_name=group_name, domain_id=domain_id,
                                     container_name=self.container_name,

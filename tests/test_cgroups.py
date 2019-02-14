@@ -19,7 +19,9 @@ import pytest
 from owca.metrics import MetricName
 from owca.allocators import AllocationConfiguration
 from owca.cgroups import Cgroup
-from owca.testing import create_open_mock
+from owca.cgroup_allocations import QuotaAllocationValue, SharesAllocationValue
+from owca.containers import Container
+from owca.testing import create_open_mock, allocation_metric
 
 
 @patch('builtins.open', mock_open(read_data='100'))
@@ -117,3 +119,28 @@ def test_set_normalized_quota(normalized_quota, cpu_quota_period, platforms_cpu,
             write_mock.assert_has_calls([call('cpu.cfs_quota_us', expected_quota_write)])
             if expected_period_write:
                 write_mock.assert_has_calls([call('cpu.cfs_period_us', expected_period_write)])
+
+
+@patch('owca.containers.PerfCounters')
+@patch('owca.containers.Cgroup')
+def test_cgroup_allocations(Cgroup_mock, PerfCounters_mock):
+    foo_container = Container('/somepath', platform_cpus=1)
+    foo_container.cgroup.allocation_configuration = AllocationConfiguration()
+
+    quota_allocation_value = QuotaAllocationValue(0.2, foo_container, dict(foo='bar'))
+    quota_allocation_value.perform_allocations()
+    assert quota_allocation_value.generate_metrics() == [
+        allocation_metric('cpu_quota', 0.2, foo='bar')
+    ]
+
+    shares_allocation_value = SharesAllocationValue(0.5, foo_container, dict(foo='bar'))
+    shares_allocation_value.perform_allocations()
+
+    assert shares_allocation_value.generate_metrics() == [
+        allocation_metric('cpu_shares', 0.5, foo='bar')
+    ]
+
+    Cgroup_mock.assert_has_calls([
+        call().set_normalized_quota(0.2),
+        call().set_normalized_shares(0.5)
+    ])

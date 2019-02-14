@@ -357,6 +357,7 @@
       command: "{{create_job_command}}"
       loop: "{{instances_version_iterator}}"
 
+
     - name: Create stress_ng workload
       vars:
         workload_name: stress_ng
@@ -368,7 +369,11 @@
         own_ip: "{{application_host_ip}}"
         communication_port: 0
         resources: "{{workload_version.resources | default(default_resources)}}"
-      environment: "{{workload_version.env | default({}) }}"
+        image_subname: stress_ng
+      environment:
+        timeout: "{{workload_version.timeout}}"
+        stressor: "{{workload_version.stressor}}"
+        number_workers: "{{workload_version.number_workers}}"
       delegate_to: localhost
       tags: stress_ng
       command: "{{create_job_command}}"

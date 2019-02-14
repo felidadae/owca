@@ -18,7 +18,7 @@ import pytest
 
 from owca.resctrl import check_resctrl, get_max_rdt_values, read_mon_groups_relation, \
     clean_taskless_groups
-from owca.resctrl_allocations import _parse_schemata_file_row, _count_enabled_bits, check_cbm_bits
+from owca.resctrl_allocations import check_cbm_bits
 from owca.testing import create_open_mock
 
 
@@ -102,48 +102,8 @@ def test_get_max_rdt_values(cbm_mask, platform_sockets, expected_max_rdt_l3, exp
     assert got_max_rdt_mb == expected_max_rdt_mb
 
 
-@pytest.mark.parametrize(
-    'mask, cbm_mask, min_cbm_bits, expected_error_message', (
-            ('f0f', 'ffff', '1', 'without a gap'),
-            ('0', 'ffff', '1', 'minimum'),
-            ('ffffff', 'ffff', 'bigger', ''),
-    )
-)
-def test_check_cbm_bits_gap(mask: str, cbm_mask: str, min_cbm_bits: str,
-                            expected_error_message: str):
-    with pytest.raises(ValueError, match=expected_error_message):
-        check_cbm_bits(mask, cbm_mask, min_cbm_bits)
-
-
 def test_check_cbm_bits_valid():
     check_cbm_bits('ff00', 'ffff', '1')
-
-
-@pytest.mark.parametrize('line,expected_domains', (
-        ('', {}),
-        ('x=2', {'x': '2'}),
-        ('x=2;y=3', {'x': '2', 'y': '3'}),
-        ('foo=bar', {'foo': 'bar'}),
-        ('mb:1=20;2=50', {'1': '20', '2': '50'}),
-        ('mb:xxx=20mbs;2=50b', {'xxx': '20mbs', '2': '50b'}),
-        ('l3:0=20;1=30', {'1': '30', '0': '20'}),
-))
-def test_parse_schemata_file_row(line, expected_domains):
-    got_domains = _parse_schemata_file_row(line)
-    assert got_domains == expected_domains
-
-
-@pytest.mark.parametrize('invalid_line,expected_message', (
-        ('x=', 'value cannot be empty'),
-        ('x=2;x=3', 'Conflicting domain id found!'),
-        ('=2', 'domain_id cannot be empty!'),
-        ('2', 'Value separator is missing "="!'),
-        (';', 'domain cannot be empty'),
-        ('xxx', 'Value separator is missing "="!'),
-))
-def test_parse_invalid_schemata_file_domains(invalid_line, expected_message):
-    with pytest.raises(ValueError, match=expected_message):
-        _parse_schemata_file_row(invalid_line)
 
 
 @patch('os.path.isdir', side_effect=lambda path: path in {
@@ -183,20 +143,3 @@ def test_clean_tasksless_resctrl_groups(rmdir_mock):
         call('/sys/fs/resctrl/empty'),
         call('/sys/fs/resctrl/half_empty/mon_groups/c6')
     ])
-
-
-@pytest.mark.parametrize('hexstr,expected_bits_count', (
-        ('', 0),
-        ('1', 1),
-        ('2', 1),
-        ('3', 2),
-        ('f', 4),
-        ('f0', 4),
-        ('0f0', 4),
-        ('ff0', 8),
-        ('f1f', 9),
-        ('fffff', 20),
-))
-def test_count_enabled_bits(hexstr, expected_bits_count):
-    got_bits_count = _count_enabled_bits(hexstr)
-    assert got_bits_count == expected_bits_count

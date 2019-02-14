@@ -64,16 +64,57 @@ class ResGroup:
         return pids
 
     def _add_pids_to_tasks_file(self, pids, tasks_filepath):
+        """Writes pids to task file.
+
+        This function is susceptible to races caused by writing the pids,
+        happens after the while there were read - causing an errors like: ProcessLookupError
+
+        Error handling is based on cases available in:
+        https://github.com/torvalds/linux/blob/v4.20/arch/x86/kernel/cpu/intel_rdt_rdtgroup.c#L676
+        and are mapped to python exceptions
+        https://github.com/python/cpython/blob/v3.6.8/Objects/exceptions.c#L2658
+
+        ESRCH -> ProcessLookupError
+        ENOENT -> FileNotFoundError
+
+        Important note: any writing/flushing error is going the reappear during closing,
+            that is why it is again wrapped by try:except becuase close()
+        """
+        if not pids:
+            return
+
         log.log(logger.TRACE, 'resctrl: write(%s): number_of_pids=%r', tasks_filepath, len(pids))
-        with open(tasks_filepath, 'w') as ftasks:
+        try:
+            ftasks = open(tasks_filepath, 'w')
             with SetEffectiveRootUid():
                 for pid in pids:
-                    try:
-                        ftasks.write(pid)
-                        ftasks.flush()
-                    except ProcessLookupError:
-                        log.warning('Could not write pid %s to resctrl (%r). '
-                                    'Process probably does not exist. ', pid, tasks_filepath)
+                    ftasks.write(pid)
+                    ftasks.flush()
+
+        except ProcessLookupError:
+            log.warning('Could not write pid to resctrl (%r): '
+                        'Process probably does not exist. ', tasks_filepath)
+        except FileNotFoundError:
+            log.error('Could not write pid to resctrl (%r): '
+                      'rdt group was not found (moved/deleted - race detected).', tasks_filepath)
+        except OSError as e:
+            if e.errno == errno.EINVAL:
+                # (kstrtoint(strstrip(buf), 0, &pid) || pid < 0)
+                log.error(
+                    'Could not write pid to resctrl (%r): '
+                    'Invalid argument %r.', tasks_filepath)
+            else:
+                log.error(
+                    'Could not write pid to resctrl (%r): '
+                    'Unexpected errno %r.', tasks_filepath, e.errno)
+        finally:
+            try:
+                # Try what we can to close the file but it is expected
+                # to fails because the wrong # data is waiting to be flushed
+                ftasks.close()
+            except (ProcessLookupError, FileNotFoundError, OSError):
+                log.warning('Could not close resctrl/tasks file - ignored!'
+                            '(side-effect of previous warning!)')
 
     def _create_controlgroup_directory(self):
         """Create control group directory"""
