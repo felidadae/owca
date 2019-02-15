@@ -46,7 +46,7 @@ class KubernetesTask:
 
 @dataclass
 class KubernetesNode(Node):
-    # @TODO change into enum
+    # TODO change into enum
     CGROUP_DRIVER__SYSTEMD = "systemd"
     CGROUP_DRIVER__CGROUPFS = "cgroupfs"
 
@@ -94,7 +94,8 @@ class KubernetesNode(Node):
                 continue
 
             pod_id = pod.get('metadata').get('uid')
-            log.debug("Found pod with pod_id={}".format(pod_id))
+            pod_name = pod.get('metadata').get('name')
+            log.debug("Found pod with uid={} name={}".format(pod_id, pod_name))
             qos = pod.get('status').get('qosClass')
             if pod.get('metadata').get('labels'):
                 labels = {sanitize_label(key): value
@@ -106,67 +107,62 @@ class KubernetesNode(Node):
             # Apart from obvious part of the loop it checks whether all containers are in ready state - 
             #   if at least one is not ready then skip this pod.
             containers_cgroups = []
-            if_all_containers_ready = True
+            are_all_containers_ready = True
             for container in container_statuses:
                 container_id = container.get('containerID').split('docker://')[1]
-                containers_cgroups.append(self.find_container_cgroup(pod_id, container_id, qos))
-                if container.get('ready') == False:
-                    if_all_containers_ready = False
+                containers_cgroups.append(self.find_cgroup_path_for_pod(qos, pod_id, container_id))
+                if not container.get('ready'):
+                    are_all_containers_ready = False
                     break
-            if not if_all_containers_ready:
-                log.debug('Ignore pod with pod_id={} as one or more of its containers are not ready.'.format(pod_id))
-                break  # Breaking main loop iterating through pods.
+            if not are_all_containers_ready:
+                log.debug('Ignore pod with uid={} name={} as one or more of its containers are not ready.'
+                          .format(pod_id, pod_name))
+                continue
 
             tasks.append(
                 KubernetesTask(
                     # TODO name should be human friendly, like stress-ng-copy
-                    name=pod_id,
+                    name=pod_name,
                     task_id=pod_id,
                     qos=qos.lower(),
                     labels=labels,
                     resources=find_resources(pod_id, qos),
-                    cgroup_path=self.find_pod_cgroup(pod_id, qos),
+                    cgroup_path=self.find_cgroup_path_for_pod(qos, pod_id),
                     subcgroups_paths=containers_cgroups))
 
         log.debug("Found %d kubernetes tasks (cumulatively %d cgroups leafs).",
                   len(tasks), sum([len(task.subcgroups_paths) for task in tasks]))
-        tasks_summary = ", ".join(["({} -> {})".format(task.task_id, task.subcgroups_paths)
+        tasks_summary = ", ".join(["({} {} -> {})".format(task.name, task.task_id, task.subcgroups_paths)
                                    for task in tasks])
-        log.log(logger.TRACE, "Found kubernetes tasks with (pod_id, sub_cgroup_paths): %s.",
+        log.log(logger.TRACE, "Found kubernetes tasks with (name, task_id, subcgroups_paths): %s.",
                 tasks_summary)
         return tasks
 
 
-    # @TODO replace with one function, twice the same logic.
-    def find_pod_cgroup(self, pod_id, qos):
-        if self.cgroup_driver == self.CGROUP_DRIVER__SYSTEMD:
-            pod_id = pod_id.replace('-', '_')
-            return ('/kubepods.slice/'
-                    'kubepods-{qos}.slice/'
-                    'kubepods-{qos}-pod{pod_id}.slice/'.format(qos=qos.lower(),
-                                                               pod_id=pod_id))
-        elif self.cgroup_driver == self.CGROUP_DRIVER__CGROUPFS:
-            return ('/kubepods/'
-                    '{qos}/'
-                    'pod{pod_id}/'.format(qos=qos.lower(),
-                                       pod_id=pod_id))
+    def find_cgroup_path_for_pod(self, qos, pod_id, container_id=None):
+        """Return cgroup path for pod or a pod container."""
+        if container_id is None:
+            container_subdirectory = ""
 
-    def find_container_cgroup(self, pod_id, container_id, qos):
         if self.cgroup_driver == self.CGROUP_DRIVER__SYSTEMD:
             pod_id = pod_id.replace('-', '_')
+            if container_id is not None:
+                container_subdirectory = 'docker-{container_id}.scope'.format(container_id=container_id)
             return ('/kubepods.slice/'
                     'kubepods-{qos}.slice/'
                     'kubepods-{qos}-pod{pod_id}.slice/'
-                    'docker-{container_id}.scope'.format(qos=qos.lower(),
-                                                         container_id=container_id,
-                                                         pod_id=pod_id))
+                    '{container_subdirectory}'.format(qos=qos.lower(),
+                                                      pod_id=pod_id,
+                                                      container_subdirectory=container_subdirectory))
         elif self.cgroup_driver == self.CGROUP_DRIVER__CGROUPFS:
+            if container_id is not None:
+                container_subdirectory = container_id
             return ('/kubepods/'
                     '{qos}/'
                     'pod{pod_id}/'
-                    '{container_id}'.format(qos=qos.lower(),
-                                          container_id=container_id,
-                                          pod_id=pod_id))
+                    '{container_subdirectory}'.format(qos=qos.lower(),
+                                                      pod_id=pod_id,
+                                                      container_subdirectory=container_subdirectory))
 
 
 def find_resources(pod_id, qos):
