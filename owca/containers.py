@@ -179,7 +179,7 @@ class ContainerSet(ContainerInterface):
                     measurements[MetricName.CPU_USAGE_PER_TASK] += cpu_usage
 
         except FileNotFoundError:
-            log.debug('Could not read measurements for container (ContainerSet) %s. '
+            log.warning('Could not read measurements for container (ContainerSet) %s. '
                       'Probably the mesos container has died during the current runner iteration.',
                       self._cgroup_path)
             # Returning empty measurements.
