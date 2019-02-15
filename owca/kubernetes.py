@@ -35,7 +35,7 @@ class KubernetesTask:
     cgroup_path: str
     qos: str
 
-    sub_cgroup_paths: List[str] = field(default_factory=list)
+    subcgroups_paths: List[str] = field(default_factory=list)
     labels: Dict[str, str] = field(default_factory=dict)
     resources: Dict[str, float] = field(default_factory=dict)
 
@@ -119,17 +119,18 @@ class KubernetesNode(Node):
 
             tasks.append(
                 KubernetesTask(
+                    # TODO name should be human friendly, like stress-ng-copy
                     name=pod_id,
                     task_id=pod_id,
                     qos=qos.lower(),
                     labels=labels,
                     resources=find_resources(pod_id, qos),
                     cgroup_path=self.find_pod_cgroup(pod_id, qos),
-                    sub_cgroup_paths=containers_cgroups))
+                    subcgroups_paths=containers_cgroups))
 
         log.debug("Found %d kubernetes tasks (cumulatively %d cgroups leafs).",
-                  len(tasks), sum([len(task.sub_cgroup_paths) for task in tasks]))
-        tasks_summary = ", ".join(["({} -> {})".format(task.task_id, task.sub_cgroup_paths)
+                  len(tasks), sum([len(task.subcgroups_paths) for task in tasks]))
+        tasks_summary = ", ".join(["({} -> {})".format(task.task_id, task.subcgroups_paths)
                                    for task in tasks])
         log.log(logger.TRACE, "Found kubernetes tasks with (pod_id, sub_cgroup_paths): %s.",
                 tasks_summary)

@@ -52,6 +52,9 @@ class MesosTask:  # implements nodes.Task but abstractclasses cannot be implemen
     # Resources assigned accorind Mesos/Aurora task definition.
     resources: Dict[str, float] = field(default_factory=dict)
 
+    # To match Task interface, currently
+    subcgroups_paths: List[str] = field(default_factory=list)
+
     def __hash__(self):
         """Every instance of mesos task is uniqully identified by cgroup_path.
         Assumption here is that every mesos task is represented by one main cgroup.

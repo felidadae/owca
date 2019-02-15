@@ -115,13 +115,13 @@ class ContainerSet(ContainerInterface):
             allocation_configuration=allocation_configuration)
 
         # Create Cgroup objects for children.
-        self._containers: Dict[str, Container] = {}
+        self._subcontainers: Dict[str, Container] = {}
         for cgroup_path in cgroup_paths:
-            self._containers[cgroup_path] = Container(
+            self._subcontainers[cgroup_path] = Container(
                 cgroup_path=cgroup_path,
-                rdt_enabled=self._rdt_enabled,
-                if_manage_resgroup=False,
-                rdt_mb_control_enabled=self._rdt_mb_control_enabled,
+                # Managament of RDT is done only in ContainerSet class.
+                rdt_enabled=False,
+                rdt_mb_control_enabled=False,
                 platform_cpus=platform_cpus,
                 allocation_configuration=allocation_configuration)
 
@@ -142,7 +142,7 @@ class ContainerSet(ContainerInterface):
 
     def get_pids(self) -> List[str]:
         all_pids = []
-        for container in self._containers.values():
+        for container in self._subcontainers.values():
             all_pids.extend(container.get_pids())
         return all_pids
 
@@ -152,13 +152,11 @@ class ContainerSet(ContainerInterface):
             self._resgroup.add_pids(pids=self.get_pids(), mongroup_name=self._name)
 
     def get_measurements(self) -> Measurements:
-        # @TODO Maybe instead of putting logic of summing metrics here we should move
-        #       them to modules: cgroup, resctrl, perf_counters?
         measurements = dict()
         try:
             # Perf counters. Currently resulting metric for each metric type
             #   is calculated as a sum. This may be not true in the future.
-            for container in self._containers.values():
+            for container in self._subcontainers.values():
                 for metric_name, metric_value in \
                         container.perf_counters.get_measurements().items():
                     if metric_name in measurements:
@@ -173,7 +171,7 @@ class ContainerSet(ContainerInterface):
             # Cgroup.
             #   Currently only MetricName.CPU_USAGE_PER_TASK is supported -
             #   other metrics are ignored.
-            for cgroup, child in self._containers.items():
+            for cgroup, child in self._subcontainers.items():
                 cpu_usage = child.cgroup.get_measurements()[MetricName.CPU_USAGE_PER_TASK]
                 if MetricName.CPU_USAGE_PER_TASK not in measurements:
                     measurements[MetricName.CPU_USAGE_PER_TASK] = cpu_usage
@@ -189,7 +187,7 @@ class ContainerSet(ContainerInterface):
         return measurements
 
     def cleanup(self):
-        for container in self._containers.values():
+        for container in self._subcontainers.values():
             container.cleanup()
         if self._rdt_enabled:
             self._resgroup.remove(self._name)
@@ -212,33 +210,17 @@ class ContainerSet(ContainerInterface):
         return "ContainerSet(cgroup_path={}, resgroup={})".format(
             self._cgroup_path, self._resgroup)
 
-    def __hash__(self):
-        return hash(str(self._cgroup_path))
-
 
 class Container(ContainerInterface):
     def __init__(self, cgroup_path: str, platform_cpus: int, resgroup: ResGroup = None,
-                 if_manage_resgroup: bool = True,
                  allocation_configuration: Optional[AllocationConfiguration] = None,
-                 rdt_enabled: bool = True, rdt_mb_control_enabled: bool = False,
-                 container_name=None):
-        """
-        if_manage_resgroup: bool -
-            if false do not call any methods on resgroup object;
-            if True assert that self.resgroup is not None and manage
-            the lifecycle of the resgroup object
-        """
+                 rdt_enabled: bool = True, rdt_mb_control_enabled: bool = False):
         self._cgroup_path = cgroup_path
         self._name = _convert_cgroup_path_to_resgroup_name(self._cgroup_path)
         self._allocation_configuration = allocation_configuration
         self._rdt_enabled = rdt_enabled
         self._rdt_mb_control_enabled = rdt_mb_control_enabled
         self._resgroup = resgroup
-        self._if_manage_resgroup = if_manage_resgroup
-
-        # Assert that implication is true:
-        #   self.if_manage_resgroup ==> self.resgroup is not None
-        #assert (not self._if_manage_resgroup or self._resgroup is not None)
 
         self.cgroup = Cgroup(
             cgroup_path=self._cgroup_path,
@@ -248,7 +230,6 @@ class Container(ContainerInterface):
 
     def set_resgroup(self, resgroup: ResGroup):
         self._resgroup = resgroup
-        assert (not self._if_manage_resgroup or self._resgroup is not None)
 
     def get_cgroup(self):
         return self.cgroup
@@ -267,14 +248,14 @@ class Container(ContainerInterface):
 
     def sync(self):
         """Called every run iteration to keep pids of cgroup and resctrl in sync."""
-        if self._rdt_enabled and self._if_manage_resgroup:
+        if self._rdt_enabled:
             self._resgroup.add_pids(self.cgroup.get_pids(), mongroup_name=self._name)
 
     def get_measurements(self) -> Measurements:
         try:
             return flatten_measurements([
                 self.cgroup.get_measurements(),
-                self._resgroup.get_measurements(self._name) if self._rdt_enabled and self._if_manage_resgroup else {},
+                self._resgroup.get_measurements(self._name) if self._rdt_enabled else {},
                 self.perf_counters.get_measurements(),
             ])
         except FileNotFoundError:
@@ -286,7 +267,7 @@ class Container(ContainerInterface):
 
     def cleanup(self):
         self.perf_counters.cleanup()
-        if self._rdt_enabled and self._if_manage_resgroup:
+        if self._rdt_enabled:
             self._resgroup.remove(self._name)
 
     def get_allocations(self) -> TaskAllocations:
@@ -295,16 +276,13 @@ class Container(ContainerInterface):
             return {}
         allocations: TaskAllocations = dict()
         allocations.update(self.cgroup.get_allocations())
-        if self._rdt_enabled and self._if_manage_resgroup:
+        if self._rdt_enabled:
             allocations.update(self._resgroup.get_allocations())
 
         log.debug('allocations on task=%r from resgroup=%r allocations:\n%s',
                   self._name, self._resgroup, pprint.pformat(allocations))
 
         return allocations
-
-    def __hash__(self):
-        return hash(str(self._cgroup_path))
 
     def __eq__(self, other):
         return self._cgroup_path == other._cgroup_path
@@ -374,7 +352,7 @@ class ContainerManager:
             log.debug('mon_groups_relation (after cleanup): %s',
                       pprint.pformat(mon_groups_relation))
 
-            # Calculate inverse relastion of task_id to res_group name based on mon_groups_relations
+            # Calculate inverse relation of task_id to res_group name based on mon_groups_relations
             for ctrl_group, container_names in mon_groups_relation.items():
                 for container_name in container_names:
                     container_name_to_resgroup_name[container_name] = ctrl_group
@@ -383,14 +361,13 @@ class ContainerManager:
 
         # Create new containers and store them.
         for new_task in new_tasks:
-            # @TODO temporarily to make owca work
-            enable_multicontainer = True
-            if (enable_multicontainer and hasattr(new_task, "sub_cgroup_paths") and
-                    len(new_task.cgroup_path)):
-                # ContainerSet shares interface with Container.
+            # Check whether the task groups multiple containers,
+            #   is so use ContainerSet class, otherwise Container class.
+            #   ContainerSet shares interface with Container.
+            if len(new_task.subcgroups_paths) > 0:
                 container = ContainerSet(
                     cgroup_path=new_task.cgroup_path,
-                    cgroup_paths=new_task.sub_cgroup_paths,
+                    cgroup_paths=new_task.subcgroups_paths,
                     rdt_enabled=self.rdt_enabled,
                     rdt_mb_control_enabled=self.rdt_mb_control_enabled,
                     platform_cpus=self.platform_cpus,
@@ -405,7 +382,7 @@ class ContainerManager:
             self.containers[new_task] = container
 
         # Sync "state" of individual containers.
-        # Note: only the pids are synchronized, not the allocations.
+        # Note: only pids are synchronized, not allocations.
         for container in self.containers.values():
             if self.rdt_enabled:
                 if container.get_name() in container_name_to_resgroup_name:
@@ -413,7 +390,7 @@ class ContainerManager:
                         name=container_name_to_resgroup_name[container.get_name()],
                         rdt_mb_control_enabled=self.rdt_mb_control_enabled))
                 else:
-                    # Every newly detected containers is first assigne to root group.
+                    # Every newly detected container is first assigned to the root group.
                     container.set_resgroup(ResGroup(
                         name='',
                         rdt_mb_control_enabled=self.rdt_mb_control_enabled))
@@ -422,7 +399,6 @@ class ContainerManager:
         return self.containers
 
     def cleanup(self):
-        # _cleanup
         for container in self.containers.values():
             container.cleanup()
 

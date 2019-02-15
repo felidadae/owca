@@ -20,11 +20,12 @@ TaskId = str
 
 
 class Task(ABC):
-    """Base task container based class."""
+    """Class used for abstracting information received from orchestration node service concerning single container
+    (e.g. mesos container) or a group of containers (a mesos nested container or a kubernetes pod)."""
 
     @abstractproperty
     def name(self) -> str:
-        """Human-friendly name of task."""
+        """Human-friendly name of task (usefull for logging and debugging)."""
 
     @abstractproperty
     def task_id(self) -> TaskId:
@@ -32,8 +33,13 @@ class Task(ABC):
 
     @abstractproperty
     def cgroup_path(self) -> str:
-        """Path to cgroup that all processes reside in.
-           Starts with leading "/"."""
+        """Path to root cgroup that all processes reside.
+           Starts with leading "/".
+           e.g. /kubepods/bestefforts/9012839."""
+
+    @abstractproperty
+    def subcgroups_paths(self) -> List[str]:
+        """List of paths to subcgroups (if no subcgroups exist returns empty list)."""
 
     @abstractproperty
     def labels(self) -> Dict[str, str]:
@@ -41,7 +47,7 @@ class Task(ABC):
 
     @abstractproperty
     def resources(self) -> Dict[str, float]:
-        """Initial resources assigned accorind task definition. """
+        """Initial resources assigned to the task. """
 
 
 class Node(ABC):
