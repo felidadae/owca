@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum
 from dataclasses import dataclass, field
 from typing import Dict, List
 import logging
@@ -44,15 +45,16 @@ class KubernetesTask:
         return hash(self.task_id)
 
 
+class CgroupDriverType(str, Enum):
+    SYSTEMD = "systemd"
+    CGROUPFS = "cgroupfs"
+
+
 @dataclass
 class KubernetesNode(Node):
-    # TODO change into enum
-    CGROUP_DRIVER__SYSTEMD = "systemd"
-    CGROUP_DRIVER__CGROUPFS = "cgroupfs"
-
     # In kubernetes code (for version stable 3.13):
     #   https://github.com/kubernetes/kubernetes/blob/v1.13.3/pkg/kubelet/cm/cgroup_manager_linux.go#L207
-    cgroup_driver: str = 'cgroupfs'
+    cgroup_driver: str = CgroupDriverType.CGROUPFS
 
     # Cgroup parent directory; default are:
     #   for cgroup_driver=systemd kubepods.slice,
@@ -70,7 +72,7 @@ class KubernetesNode(Node):
     pods_path = '/pods'
 
     def __post_init__(self):
-        if self.cgroup_driver not in (self.CGROUP_DRIVER__SYSTEMD, self.CGROUP_DRIVER__CGROUPFS):
+        if self.cgroup_driver not in (CgroupDriverType.SYSTEMD, CgroupDriverType.CGROUPFS):
             # No to be catch exception (error while parsing YAML config file).
             raise Exception("Not supported cgroup_driver.")
 
@@ -121,7 +123,6 @@ class KubernetesNode(Node):
 
             tasks.append(
                 KubernetesTask(
-                    # TODO name should be human friendly, like stress-ng-copy
                     name=pod_name,
                     task_id=pod_id,
                     qos=qos.lower(),
@@ -144,7 +145,7 @@ class KubernetesNode(Node):
         if container_id is None:
             container_subdirectory = ""
 
-        if self.cgroup_driver == self.CGROUP_DRIVER__SYSTEMD:
+        if self.cgroup_driver == CgroupDriverType.SYSTEMD:
             pod_id = pod_id.replace('-', '_')
             if container_id is not None:
                 container_subdirectory = 'docker-{container_id}.scope'.format(container_id=container_id)
@@ -154,7 +155,7 @@ class KubernetesNode(Node):
                     '{container_subdirectory}'.format(qos=qos.lower(),
                                                       pod_id=pod_id,
                                                       container_subdirectory=container_subdirectory))
-        elif self.cgroup_driver == self.CGROUP_DRIVER__CGROUPFS:
+        elif self.cgroup_driver == CgroupDriverType.CGROUPFS:
             if container_id is not None:
                 container_subdirectory = container_id
             return ('/kubepods/'
