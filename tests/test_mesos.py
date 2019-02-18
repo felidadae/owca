@@ -14,8 +14,9 @@
 
 
 import json
-import pytest
 from unittest.mock import patch, Mock
+
+import pytest
 
 from owca.mesos import MesosNode, MesosTask
 from owca.testing import relative_module_path
@@ -36,8 +37,6 @@ def test_get_tasks(find_cgroup_mock, post_mock):
     assert len(tasks) == 1
 
     task = tasks.pop()
-
-
 
     assert task == MesosTask(
         agent_id='e88fac89-2398-4e75-93f3-88cf4c35ec03-S9',
