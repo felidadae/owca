@@ -16,7 +16,7 @@
 import pytest
 
 from owca.mesos import create_metrics, sanitize_mesos_label
-from owca.metrics import Metric
+from owca.metrics import Metric, sum_measurements
 
 
 @pytest.mark.parametrize('label_key,expected_label_key', (
@@ -41,3 +41,12 @@ def test_sanitize_labels(label_key, expected_label_key):
 def test_create_metrics(task_measurements, expected_metrics):
     got_metrics = create_metrics(task_measurements)
     assert expected_metrics == got_metrics
+
+@pytest.mark.parametrize('measurements_list,expected_sum,expected_ignored', (
+    ([{'m1': 8}, {'m1': 3}], {'m1': 11}, []),
+    ([{'m1': 8}, {'m1': 3, 'm2': 2}], {'m1': 11}, ['m2']),
+    ([{'m1': 8}, {'m1': 3}, {'m1': 3}], {'m1': 14}, []),
+    ([{'m1': 8, 'm2': 3}, {'m1': 3, 'm2': 7}, {'m1': 3}], {'m1': 14}, ['m2']),
+))
+def test_sum_measurements(measurements_list, expected_sum, expected_ignored):
+    assert sum_measurements(measurements_list) == (expected_sum, expected_ignored)

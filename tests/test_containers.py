@@ -16,7 +16,10 @@ from unittest.mock import patch, Mock
 
 import pytest
 
-from owca.containers import _calculate_desired_state
+from owca.containers import _calculate_desired_state, ContainerSet
+from owca.cgroups import Cgroup
+from owca.perf import PerfCounters
+from owca.resctrl import ResGroup
 from owca.runners.detection import DetectionRunner
 from owca.testing import task, container
 
@@ -94,3 +97,23 @@ def test_sync_containers_state(platform_mock, sync_mock,
 
     # Check other side effects like calling sync() on external objects.
     assert sync_mock.call_count == len(expected_running_containers)
+
+
+@patch('owca.containers.Cgroup', spec=Cgroup, get_measurements=Mock(return_value={'cgroup_metric__1': 2}))
+@patch('owca.containers.PerfCounters', spec=PerfCounters, get_measurements=Mock(return_value={'perf_event_metric__1': 2}))
+def test_containerset_get_measurements(*args):
+    """Check whether summing of metrics for children containers are done properly."""
+    # 3 subcontainers are created.
+    subcgroups_paths = ['/t1/c1', '/t1/c2', '/t1/c3']
+    containerset = ContainerSet('/t1', subcgroups_paths,
+                                platform_cpus=2, allocation_configuration=None,
+                                resgroup=None, rdt_enabled=True, rdt_mb_control_enabled=False)
+
+    resgroup_mock = Mock(spec=ResGroup, get_measurements=Mock(return_value={'foo': 3}))
+    containerset.set_resgroup(resgroup=resgroup_mock)
+
+    # Call the main function.
+    measurements = containerset.get_measurements()
+
+    resgroup_mock.get_measurements.assert_called_once()
+    assert {'foo': 3, 'cgroup_metric__1': 2+2+2, 'perf_event_metric__1': 2+2+2} == measurements

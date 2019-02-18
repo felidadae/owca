@@ -15,7 +15,7 @@
 
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Dict, Union
+from typing import Dict, Union, List, Tuple
 
 
 class MetricName(str, Enum):
@@ -110,3 +110,27 @@ class Metric:
 
 
 Measurements = Dict[MetricName, MetricValue]
+
+
+def sum_measurements(measurements_list: List[Measurements]) -> Tuple[Measurements, List[MetricName]]:
+    """Returns dictionary with metrics which are contained in all input measurements with value set
+       to arithmetic sum."""
+    sum_: Measurements = {}
+
+    common_metrics = set()  # Intersect of set of names.
+    for measurements in measurements_list:
+        metrics_names = {metric_name for metric_name in measurements.keys()}
+        if not common_metrics:
+            common_metrics = metrics_names
+        else:
+            common_metrics = common_metrics.intersection(measurements)
+
+    all_metrics = set()  # Sum of set of names.
+    for measurements in measurements_list:
+        all_metrics.update(measurements.keys())
+    ignored_metrics = list(all_metrics.difference(common_metrics))
+
+    for metric_name in common_metrics:
+        sum_[metric_name] = sum([measurements[metric_name] for measurements in measurements_list])
+
+    return sum_, ignored_metrics
