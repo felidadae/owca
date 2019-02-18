@@ -22,7 +22,7 @@ from owca import logger
 from owca import resctrl
 from owca.allocators import AllocationConfiguration, TaskAllocations
 from owca.cgroups import Cgroup
-from owca.metrics import Measurements, MetricName
+from owca.metrics import Measurements, MetricName, sum_measurements
 from owca.nodes import Task
 from owca.perf import PerfCounters
 from owca.resctrl import ResGroup
@@ -154,29 +154,21 @@ class ContainerSet(ContainerInterface):
     def get_measurements(self) -> Measurements:
         measurements = dict()
         try:
-            # Perf counters. Currently resulting metric for each metric type
-            #   is calculated as a sum. This may be not true in the future.
+            # Merge cgroup and perf_counters measurements.
+            measurements_list: List[Measurements] = []
             for container in self._subcontainers.values():
-                for metric_name, metric_value in \
-                        container.perf_counters.get_measurements().items():
-                    if metric_name in measurements:
-                        measurements[metric_name] += metric_value
-                    else:
-                        measurements[metric_name] = metric_value
+                m = container.cgroup.get_measurements()
+                m.update(container.perf_counters.get_measurements())
+                measurements_list.append(m)
 
-            # Resgroup. Resgroup management is entirely done in this class.
+            summed_measurements, ignored_metrics = sum_measurements(measurements_list)
+            measurements.update(summed_measurements)
+            log.warning('ContainerSet.get_measuremenets: ignored metrics {} while summing up.'
+                        .format(ignored_metrics))
+
+            # Resgroup management is entirely done in this class.
             if self._rdt_enabled:
                 measurements.update(self._resgroup.get_measurements(self._name))
-
-            # Cgroup.
-            #   Currently only MetricName.CPU_USAGE_PER_TASK is supported -
-            #   other metrics are ignored.
-            for cgroup, child in self._subcontainers.items():
-                cpu_usage = child.cgroup.get_measurements()[MetricName.CPU_USAGE_PER_TASK]
-                if MetricName.CPU_USAGE_PER_TASK not in measurements:
-                    measurements[MetricName.CPU_USAGE_PER_TASK] = cpu_usage
-                else:
-                    measurements[MetricName.CPU_USAGE_PER_TASK] += cpu_usage
 
         except FileNotFoundError:
             log.warning('Could not read measurements for container (ContainerSet) %s. '

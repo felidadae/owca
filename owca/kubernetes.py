@@ -52,14 +52,11 @@ class CgroupDriverType(str, Enum):
 
 @dataclass
 class KubernetesNode(Node):
-    # In kubernetes code (for version stable 3.13):
+    # We need to know cgroup driver used to properly construct cgroup paths for pods.
+    #   Reference in source code for kubernetes version stable 3.13:
     #   https://github.com/kubernetes/kubernetes/blob/v1.13.3/pkg/kubelet/cm/cgroup_manager_linux.go#L207
-    cgroup_driver: str = CgroupDriverType.CGROUPFS
-
-    # Cgroup parent directory; default are:
-    #   for cgroup_driver=systemd kubepods.slice,
-    #   for cgroup_driver=cgroupfs kubepods.
-    # cgroup_parent_directory: str = 'kubepods'
+    cgroup_driver: str = CgroupDriverType.CGROUPFS  # Use str as type (instead of CgroupDriverType) to
+                                                    # simplify creation in the YAML config file.
 
     # By default use localhost, however kubelet may not listen on it.
     kubernetes_agent_enpoint: str = 'https://127.0.0.1:10250'
@@ -72,9 +69,7 @@ class KubernetesNode(Node):
     pods_path = '/pods'
 
     def __post_init__(self):
-        if self.cgroup_driver not in (CgroupDriverType.SYSTEMD, CgroupDriverType.CGROUPFS):
-            # No to be catch exception (error while parsing YAML config file).
-            raise Exception("Not supported cgroup_driver.")
+        assert self.cgroup_driver in (CgroupDriverType.SYSTEMD, CgroupDriverType.CGROUPFS)
 
     def get_tasks(self):
         """Returns only running tasks."""
