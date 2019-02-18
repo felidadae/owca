@@ -16,7 +16,7 @@ from unittest.mock import patch, Mock
 
 import pytest
 
-from owca.containers import _calculate_desired_state, ContainerSet
+from owca.containers import _calculate_desired_state, ContainerSet, Container
 from owca.cgroups import Cgroup
 from owca.perf import PerfCounters
 from owca.resctrl import ResGroup
@@ -99,21 +99,50 @@ def test_sync_containers_state(platform_mock, sync_mock,
     assert sync_mock.call_count == len(expected_running_containers)
 
 
-@patch('owca.containers.Cgroup', spec=Cgroup, get_measurements=Mock(return_value={'cgroup_metric__1': 2}))
-@patch('owca.containers.PerfCounters', spec=PerfCounters, get_measurements=Mock(return_value={'perf_event_metric__1': 2}))
+def containerset(root_subgroup_path='/t1', subcgroups_paths=['/t1/c1', '/t1/c2']):
+    return ContainerSet(root_subgroup_path, subcgroups_paths,
+                        platform_cpus=2, allocation_configuration=None,
+                        resgroup=None, rdt_enabled=True, rdt_mb_control_enabled=False)
+
+
+@patch('owca.containers.Cgroup', spec=Cgroup,
+       get_measurements=Mock(return_value={'cgroup_metric__1': 2}))
+@patch('owca.containers.PerfCounters', spec=PerfCounters,
+       get_measurements=Mock(return_value={'perf_event_metric__1': 2}))
 def test_containerset_get_measurements(*args):
     """Check whether summing of metrics for children containers are done properly."""
     # 3 subcontainers are created.
     subcgroups_paths = ['/t1/c1', '/t1/c2', '/t1/c3']
-    containerset = ContainerSet('/t1', subcgroups_paths,
-                                platform_cpus=2, allocation_configuration=None,
-                                resgroup=None, rdt_enabled=True, rdt_mb_control_enabled=False)
+    containerset_ = containerset('/t1', subcgroups_paths)
 
     resgroup_mock = Mock(spec=ResGroup, get_measurements=Mock(return_value={'foo': 3}))
-    containerset.set_resgroup(resgroup=resgroup_mock)
+    containerset_.set_resgroup(resgroup=resgroup_mock)
 
     # Call the main function.
-    measurements = containerset.get_measurements()
+    measurements = containerset_.get_measurements()
 
     resgroup_mock.get_measurements.assert_called_once()
     assert {'foo': 3, 'cgroup_metric__1': 2+2+2, 'perf_event_metric__1': 2+2+2} == measurements
+
+
+def smart_get_pids():
+    calls_count = [0]  # Make list to pass mutable object.
+
+    def fun():
+        calls_count[0] += 2
+        return [calls_count[0] - 2, calls_count[0] - 1]
+    return fun
+
+
+@patch('owca.containers.Cgroup')
+@patch('owca.containers.Container', spec=Container, get_pids=Mock(side_effect=smart_get_pids()))
+def test_containerset_get_pids(*args):
+    # 3 subcontainers are created.
+    subcgroups_paths = ['/t1/c1', '/t1/c2', '/t1/c3']
+    containerset_ = containerset('/t1', subcgroups_paths)
+    assert containerset_.get_pids() == [0, 1, 2, 3, 4, 5]
+
+
+def test_get_allocations():
+    # TODO implement me
+    pass
