@@ -35,11 +35,11 @@ class Task:
     # Task metadata expressed as labels.
     labels: Dict[str, str]
 
-    # Initial resources assigned at orchestation level.
+    # Initial resources assigned at orchestration level.
     resources: Dict[str, str]
 
     def __hash__(self):
-        """Every instance of task is uniqully identified by cgroup_path."""
+        """Every instance of task is uniquely identified by cgroup_path."""
         return hash(self.cgroup_path)
 
 

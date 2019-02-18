@@ -32,10 +32,13 @@ def create_json_fixture_mock(name, status_code=200):
 @patch('owca.mesos.find_cgroup', return_value='mesos/120-123')
 def test_get_tasks(find_cgroup_mock, post_mock):
     node = MesosNode()
-    tasks = node.get_tasks()
+    tasks = set(node.get_tasks())  # Wrap with set to make sure that hash is implemented.
     assert len(tasks) == 1
 
-    task = tasks[0]
+    task = tasks.pop()
+
+
+
     assert task == MesosTask(
         agent_id='e88fac89-2398-4e75-93f3-88cf4c35ec03-S9',
         cgroup_path='mesos/120-123',

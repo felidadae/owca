@@ -40,7 +40,9 @@ class MesosTask(Task):
     agent_id: str
 
     def __hash__(self):
-        """Reuse __hash__ method from base class, because dataclasses by default
+        """Override __hash__ method from base class and call it explicitly to workaround
+        __hash__ methods overriding by dataclasses (dataclass rules specify if eq is True and
+        there is no explict __hash__ method - replace it with None dataclasses.py:739).
         """
         return super().__hash__()
 
