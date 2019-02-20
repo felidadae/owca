@@ -19,6 +19,7 @@ import logging
 import pprint
 import requests
 import urllib.parse
+import json
 
 from owca import logger
 from owca.metrics import MetricName
@@ -106,11 +107,12 @@ class KubernetesNode(Node):
             containers_cgroups = []
             are_all_containers_ready = True
             for container in container_statuses:
-                container_id = container.get('containerID').split('docker://')[1]
-                containers_cgroups.append(self.find_cgroup_path_for_pod(qos, pod_id, container_id))
                 if not container.get('ready'):
                     are_all_containers_ready = False
                     break
+
+                container_id = container.get('containerID').split('docker://')[1]
+                containers_cgroups.append(self.find_cgroup_path_for_pod(qos, pod_id, container_id))
             if not are_all_containers_ready:
                 log.debug('Ignore pod with uid={} name={} as one or more of its containers are not ready.'
                           .format(pod_id, pod_name))
