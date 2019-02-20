@@ -51,6 +51,13 @@ def test_get_tasks(get_mock):
                                   subcgroups_paths=['/kubepods/besteffort/pod567975a0-3448-11e9-8e1d-246e96663c22/e90bbbb3b060baa1d354cd9b26f353d66fbb08d785abd32f4f6ec52ac843a2e7'])
 
 
+@patch('requests.get', return_value=create_json_fixture_mock('kubernetes_get_state_not_ready', 200))
+def test_get_tasks_not_all_ready(get_mock):
+    node = KubernetesNode()
+    tasks = node.get_tasks()
+    assert len(tasks) == 0
+
+
 def test_find_resources_empty():
     container_spec = [{'image': 'redis',
         'imagePullPolicy': 'Always',
@@ -98,4 +105,3 @@ def test_find_resources_multiple_containers():
                           'name': 'default-token-ktvvz',
                           'readOnly': True}]}]
     assert {'requests_cpu': 0.35, 'requests_memory': 67108864 + 32 * 1000 ** 2} == find_resources(container_spec)
-
