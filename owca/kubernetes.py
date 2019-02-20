@@ -166,9 +166,8 @@ class KubernetesNode(Node):
 def find_resources(containers_spec):
     resources = dict()
 
-    MEMORY_UNITS = {'kB': 1000, 'MB': 1000**2, 'GB': 1000**3, 'KiB': 1024,
-                    'MiB': 1024**2, 'GiB': 1024**3, 'B': 1, 'Mi': 1024**2,
-                    'Gi': 1024**3, 'Ki': 1024}
+    MEMORY_UNITS = {'kB': 1000, 'MB': 1000**2, 'GB': 1000**3, 'B': 1,
+                    'Mi': 1024**2, 'Gi': 1024**3, 'Ki': 1024}
     CPU_UNIT = {'m': 0.001}
     RESOURCE_TYPES = ['requests', 'limits']
 
