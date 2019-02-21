@@ -33,36 +33,36 @@ platform_mock = Mock(
 
 @pytest.mark.parametrize('tasks_allocations,expected_metrics', (
         ({}, []),
-        ({'t1_task_id': {AllocationType.SHARES: 0.5}}, [
+        ({'task_id-t1': {AllocationType.SHARES: 0.5}}, [
             allocation_metric('cpu_shares', value=0.5,
-                              container_name='t1', task='t1_task_id')
+                              container_name='t1', task='task_id-t1')
         ]),
-        ({'t1_task_id': {AllocationType.RDT: RDTAllocation(mb='mb:0=20')}}, [
+        ({'task_id-t1': {AllocationType.RDT: RDTAllocation(mb='mb:0=20')}}, [
             allocation_metric('rdt_mb', 20, group_name='t1', domain_id='0', container_name='t1',
-                              task='t1_task_id')
+                              task='task_id-t1')
         ]),
-        ({'t1_task_id': {AllocationType.SHARES: 0.5,
+        ({'task_id-t1': {AllocationType.SHARES: 0.5,
                          AllocationType.RDT: RDTAllocation(mb='mb:0=20')}}, [
-             allocation_metric('cpu_shares', value=0.5, container_name='t1', task='t1_task_id'),
+             allocation_metric('cpu_shares', value=0.5, container_name='t1', task='task_id-t1'),
              allocation_metric('rdt_mb', 20, group_name='t1', domain_id='0', container_name='t1',
-                               task='t1_task_id')
+                               task='task_id-t1')
          ]),
-        ({'t1_task_id': {
+        ({'task_id-t1': {
             AllocationType.SHARES: 0.5, AllocationType.RDT: RDTAllocation(mb='mb:0=30')
         },
-             't2_task_id': {
+             'task_id-t2': {
                  AllocationType.QUOTA: 0.6,
                  AllocationType.RDT: RDTAllocation(name='b', l3='L3:0=f'),
              }
          }, [
-             allocation_metric('cpu_shares', value=0.5, container_name='t1', task='t1_task_id'),
+             allocation_metric('cpu_shares', value=0.5, container_name='t1', task='task_id-t1'),
              allocation_metric('rdt_mb', 30, group_name='t1', domain_id='0', container_name='t1',
-                               task='t1_task_id'),
-             allocation_metric('cpu_quota', value=0.6, container_name='t2', task='t2_task_id'),
+                               task='task_id-t1'),
+             allocation_metric('cpu_quota', value=0.6, container_name='t2', task='task_id-t2'),
              allocation_metric('rdt_l3_cache_ways', 4, group_name='b',
-                               domain_id='0', container_name='t2', task='t2_task_id'),
+                               domain_id='0', container_name='t2', task='task_id-t2'),
              allocation_metric('rdt_l3_mask', 15, group_name='b',
-                               domain_id='0', container_name='t2', task='t2_task_id'),
+                               domain_id='0', container_name='t2', task='task_id-t2'),
          ]),
 ))
 def test_convert_task_allocations_to_metrics(tasks_allocations, expected_metrics):
@@ -129,10 +129,10 @@ def test_rdt_allocations_dict_changeset(current, new, expected_target, expected_
 
 @pytest.mark.parametrize('tasks_allocations,expected_error', [
     ({'tx': {'cpu_shares': 3}}, 'invalid task id'),
-    ({'t1_task_id': {'wrong_type': 5}}, 'unknown allocation type'),
-    ({'t1_task_id': {'rdt': RDTAllocation()},
-      't2_task_id': {'rdt': RDTAllocation()},
-      't3_task_id': {'rdt': RDTAllocation()}},
+    ({'task_id-t1': {'wrong_type': 5}}, 'unknown allocation type'),
+    ({'task_id-t1': {'rdt': RDTAllocation()},
+      'task_id-t2': {'rdt': RDTAllocation()},
+      'task_id-t3': {'rdt': RDTAllocation()}},
      'too many resource groups for available CLOSids'),
 ])
 def test_convert_invalid_task_allocations(tasks_allocations, expected_error):
@@ -152,39 +152,39 @@ def test_convert_invalid_task_allocations(tasks_allocations, expected_error):
             # No RDT allocations.
             (
                     {
-                        't1_task_id': {AllocationType.QUOTA: 0.6},
+                        'task_id-t1': {AllocationType.QUOTA: 0.6},
                     },
                     0
             ),
             # The both task in the same resctrl group.
             (
                     {
-                        't1_task_id': {'rdt': RDTAllocation(name='be', l3='L3:0=ff')},
-                        't2_task_id': {'rdt': RDTAllocation(name='be', l3='L3:0=ff')}
+                        'task_id-t1': {'rdt': RDTAllocation(name='be', l3='L3:0=ff')},
+                        'task_id-t2': {'rdt': RDTAllocation(name='be', l3='L3:0=ff')}
                     },
                     1
             ),
             # The tasks in seperate resctrl group.
             (
                     {
-                        't1_task_id': {'rdt': RDTAllocation(name='be', l3='L3:0=ff')},
-                        't2_task_id': {'rdt': RDTAllocation(name='le', l3='L3:0=ff')}
+                        'task_id-t1': {'rdt': RDTAllocation(name='be', l3='L3:0=ff')},
+                        'task_id-t2': {'rdt': RDTAllocation(name='le', l3='L3:0=ff')}
                     },
                     2
             ),
             # The tasks in root group (even with diffrent l3 values)
             (
                     {
-                        't1_task_id': {'rdt': RDTAllocation(name='', l3='L3:0=ff')},
-                        't2_task_id': {'rdt': RDTAllocation(name='', l3='L3:0=ff')}
+                        'task_id-t1': {'rdt': RDTAllocation(name='', l3='L3:0=ff')},
+                        'task_id-t2': {'rdt': RDTAllocation(name='', l3='L3:0=ff')}
                     },
                     1
             ),
             # The tasks are in autonamed groups (force execution always)
             (
                     {
-                        't1_task_id': {'rdt': RDTAllocation(l3='L3:0=ff')},
-                        't2_task_id': {'rdt': RDTAllocation(l3='L3:0=ff')}
+                        'task_id-t1': {'rdt': RDTAllocation(l3='L3:0=ff')},
+                        'task_id-t2': {'rdt': RDTAllocation(l3='L3:0=ff')}
                     },
                     2
             ),

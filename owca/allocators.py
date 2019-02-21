@@ -19,7 +19,7 @@ from typing import List, Dict, Union
 from dataclasses import dataclass
 
 from owca.detectors import TasksMeasurements, TasksResources, TasksLabels, Anomaly
-from owca.mesos import TaskId
+from owca.nodes import TaskId
 from owca.metrics import Metric
 from owca.platforms import Platform
 

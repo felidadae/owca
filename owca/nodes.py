@@ -13,42 +13,40 @@
 # limitations under the License.
 
 
-from abc import ABC, abstractproperty, abstractmethod
+from abc import ABC, abstractmethod
 from typing import List, Dict
+
+from dataclasses import dataclass
 
 TaskId = str
 
 
-class Task(ABC):
+@dataclass
+class Task:
     """Class used for abstracting information received from orchestration node service concerning single container
     (e.g. mesos container) or a group of containers (a mesos nested container or a kubernetes pod)."""
 
-    @abstractproperty
-    def name(self) -> str:
-        """Human-friendly name of task (usefull for logging and debugging)."""
+    # Human-friendly name of task
+    name: str
 
-    @abstractproperty
-    def task_id(self) -> TaskId:
-        """Orchestration-level task identifier."""
+    # Orchestration-level task identifier
+    task_id: TaskId
 
-    @abstractproperty
-    def cgroup_path(self) -> str:
-        """Path to root cgroup that all processes reside.
-           Starts with leading "/".
-           e.g. /kubepods/bestefforts/9012839."""
+    # Path to cgroup that all processes reside in. Starts with leading "/".
+    #   e.g. /kubepods/bestefforts/9012839.
+    cgroup_path: str
 
-    @abstractproperty
-    def subcgroups_paths(self) -> List[str]:
-        """List of paths to subcgroups (if no subcgroups exist returns empty list)."""
+    # List of paths to subcgroups (if no subcgroups exist returns empty list).
+    subcgroups_paths: List[str]
 
-    @abstractproperty
-    def labels(self) -> Dict[str, str]:
-        """Task metadata expressed as labels."""
+    # Task metadata expressed as labels.
+    labels: Dict[str, str]
 
-    @abstractproperty
-    def resources(self) -> Dict[str, float]:
-        """Initial resources assigned to the task. """
+    # Initial resources assigned at orchestration level.
+    resources: Dict[str, str]
 
+    def __hash__(self):
+        return hash(self.cgroup_path)
 
 class Node(ABC):
     """Base class for tasks(workloads discover)."""

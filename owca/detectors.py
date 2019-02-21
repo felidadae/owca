@@ -23,7 +23,7 @@ from typing import List, Dict
 
 from owca.logger import trace
 from owca.metrics import Metric, Measurements, MetricType
-from owca.mesos import TaskId
+from owca.nodes import TaskId
 from owca.platforms import Platform
 
 log = logging.getLogger(__name__)

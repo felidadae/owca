@@ -22,8 +22,8 @@ from unittest.mock import mock_open, Mock, patch
 from owca.allocators import AllocationConfiguration
 from owca.containers import Container, ContainerSet
 from owca.detectors import ContendedResource, ContentionAnomaly, _create_uuid_from_tasks_ids
-from owca.mesos import MesosTask, TaskId
 from owca.kubernetes import KubernetesTask
+from owca.nodes import TaskId, Task
 from owca.metrics import Metric, MetricType
 from owca.resctrl import ResGroup
 from owca.runners.base import Runner
@@ -104,20 +104,15 @@ def anomaly(contended_task_id: TaskId, contending_task_ids: List[TaskId],
     )
 
 
-# TODO should be renamed to mesos_task
-def task(cgroup_path, labels=None, resources=None):
+def task(cgroup_path, labels=None, resources=None, subcgroups_paths=None):
     """Helper method to create task with default values."""
-    prefix = cgroup_path.replace('/', '')
-    return MesosTask(
+    return Task(
         cgroup_path=cgroup_path,
-        name=prefix + '_tasks_name',
-        executor_pid=1,
-        container_id=prefix + '_container_id',
-        task_id=prefix + '_task_id',
-        executor_id=prefix + '_executor_id',
-        agent_id=prefix + '_agent_id',
+        name='name-' + cgroup_path,
+        task_id='task_id-' + cgroup_path[1:],
         labels=labels or dict(),
-        resources=resources or dict()
+        resources=resources or dict(),
+        subcgroups_paths=subcgroups_paths if subcgroups_paths is not None else []
     )
 
 
