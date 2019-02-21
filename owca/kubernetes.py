@@ -19,6 +19,7 @@ import logging
 import pprint
 import requests
 import urllib.parse
+import json
 
 from owca import logger
 from owca.metrics import MetricName
@@ -109,15 +110,18 @@ class KubernetesNode(Node):
             containers_cgroups = []
             are_all_containers_ready = True
             for container in container_statuses:
-                container_id = container.get('containerID').split('docker://')[1]
-                containers_cgroups.append(self.find_cgroup_path_for_pod(qos, pod_id, container_id))
                 if not container.get('ready'):
                     are_all_containers_ready = False
                     break
+
+                container_id = container.get('containerID').split('docker://')[1]
+                containers_cgroups.append(self.find_cgroup_path_for_pod(qos, pod_id, container_id))
             if not are_all_containers_ready:
                 log.debug('Ignore pod with uid={} name={} as one or more of its containers are not ready.'
                           .format(pod_id, pod_name))
                 continue
+
+            container_spec = pod.get('spec').get('containers')
 
             tasks.append(
                 KubernetesTask(
@@ -125,8 +129,8 @@ class KubernetesNode(Node):
                     task_id=pod_id,
                     qos=qos.lower(),
                     labels=labels,
-                    resources=find_resources(pod_id, qos),
-                    cgroup_path=self.find_cgroup_path_for_pod(qos, pod_id),
+                    resources=find_resources(container_spec),
+                    cgroup_path=self.find_cgroup_path_for_pod(pod_id, qos),
                     subcgroups_paths=containers_cgroups))
 
         log.debug("Found %d kubernetes tasks (cumulatively %d cgroups leafs).",
@@ -164,9 +168,49 @@ class KubernetesNode(Node):
                                                       container_subdirectory=container_subdirectory))
 
 
-def find_resources(pod_id, qos):
-    # @TODO implement me: get resources for the pod.
-    return {}
+def find_resources(containers_spec):
+    resources = dict()
+
+    MEMORY_UNITS = {'kB': 1000, 'MB': 1000**2, 'GB': 1000**3, 'B': 1,
+                    'Mi': 1024**2, 'Gi': 1024**3, 'Ki': 1024}
+    CPU_UNIT = {'m': 0.001}
+    RESOURCE_TYPES = ['requests', 'limits']
+
+    for container in containers_spec:
+        container_resources = container.get('resources')
+        if container_resources:
+            for resource_type in RESOURCE_TYPES:
+                resource_exists = bool(container_resources.get(resource_type))
+                if resource_exists:
+                    for resource_name, resource_value in \
+                            container_resources.get(resource_type).items():
+                        value = None
+                        if resource_name == 'memory':
+                            for unit in MEMORY_UNITS:
+                                if resource_value.endswith(unit):
+                                    value = float(resource_value.split(unit)[0]) * MEMORY_UNITS[unit]
+                                    break
+
+                            if not value:
+                                value = resource_value
+
+                        elif resource_name == 'cpu':
+                            for unit in CPU_UNIT:
+                                if resource_value.endswith(unit):
+                                    value = float(resource_value.split(unit)[0]) * CPU_UNIT[unit]
+                                    break
+
+                            if not value:
+                                value = resource_value
+
+                        if resource_type + '_' + resource_name in resources:
+                            resources[resource_type + '_' + resource_name] += \
+                                float(value)
+                        else:
+                            resources[resource_type + '_' + resource_name] = \
+                                float(value)
+
+    return resources
 
 
 def sanitize_label(label_key):
