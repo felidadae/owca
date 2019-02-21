@@ -44,6 +44,9 @@ class KubernetesTask:
         """Every instance of kubernetes task is uniqully identified by pod cgroup_path."""
         return hash(self.task_id)
 
+    def __eq__(self, other):
+        return self.cgroup_path == other.cgroup_path
+
 
 class CgroupDriverType(str, Enum):
     SYSTEMD = "systemd"

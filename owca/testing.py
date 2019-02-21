@@ -20,9 +20,10 @@ from typing import List, Dict, Union
 from unittest.mock import mock_open, Mock, patch
 
 from owca.allocators import AllocationConfiguration
-from owca.containers import Container
+from owca.containers import Container, ContainerSet
 from owca.detectors import ContendedResource, ContentionAnomaly, _create_uuid_from_tasks_ids
 from owca.mesos import MesosTask, TaskId
+from owca.kubernetes import KubernetesTask
 from owca.metrics import Metric, MetricType
 from owca.resctrl import ResGroup
 from owca.runners.base import Runner
@@ -103,6 +104,7 @@ def anomaly(contended_task_id: TaskId, contending_task_ids: List[TaskId],
     )
 
 
+# TODO should be renamed to mesos_task
 def task(cgroup_path, labels=None, resources=None):
     """Helper method to create task with default values."""
     prefix = cgroup_path.replace('/', '')
@@ -119,15 +121,46 @@ def task(cgroup_path, labels=None, resources=None):
     )
 
 
-def container(cgroup_path, resgroup_name=None, with_config=False):
-    """Helper method to create container with patched subsystems."""
-    with patch('owca.containers.ResGroup'), patch('owca.containers.PerfCounters'):
+def kubernetes_task(cgroup_path, subcgroups_paths, name=""):
+    return KubernetesTask(
+        name=name,
+        task_id=cgroup_path,
+        qos='besteffort',
+        labels={},
+        resources={},
+        cgroup_path=cgroup_path,
+        subcgroups_paths=subcgroups_paths)
+
+
+def container(cgroup_path, resgroup_name=None, with_config=False, should_patch=True):
+    """Helper method to create container optionally with patched subsystems."""
+    def unpatched():
         return Container(
             cgroup_path=cgroup_path,
             rdt_enabled=False, platform_cpus=1,
             allocation_configuration=AllocationConfiguration() if with_config else None,
-            resgroup=ResGroup(name=resgroup_name) if resgroup_name is not None else None
-        )
+            resgroup=ResGroup(name=resgroup_name) if resgroup_name is not None else None)
+
+    if should_patch:
+        with patch('owca.containers.ResGroup'), patch('owca.containers.PerfCounters'):
+            return unpatched()
+    else:
+        return unpatched()
+
+
+def containerset(root_subgroup_path='/t1', subcgroups_paths=['/t1/c1', '/t1/c2'],
+                 rdt_enabled=True, resgroup=None, should_patch=True):
+    """Helper method to create ContainerSet class optionally with patched subsystems."""
+    def unpatched():
+        return ContainerSet(root_subgroup_path, subcgroups_paths,
+                            platform_cpus=1, allocation_configuration=None,
+                            resgroup=resgroup, rdt_enabled=rdt_enabled,
+                            rdt_mb_control_enabled=False)
+    if should_patch:
+        with patch('owca.containers.ResGroup'), patch('owca.containers.PerfCounters'):
+            return unpatched()
+    else:
+        return unpatched()
 
 
 def metric(name, labels=None):

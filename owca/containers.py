@@ -202,6 +202,12 @@ class ContainerSet(ContainerInterface):
         return "ContainerSet(cgroup_path={}, resgroup={})".format(
             self._cgroup_path, self._resgroup)
 
+    # TODO remove from code or rename to a standard function
+    # def __eq__(self, other):
+    #     return (self._cgroup_path == other._cgroup_path and
+    #             len(self._subcontainers) == len(other._subcontainers) and
+    #             all([child_a == child_b for child_a, child_b in zip(self._subcontainers, other._subcontainers)]))
+
 
 class Container(ContainerInterface):
     def __init__(self, cgroup_path: str, platform_cpus: int, resgroup: ResGroup = None,
@@ -276,12 +282,13 @@ class Container(ContainerInterface):
 
         return allocations
 
+    # TODO remove, as may give wrong impression.
     def __eq__(self, other):
         return self._cgroup_path == other._cgroup_path
 
 
 class ContainerManager:
-    """Main engine of synchornizing state between found orechestratios software tasks,
+    """Main engine of synchronizing state between found orchestration software tasks,
     its containers and resctrl system.
 
     - sync_container_state - is responsible for mapping Tasks to Container objects
@@ -356,7 +363,7 @@ class ContainerManager:
             # Check whether the task groups multiple containers,
             #   is so use ContainerSet class, otherwise Container class.
             #   ContainerSet shares interface with Container.
-            if len(new_task.subcgroups_paths) > 0:
+            if len(new_task.subcgroups_paths):
                 container = ContainerSet(
                     cgroup_path=new_task.cgroup_path,
                     cgroup_paths=new_task.subcgroups_paths,
