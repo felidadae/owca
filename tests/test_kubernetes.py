@@ -105,3 +105,12 @@ def test_find_resources_multiple_containers():
                           'name': 'default-token-ktvvz',
                           'readOnly': True}]}]
     assert {'requests_cpu': 0.35, 'requests_memory': 67108864 + 32 * 1000 ** 2} == find_resources(container_spec)
+
+
+def test_find_cgroup_path_for_pod_systemd():
+    node = KubernetesNode()
+    node.cgroup_driver = 'systemd'
+    qos = 'burstable'
+    pod_id = '12345-67890'
+    assert '/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod12345_67890.slice/' == \
+           node.find_cgroup_path_for_pod(qos, pod_id)
