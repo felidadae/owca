@@ -46,7 +46,9 @@ class Task:
     resources: Dict[str, str]
 
     def __hash__(self):
+        """Every instance of task is uniquely identified by cgroup_path."""
         return hash(self.cgroup_path)
+
 
 class Node(ABC):
     """Base class for tasks(workloads discover)."""

@@ -106,10 +106,11 @@ def anomaly(contended_task_id: TaskId, contending_task_ids: List[TaskId],
 
 def task(cgroup_path, labels=None, resources=None, subcgroups_paths=None):
     """Helper method to create task with default values."""
+    prefix = cgroup_path.replace('/', '')
     return Task(
         cgroup_path=cgroup_path,
-        name='name-' + cgroup_path,
-        task_id='task_id-' + cgroup_path[1:],
+        name=prefix + '_tasks_name',
+        task_id=prefix + '_task_id',
         labels=labels or dict(),
         resources=resources or dict(),
         subcgroups_paths=subcgroups_paths if subcgroups_paths is not None else []

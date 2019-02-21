@@ -55,7 +55,7 @@ def test_detection_runner_containers_state(*mocks):
         for label_key, label_value
         in task_labels.items()
     }
-    task_labels_sanitized_with_task_id = {'task_id': 'task_id-t1'}
+    task_labels_sanitized_with_task_id = {'task_id': 't1_task_id'}
     task_labels_sanitized_with_task_id.update(task_labels_sanitized)
 
     # Node mock
@@ -126,9 +126,9 @@ def test_detection_runner_containers_state(*mocks):
     # Check that detector was called with proper arguments.
     detector_mock.detect.assert_called_once_with(
         platform_mock,
-        {'task_id-t1': {'cpu_usage': 23}},
-        {'task_id-t1': {'cpus': 8}},
-        {'task_id-t1': task_labels_sanitized_with_task_id}
+        {'t1_task_id': {'cpu_usage': 23}},
+        {'t1_task_id': {'cpus': 8}},
+        {'t1_task_id': task_labels_sanitized_with_task_id}
     )
 
     # assert expected state (new container based on first task /t1)

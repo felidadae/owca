@@ -21,7 +21,7 @@ from owca import nodes, storage
 from owca.allocations import AllocationsDict, InvalidAllocations, AllocationValue
 from owca.allocators import TasksAllocations, AllocationConfiguration, AllocationType, Allocator, \
     TaskAllocations, RDTAllocation
-from owca.cgroup_allocations import QuotaAllocationValue, SharesAllocationValue
+from owca.cgroups_allocations import QuotaAllocationValue, SharesAllocationValue
 from owca.containers import Container
 from owca.detectors import convert_anomalies_to_metrics, \
     update_anomalies_metrics_with_task_information

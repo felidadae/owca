@@ -20,13 +20,15 @@ from owca.allocations import AllocationValue, InvalidAllocations, LabelsUpdater
 from owca.allocators import RDTAllocation
 from owca.metrics import Metric, MetricType
 from owca.resctrl import ResGroup
+from owca.logger import TRACE
 
 log = logging.getLogger(__name__)
 
 
 class RDTGroups:
-    """Wrapper over RDTAllocationsValus, that ignores perform_allocations
-    on the same RDTAllocationValue if this operates on the same ResGroup (the same name).
+    """Helper object shared among many RDTAllocationValues, that ignores perform_allocations
+    on the same RDTAllocationValue if this operates on the same ResGroup (the same name) and
+    verifies that number of used closids is not out of limit.
     """
 
     def __init__(self, closids_limit):
@@ -52,7 +54,8 @@ class RDTGroups:
 
 @dataclass
 class RDTAllocationValue(AllocationValue):
-    """Wrapper over immutable RDTAllocation object"""
+    """Wrapper over immutable RDTAllocation object to perform validation, serialization
+    and enforce isolation on RDT resources."""
 
     # Name of tasks, that RDTAllocation was assigned to.
     # Is used as resgroup.name if RDTAllocation.name is None
@@ -151,6 +154,7 @@ class RDTAllocationValue(AllocationValue):
         return metrics
 
     def get_resgroup_name(self):
+        """Return explicitly set resgroup name of inferred from covering container. """
         return self.rdt_allocation.name if self.rdt_allocation.name is not None \
             else self.container_name
 
@@ -175,9 +179,8 @@ class RDTAllocationValue(AllocationValue):
         # new name, then new allocation will be used (overwrite) but no merge
         if current is None:
             # New tasks or is moved from root group.
-            log.debug(
-                'resctrl changeset: new name or no previous allocation exists (moving from root '
-                'group!)')
+            log.log(TRACE, 'resctrl changeset: new name or no '
+                    'previous allocation exists (moving from root group!)')
             return new, new._copy(new.rdt_allocation,
                                   resgroup=ResGroup(name=new_group_name),
                                   source_resgroup=ResGroup(name=''))
@@ -186,13 +189,14 @@ class RDTAllocationValue(AllocationValue):
 
         if current_group_name != new_group_name:
             # We need to move to another group.
-            log.debug('resctrl changeset: move to new group=%r from=%r',
-                      current_group_name, new_group_name)
+            log.log(TRACE, 'resctrl changeset: move to new group=%r from=%r',
+                    current_group_name, new_group_name)
             return new, new._copy(new.rdt_allocation,
                                   resgroup=ResGroup(name=new_group_name),
                                   source_resgroup=ResGroup(name=current.get_resgroup_name()))
         else:
-            log.debug('resctrl changeset: merging existing rdt allocation (the same resgroup name)')
+            log.log(TRACE,
+                    'resctrl changeset: merging existing rdt allocation (the same resgroup name)')
 
             # Prepare target first, overwrite current l3 & mb values with new
             target_rdt_allocation = RDTAllocation(
@@ -229,7 +233,7 @@ class RDTAllocationValue(AllocationValue):
                 return target, None
 
     def validate(self):
-        # Check l3 mask according provided platform.rdt
+        """Check L3 mask according platform.rdt_ features."""
         if self.rdt_allocation.l3:
             if not self.rdt_allocation.l3.startswith('L3:'):
                 raise InvalidAllocations(
@@ -248,13 +252,13 @@ class RDTAllocationValue(AllocationValue):
         self.rdt_groups.validate(self)
 
     def perform_allocations(self):
-        """
-        - move to new group is source_group is not None
-        - update schemata file
+        """Enforce L3 or MB isolation including:
+        - moving to new group is source_group is not None
+        - update schemata file for given RDT resources
         - remove old group (source) optional
         """
 
-        # move to approriate group first
+        # Move to appropriate group first.
         if self.source_resgroup is not None:
             log.debug('resctrl: perform_allocations moving to new group (from %r to %r)',
                       self.source_resgroup.name, self.resgroup.name)
@@ -266,8 +270,8 @@ class RDTAllocationValue(AllocationValue):
             if len(self.source_resgroup.get_mon_groups()) == 1:
                 self.source_resgroup.remove(self.container_name)
 
+        # Now update the schemata file.
         if self.rdt_groups.should_perform_schemata_write(self):
-            # now update the schema
             if self.rdt_allocation.l3 or self.rdt_allocation.mb:
                 log.debug('resctrl: perform_allocations update schemata in %r', self.resgroup.name)
                 self.resgroup.write_schemata(
@@ -335,7 +339,7 @@ def check_cbm_bits(mask: str, cbm_mask: str, min_cbm_bits: str):
     mask = int(mask, 16)
     cbm_mask = int(cbm_mask, 16)
     if mask > cbm_mask:
-        raise ValueError('Mask is bigger than allowed')
+        raise InvalidAllocations('Mask is bigger than allowed')
 
     bin_mask = format(mask, 'b')
     number_of_cbm_bits = 0
@@ -345,8 +349,8 @@ def check_cbm_bits(mask: str, cbm_mask: str, min_cbm_bits: str):
     for bit in bin_mask:
         if bit == '1':
             if series_of_ones_finished:
-                raise ValueError('Bit series of ones in mask '
-                                 'must occur without a gap between them')
+                raise InvalidAllocations('Bit series of ones in mask '
+                                         'must occur without a gap between them')
 
             number_of_cbm_bits += 1
             previous = bit
@@ -358,5 +362,5 @@ def check_cbm_bits(mask: str, cbm_mask: str, min_cbm_bits: str):
 
     min_cbm_bits = int(min_cbm_bits)
     if number_of_cbm_bits < min_cbm_bits:
-        raise ValueError(
+        raise InvalidAllocations(
             str(number_of_cbm_bits) + " cbm bits. Requires minimum " + str(min_cbm_bits))

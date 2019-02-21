@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Intel Corporation
+# Copyright (c) 2019 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ class QuotaAllocationValue(BoxedNumeric):
         return metrics
 
     def perform_allocations(self):
-        self.cgroup.set_normalized_quota(self.value)
+        self.cgroup.set_quota(self.value)
 
 
 class SharesAllocationValue(BoxedNumeric):
@@ -50,4 +50,4 @@ class SharesAllocationValue(BoxedNumeric):
         return metrics
 
     def perform_allocations(self):
-        self.cgroup.set_normalized_shares(self.value)
+        self.cgroup.set_shares(self.value)

@@ -225,6 +225,11 @@ def _prepare_tasks_data(containers: Dict[Task, Container]) -> \
     for task, container in containers.items():
         # Task measurements and mesurements based metrics.
         task_measurements = container.get_measurements()
+        if not task_measurements:
+            log.warning('there is not measurments collected for container %r - ignoring!',
+                        container)
+            continue
+
         task_metrics = create_metrics(task_measurements)
 
         # Prepare tasks labels based on tasks metadata labels and task id.

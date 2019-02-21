@@ -244,15 +244,6 @@ class ResGroup:
         return os.listdir(os.path.join(BASE_RESCTRL_PATH, self.name, MON_GROUPS))
 
 
-#
-# ------------------------ Allocation -----------------------------------
-#
-
-
-#
-# ------------------------ initialization -----------------------------------
-#
-
 def cleanup_resctrl(root_rdt_l3: str, root_rdt_mb: str, reset_resctrl=False):
     """Reinitialize resctrl filesystem: by removing subfolders (both CTRL and MON groups)
     and setting default values for cache allocation and memory bandwidth (in root CTRL group).
