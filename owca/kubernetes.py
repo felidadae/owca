@@ -133,9 +133,8 @@ class KubernetesNode(Node):
                     qos=qos.lower(),
                     labels=labels,
                     resources=find_resources(container_spec),
-                    cgroup_path=self.find_cgroup_path_for_pod(pod_id, qos),
+                    cgroup_path=self.find_cgroup_path_for_pod(qos, pod_id),
                     subcgroups_paths=containers_cgroups))
-
         log.debug("Found %d kubernetes tasks (cumulatively %d cgroups leafs).",
                   len(tasks), sum([len(task.subcgroups_paths) for task in tasks]))
         tasks_summary = ", ".join(["({} {} -> {})".format(task.name,
@@ -156,6 +155,7 @@ class KubernetesNode(Node):
             if container_id is not None:
                 container_subdirectory = 'docker-{container_id}.scope'.format(
                     container_id=container_id)
+
             return ('/kubepods.slice/'
                     'kubepods-{qos}.slice/'
                     'kubepods-{qos}-pod{pod_id}.slice/'
@@ -167,6 +167,7 @@ class KubernetesNode(Node):
         elif self.cgroup_driver == CgroupDriverType.CGROUPFS:
             if container_id is not None:
                 container_subdirectory = container_id
+
             return ('/kubepods/'
                     '{qos}/'
                     'pod{pod_id}/'
