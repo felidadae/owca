@@ -19,7 +19,6 @@ import logging
 import pprint
 import requests
 import urllib.parse
-import json
 
 from owca import logger
 from owca.metrics import MetricName
@@ -59,8 +58,10 @@ class KubernetesNode(Node):
     # We need to know cgroup driver used to properly construct cgroup paths for pods.
     #   Reference in source code for kubernetes version stable 3.13:
     #   https://github.com/kubernetes/kubernetes/blob/v1.13.3/pkg/kubelet/cm/cgroup_manager_linux.go#L207
-    cgroup_driver: str = CgroupDriverType.CGROUPFS  # Use str as type (instead of CgroupDriverType) to
-                                                    # simplify creation in the YAML config file.
+
+    # Use str as type (instead of CgroupDriverType) to
+    # simplify creation in the YAML config file.
+    cgroup_driver: str = CgroupDriverType.CGROUPFS
 
     # By default use localhost, however kubelet may not listen on it.
     kubernetes_agent_enpoint: str = 'https://127.0.0.1:10250'
@@ -105,8 +106,9 @@ class KubernetesNode(Node):
             else:
                 labels = {}
 
-            # Apart from obvious part of the loop it checks whether all containers are in ready state - 
-            #   if at least one is not ready then skip this pod.
+            # Apart from obvious part of the loop it checks whether all
+            # containers are in ready state -
+            # if at least one is not ready then skip this pod.
             containers_cgroups = []
             are_all_containers_ready = True
             for container in container_statuses:
@@ -117,7 +119,8 @@ class KubernetesNode(Node):
                 container_id = container.get('containerID').split('docker://')[1]
                 containers_cgroups.append(self.find_cgroup_path_for_pod(qos, pod_id, container_id))
             if not are_all_containers_ready:
-                log.debug('Ignore pod with uid={} name={} as one or more of its containers are not ready.'
+                log.debug('Ignore pod with uid={} name={} as one or more of'
+                          ' its containers are not ready.'
                           .format(pod_id, pod_name))
                 continue
 
@@ -135,12 +138,13 @@ class KubernetesNode(Node):
 
         log.debug("Found %d kubernetes tasks (cumulatively %d cgroups leafs).",
                   len(tasks), sum([len(task.subcgroups_paths) for task in tasks]))
-        tasks_summary = ", ".join(["({} {} -> {})".format(task.name, task.task_id, task.subcgroups_paths)
+        tasks_summary = ", ".join(["({} {} -> {})".format(task.name,
+                                                          task.task_id,
+                                                          task.subcgroups_paths)
                                    for task in tasks])
         log.log(logger.TRACE, "Found kubernetes tasks with (name, task_id, subcgroups_paths): %s.",
                 tasks_summary)
         return tasks
-
 
     def find_cgroup_path_for_pod(self, qos, pod_id, container_id=None):
         """Return cgroup path for pod or a pod container."""
@@ -150,22 +154,26 @@ class KubernetesNode(Node):
         if self.cgroup_driver == CgroupDriverType.SYSTEMD:
             pod_id = pod_id.replace('-', '_')
             if container_id is not None:
-                container_subdirectory = 'docker-{container_id}.scope'.format(container_id=container_id)
+                container_subdirectory = 'docker-{container_id}.scope'.format(
+                    container_id=container_id)
             return ('/kubepods.slice/'
                     'kubepods-{qos}.slice/'
                     'kubepods-{qos}-pod{pod_id}.slice/'
-                    '{container_subdirectory}'.format(qos=qos.lower(),
-                                                      pod_id=pod_id,
-                                                      container_subdirectory=container_subdirectory))
+                    '{container_subdirectory}'.format(
+                                qos=qos.lower(),
+                                pod_id=pod_id,
+                                container_subdirectory=container_subdirectory))
+
         elif self.cgroup_driver == CgroupDriverType.CGROUPFS:
             if container_id is not None:
                 container_subdirectory = container_id
             return ('/kubepods/'
                     '{qos}/'
                     'pod{pod_id}/'
-                    '{container_subdirectory}'.format(qos=qos.lower(),
-                                                      pod_id=pod_id,
-                                                      container_subdirectory=container_subdirectory))
+                    '{container_subdirectory}'.format(
+                                qos=qos.lower(),
+                                pod_id=pod_id,
+                                container_subdirectory=container_subdirectory))
 
 
 def find_resources(containers_spec):
@@ -187,7 +195,9 @@ def find_resources(containers_spec):
                         if resource_name == 'memory':
                             for unit in MEMORY_UNITS:
                                 if resource_value.endswith(unit):
-                                    value = float(resource_value.split(unit)[0]) * MEMORY_UNITS[unit]
+                                    value = float(
+                                        resource_value.split(unit)[0]) \
+                                            * MEMORY_UNITS[unit]
                                     break
 
                             if not value:
@@ -196,7 +206,9 @@ def find_resources(containers_spec):
                         elif resource_name == 'cpu':
                             for unit in CPU_UNIT:
                                 if resource_value.endswith(unit):
-                                    value = float(resource_value.split(unit)[0]) * CPU_UNIT[unit]
+                                    value = float(
+                                        resource_value.split(unit)[0]) \
+                                            * CPU_UNIT[unit]
                                     break
 
                             if not value:
