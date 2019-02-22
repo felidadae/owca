@@ -16,7 +16,7 @@ from unittest.mock import patch, Mock
 
 import pytest
 
-from owca.containers import _calculate_desired_state, ContainerSet, Container
+from owca.containers import _calculate_desired_state, ContainerSet, Container, ContainerManager
 from owca.cgroups import Cgroup
 from owca.perf import PerfCounters
 from owca.resctrl import ResGroup
@@ -67,61 +67,51 @@ def test_calculate_desired_state(discovered_tasks, containers,
 
 
 # Parametrize scenarios:
-# 1)
-# 2)
-# 3)
-# 4)
-# 5)
-# 6)
-# 7)
-@patch('owca.containers.ResGroup')
+# 1) .
+# 2) One new task arrived.
+# 3) One task dissapeared, one appeared.
+# 4) One task dissapeared.
+# 5) Two task dissapeared.
 @patch('owca.containers.PerfCounters')
 @patch('owca.containers.Container.sync')
-@patch('owca.platforms.collect_topology_information', return_value=(1, 1, 1))
-@pytest.mark.parametrize('task_type', ('MesosTask', 'KubernetesTask'))
-@pytest.mark.parametrize('tasks, existing_containers, '
-                         'expected_running_containers', (
+@pytest.mark.parametrize('subsgroups', ([], ['/t1/c1', '/t1/c2']))
+@pytest.mark.parametrize('tasks_, existing_containers_, '
+                         'expected_running_containers_', (
     # 1)
     ([], {},
      {}),
     # 2)
-    ([task('/t1')], {},
-     {task('/t1'): container('/t1')}),
+    (['/t1'], {},
+     {'/t1': '/t1'}),
     # 3)
-    ([task('/t1')], {},
-     {task('/t1'): container('/t1')}),
+    (['/t1'], {'/t2': '/t2'},
+     {'/t1': '/t1'}),
     # 4)
-    ([task('/t1')], {task('/t2'): container('/t2')},
-     {task('/t1'): container('/t1')}),
+    (['/t1'], {'/t1': '/t1', '/t2': '/t2'},
+     {'/t1': '/t1'}),
     # 5)
-    ([task('/t1')], {task('/t1'): container('/t1'), task('/t2'): container('/t2')},
-     {task('/t1'): container('/t1')}),
-    # 6)
-    ([], {task('/t1'): container('/t1'), task('/t2'): container('/t2')},
+    ([], {'/t1': '/t1', '/t2': '/t2'},
      {}),
-    # 7)
-    ([kubernetes_task('/t1', ['/t1/c1', '/t1/c2'])], {},
-     {kubernetes_task('/t1', ['/t1/c1', '/t1/c2']): containerset('/t1', ['/t1/c1', '/t1/c2'])}),
 ))
-def test_sync_containers_state(platform_mock, sync_mock,
-                               perf_counters_mock, resgroup_mock,
-                               task_type,
-                               tasks, existing_containers,
-                               expected_running_containers):
-    # Mocker runner, because we're only interested in one sync_containers_state function.
-    runner = DetectionRunner(
-        node=Mock(),
-        metrics_storage=Mock(),
-        anomalies_storage=Mock(),
-        detector=Mock(),
+def test_sync_containers_state(sync_mock, perf_counters_mock,
+                               subsgroups,
+                               tasks_, existing_containers_, expected_running_containers_):
+    """Test both Container and ContainerSet classes."""
+    tasks = [task(t, subcgroups_paths=subsgroups) for t in tasks_]
+    existing_containers = {task(t, subcgroups_paths=subsgroups): container(c,subsgroups)
+                           for t,c in existing_containers_.items()}
+    expected_running_containers = {task(t, subcgroups_paths=subsgroups): container(c,subsgroups)
+                                   for t,c in expected_running_containers_.items()}
+
+    containers_manager = ContainerManager(
         rdt_enabled=False,
-    )
-    # Prepare internal state used by sync_containers_state function - mock.
-    # Use list for copying to have original list.
-    runner.containers_manager.containers = dict(existing_containers)
+        rdt_mb_control_enabled=False,
+        platform_cpus=1,
+        allocation_configuration=None)
+    containers_manager.containers = dict(existing_containers)
 
     # Call sync_containers_state
-    got_containers = runner.containers_manager.sync_containers_state(tasks)
+    got_containers = containers_manager.sync_containers_state(tasks)
 
     # Check internal state ...
     assert len(got_containers) == len(expected_running_containers)
@@ -129,9 +119,11 @@ def test_sync_containers_state(platform_mock, sync_mock,
         assert expected_task in got_containers
         got_container = got_containers[expected_task]
         assert got_container.get_cgroup_path() == expected_container.get_cgroup_path()
-        assert type(expected_container) == type(got_container)
-        if len(expected_task.subcgroups_paths):
+        if subsgroups:
+            assert type(got_container) == ContainerSet
             assert got_container._subcontainers == expected_container._subcontainers
+        assert type(expected_container) == type(got_container)
+
 
 
 @patch('owca.containers.Cgroup', spec=Cgroup,

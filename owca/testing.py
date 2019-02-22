@@ -128,14 +128,22 @@ def kubernetes_task(cgroup_path, subcgroups_paths, name=""):
         subcgroups_paths=subcgroups_paths)
 
 
-def container(cgroup_path, resgroup_name=None, with_config=False, should_patch=True):
+def container(cgroup_path, subcgroups_paths=[], resgroup_name=None, with_config=False, should_patch=True):
     """Helper method to create container optionally with patched subsystems."""
     def unpatched():
-        return Container(
-            cgroup_path=cgroup_path,
-            rdt_enabled=False, platform_cpus=1,
-            allocation_configuration=AllocationConfiguration() if with_config else None,
-            resgroup=ResGroup(name=resgroup_name) if resgroup_name is not None else None)
+        if len(subcgroups_paths):
+            return ContainerSet(cgroup_path=cgroup_path, cgroup_paths=subcgroups_paths,
+                                platform_cpus=1,
+                                allocation_configuration=AllocationConfiguration() if with_config else None,
+                                resgroup=ResGroup(name=resgroup_name) if resgroup_name is not None else None,
+                                rdt_enabled=False,
+                                rdt_mb_control_enabled=False)
+        else:
+            return Container(
+                cgroup_path=cgroup_path,
+                rdt_enabled=False, platform_cpus=1,
+                allocation_configuration=AllocationConfiguration() if with_config else None,
+                resgroup=ResGroup(name=resgroup_name) if resgroup_name is not None else None)
 
     if should_patch:
         with patch('owca.containers.ResGroup'), patch('owca.containers.PerfCounters'):
