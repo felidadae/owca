@@ -37,9 +37,15 @@ def test_get_tasks(get_mock):
                                   task_id='4d6a81df-3448-11e9-8e1d-246e96663c22',
                                   qos='burstable',
                                   labels={'exampleKey': 'value'},
-                                  resources={'requests_cpu': 0.25, 'requests_memory': 64*1024**2},
-                                  cgroup_path='/kubepods/4d6a81df-3448-11e9-8e1d-246e96663c22/podBurstable/',
-                                  subcgroups_paths=['/kubepods/burstable/pod4d6a81df-3448-11e9-8e1d-246e96663c22/eb9c378219b6a4efc034ea8898b19faa0e27c7b20b8eb254fda361cceacf8e90'])
+                                  resources={'requests_cpu': 0.25,
+                                             'requests_memory': 64*1024**2},
+                                  cgroup_path='/kubepods/4d6a81df-3448-11e9-8e'
+                                              '1d-246e96663c22/podBurstable/',
+                                  subcgroups_paths=['/kubepods/burstable/pod4d'
+                                                    '6a81df-3448-11e9-8e1d-246'
+                                                    'e96663c22/eb9c378219b6a4e'
+                                                    'fc034ea8898b19faa0e27c7b2'
+                                                    '0b8eb254fda361cceacf8e90'])
 
     task = tasks[1]
     assert task == KubernetesTask(name='test2',
@@ -47,8 +53,13 @@ def test_get_tasks(get_mock):
                                   qos='besteffort',
                                   labels={},
                                   resources={},
-                                  cgroup_path='/kubepods/567975a0-3448-11e9-8e1d-246e96663c22/podBestEffort/',
-                                  subcgroups_paths=['/kubepods/besteffort/pod567975a0-3448-11e9-8e1d-246e96663c22/e90bbbb3b060baa1d354cd9b26f353d66fbb08d785abd32f4f6ec52ac843a2e7'])
+                                  cgroup_path='/kubepods/567975a0-3448-11e9-8e'
+                                              '1d-246e96663c22/podBestEffort/',
+                                  subcgroups_paths=['/kubepods/besteffort/pod5'
+                                                    '67975a0-3448-11e9-8e1d-24'
+                                                    '6e96663c22/e90bbbb3b060ba'
+                                                    'a1d354cd9b26f353d66fbb08d'
+                                                    '785abd32f4f6ec52ac843a2e7'])
 
 
 @patch('requests.get', return_value=create_json_fixture_mock('kubernetes_get_state_not_ready', 200))
@@ -60,51 +71,67 @@ def test_get_tasks_not_all_ready(get_mock):
 
 def test_find_resources_empty():
     container_spec = [{'image': 'redis',
-        'imagePullPolicy': 'Always',
-        'name': 'redis',
-        'resources': {},
-        'terminationMessagePath': '/dev/termination-log',
-        'terminationMessagePolicy': 'File',
-        'volumeMounts': [{'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
-                                'name': 'default-token-ktvvz',
-                                'readOnly': True}]}]
+                       'imagePullPolicy': 'Always',
+                       'name': 'redis',
+                       'resources': {},
+                       'terminationMessagePath': '/dev/termination-log',
+                       'terminationMessagePolicy': 'File',
+                       'volumeMounts': [{'mountPath':
+                                         '/var/run/secrets/kubernetes.io/'
+                                         'serviceaccount',
+                                         'name': 'default-token-ktvvz',
+                                         'readOnly': True}]}]
     assert {} == find_resources(container_spec)
 
 
 def test_find_resources_with_requests_and_limits():
     container_spec = [{'image': 'redis',
-        'imagePullPolicy': 'Always',
-        'name': 'redis',
-        'resources': {'limits': {'cpu': '250m', 'memory': '64Mi'},
-                         'requests': {'cpu': '250m', 'memory': '64MB'}},
-        'terminationMessagePath': '/dev/termination-log',
-        'terminationMessagePolicy': 'File',
-        'volumeMounts': [{'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
-                          'name': 'default-token-ktvvz',
-                          'readOnly': True}]}]
-    assert {'limits_cpu': 0.25, 'limits_memory': 64*1024**2, 'requests_cpu': 0.25, 'requests_memory': 64*1000**2} == find_resources(container_spec)
+                       'imagePullPolicy': 'Always',
+                       'name': 'redis',
+                       'resources': {'limits':
+                                     {'cpu': '250m',
+                                      'memory': '64Mi'},
+                                     'requests': {'cpu': '250m',
+                                                  'memory': '64Mi'}},
+                       'terminationMessagePath': '/dev/termination-log',
+                       'terminationMessagePolicy': 'File',
+                       'volumeMounts': [{'mountPath': '/var/run/secrets/'
+                                                      'kubernetes.io/'
+                                                      'serviceaccount',
+                                         'name': 'default-token-ktvvz',
+                                         'readOnly': True}]}]
+    assert {'limits_cpu': 0.25, 'limits_memory': 64*1024**2,
+            'requests_cpu': 0.25, 'requests_memory':
+                64*1024**2} == find_resources(container_spec)
 
 
 def test_find_resources_multiple_containers():
     container_spec = [{'image': 'redis',
-        'imagePullPolicy': 'Always',
-        'name': 'redis',
-        'resources': {'requests': {'cpu': '250m', 'memory': '67108864'}},
-        'terminationMessagePath': '/dev/termination-log',
-        'terminationMessagePolicy': 'File',
-        'volumeMounts': [{'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
-                          'name': 'default-token-ktvvz',
-                          'readOnly': True}]},
-    {'image': 'memcached',
-        'imagePullPolicy': 'Always',
-        'name': 'memcached',
-        'resources': {'requests': {'cpu': '100m', 'memory': '32MB'}},
-        'terminationMessagePath': '/dev/termination-log',
-        'terminationMessagePolicy': 'File',
-        'volumeMounts': [{'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
-                          'name': 'default-token-ktvvz',
-                          'readOnly': True}]}]
-    assert {'requests_cpu': 0.35, 'requests_memory': 67108864 + 32 * 1000 ** 2} == find_resources(container_spec)
+                       'imagePullPolicy': 'Always',
+                       'name': 'redis',
+                       'resources': {'requests': {'cpu': '250m',
+                                                  'memory': '67108864'}},
+                       'terminationMessagePath': '/dev/termination-log',
+                       'terminationMessagePolicy': 'File',
+                       'volumeMounts': [{'mountPath': '/var/run/secrets/'
+                                                      'kubernetes.io/'
+                                                      'serviceaccount',
+                                         'name': 'default-token-ktvvz',
+                                         'readOnly': True}]},
+                      {'image': 'memcached',
+                       'imagePullPolicy': 'Always',
+                       'name': 'memcached',
+                       'resources': {'requests': {'cpu': '100m',
+                                                  'memory': '32Mi'}},
+                       'terminationMessagePath': '/dev/termination-log',
+                       'terminationMessagePolicy': 'File',
+                       'volumeMounts': [{'mountPath':
+                                         '/var/run/secrets/kubernetes.io/'
+                                         'serviceaccount',
+                                         'name': 'default-token-ktvvz',
+                                         'readOnly': True}]}]
+    assert {'requests_cpu': 0.35, 'requests_memory':
+            67108864 + 32 * 1024 ** 2} == find_resources(container_spec)
 
 
 def test_find_cgroup_path_for_pod_systemd():
@@ -112,5 +139,6 @@ def test_find_cgroup_path_for_pod_systemd():
     node.cgroup_driver = 'systemd'
     qos = 'burstable'
     pod_id = '12345-67890'
-    assert '/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod12345_67890.slice/' == \
+    assert '/kubepods.slice/kubepods-burstable.slice/' \
+           'kubepods-burstable-pod12345_67890.slice/' == \
            node.find_cgroup_path_for_pod(qos, pod_id)
