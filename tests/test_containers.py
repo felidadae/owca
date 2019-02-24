@@ -20,8 +20,7 @@ from owca.containers import _calculate_desired_state, ContainerSet, Container, C
 from owca.cgroups import Cgroup
 from owca.perf import PerfCounters
 from owca.resctrl import ResGroup
-from owca.runners.detection import DetectionRunner
-from owca.testing import task, container, containerset, kubernetes_task
+from owca.testing import task, container, containerset
 
 
 # Parametrize scenarios:
@@ -123,7 +122,6 @@ def test_sync_containers_state(sync_mock, perf_counters_mock,
             assert type(got_container) == ContainerSet
             assert got_container._subcontainers == expected_container._subcontainers
         assert type(expected_container) == type(got_container)
-
 
 
 @patch('owca.containers.Cgroup', spec=Cgroup,

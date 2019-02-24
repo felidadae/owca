@@ -284,8 +284,8 @@ class Container(ContainerInterface):
         return allocations
 
     # TODO remove, as may give wrong impression.
-    def __eq__(self, other):
-        return self._cgroup_path == other._cgroup_path
+    # def __eq__(self, other):
+    #     return self._cgroup_path == other._cgroup_path
 
 
 class ContainerManager:
