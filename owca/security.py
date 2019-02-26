@@ -18,10 +18,8 @@ import logging
 import os
 
 from owca import logger
-try:
-    LIBC = ctypes.CDLL('libc.so.6', use_errno=True)
-except OSError:
-    LIBC = None
+
+LIBC = ctypes.CDLL('libc.so.6', use_errno=True)
 
 log = logging.getLogger(__name__)
 
