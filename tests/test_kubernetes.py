@@ -15,7 +15,7 @@
 import json
 from unittest.mock import patch, Mock
 
-from owca.kubernetes import KubernetesNode, KubernetesTask, find_resources
+from owca.kubernetes import KubernetesNode, KubernetesTask, _find_resources_for_pod
 from owca.testing import relative_module_path
 
 
@@ -81,7 +81,7 @@ def test_find_resources_empty():
                                          'serviceaccount',
                                          'name': 'default-token-ktvvz',
                                          'readOnly': True}]}]
-    assert {} == find_resources(container_spec)
+    assert {} == _find_resources_for_pod(container_spec)
 
 
 def test_find_resources_with_requests_and_limits():
@@ -102,7 +102,7 @@ def test_find_resources_with_requests_and_limits():
                                          'readOnly': True}]}]
     assert {'limits_cpu': 0.25, 'limits_memory': 64*1024**2,
             'requests_cpu': 0.25, 'requests_memory':
-                64*1024**2} == find_resources(container_spec)
+                64*1024**2} == _find_resources_for_pod(container_spec)
 
 
 def test_find_resources_multiple_containers():
@@ -131,7 +131,7 @@ def test_find_resources_multiple_containers():
                                          'name': 'default-token-ktvvz',
                                          'readOnly': True}]}]
     assert {'requests_cpu': 0.35, 'requests_memory':
-            67108864 + 32 * 1024 ** 2} == find_resources(container_spec)
+            67108864 + 32 * 1024 ** 2} == _find_resources_for_pod(container_spec)
 
 
 def test_find_cgroup_path_for_pod_systemd():
@@ -141,4 +141,4 @@ def test_find_cgroup_path_for_pod_systemd():
     pod_id = '12345-67890'
     assert '/kubepods.slice/kubepods-burstable.slice/' \
            'kubepods-burstable-pod12345_67890.slice/' == \
-           node.find_cgroup_path_for_pod(qos, pod_id)
+           node._find_cgroup_path_for_pod(qos, pod_id)

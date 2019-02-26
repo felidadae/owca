@@ -24,6 +24,8 @@ runner: !DetectionRunner
     kubernetes_agent_enpoint: "https://$IP:10250"
     # Choose from cgroupfs | systemd
     cgroup_driver: "cgroupfs"
+    # List of namespaces to monitor pods in.
+    monitored_namespaces: ["default"]
   action_delay: 1.
   rdt_enabled: True
   metrics_storage: !LogStorage

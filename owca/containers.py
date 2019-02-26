@@ -163,8 +163,9 @@ class ContainerSet(ContainerInterface):
 
             summed_measurements, ignored_metrics = sum_measurements(measurements_list)
             measurements.update(summed_measurements)
-            log.warning('ContainerSet.get_measuremenets: ignored metrics {} while summing up.'
-                        .format(ignored_metrics))
+            if ignored_metrics:
+                log.warning('ContainerSet.get_measuremenets: ignored metrics {} while summing up.'
+                            .format(ignored_metrics))
 
             # Resgroup management is entirely done in this class.
             if self._rdt_enabled:

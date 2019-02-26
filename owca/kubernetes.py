@@ -14,7 +14,7 @@
 
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import List
 import logging
 import pprint
 import requests
@@ -22,7 +22,7 @@ import urllib.parse
 
 from owca import logger
 from owca.metrics import MetricName
-from owca.nodes import Node
+from owca.nodes import Node, Task
 
 DEFAULT_EVENTS = (MetricName.INSTRUCTIONS, MetricName.CYCLES, MetricName.CACHE_MISSES)
 
@@ -30,22 +30,17 @@ log = logging.getLogger(__name__)
 
 
 @dataclass
-class KubernetesTask:
-    name: str
-    task_id: str
-    cgroup_path: str
+class KubernetesTask(Task):
     qos: str
 
-    subcgroups_paths: List[str] = field(default_factory=list)
-    labels: Dict[str, str] = field(default_factory=dict)
-    resources: Dict[str, float] = field(default_factory=dict)
-
     def __hash__(self):
-        """Every instance of kubernetes task is uniqully identified by pod cgroup_path."""
-        return hash(self.task_id)
+        return super().__hash__()
 
-    def __eq__(self, other):
-        return self.cgroup_path == other.cgroup_path
+    def get_summary(self) -> str:
+        """Short representation of task. Used for logging."""
+        return "({} {} -> {})".format(self.name,
+                                      self.task_id,
+                                      self.subcgroups_paths)
 
 
 class CgroupDriverType(str, Enum):
@@ -58,7 +53,7 @@ class KubernetesNode(Node):
     # We need to know cgroup driver used to properly construct cgroup paths for pods.
     #   Reference in source code for kubernetes version stable 3.13:
     #   https://github.com/kubernetes/kubernetes/blob/v1.13.3/pkg/kubelet/cm/cgroup_manager_linux.go#L207
-
+    #
     # Use str as type (instead of CgroupDriverType) to
     # simplify creation in the YAML config file.
     cgroup_driver: str = CgroupDriverType.CGROUPFS
@@ -70,34 +65,46 @@ class KubernetesNode(Node):
     client_private_key: str = None
     client_cert: str = None
 
-    METHOD = 'GET_STATE'
-    pods_path = '/pods'
+    # List of namespaces to monitor pods in.
+    monitored_namespaces: List[str] = field(default_factory=lambda: ["default"])
 
     def __post_init__(self):
         assert self.cgroup_driver in (CgroupDriverType.SYSTEMD, CgroupDriverType.CGROUPFS)
 
-    def get_tasks(self):
-        """Returns only running tasks."""
-        full_url = urllib.parse.urljoin(self.kubernetes_agent_enpoint, self.pods_path)
-        r = requests.get(full_url, json=dict(type=self.METHOD),
+    def _request_kubetelet(self):
+        METHOD = 'GET_STATE'
+        pods_path = '/pods'
+
+        full_url = urllib.parse.urljoin(self.kubernetes_agent_enpoint, pods_path)
+        r = requests.get(full_url, json=dict(type=METHOD),
                          verify=False, cert=(self.client_cert, self.client_private_key))
         r.raise_for_status()
-        state = r.json()
+        return r.json()
+
+    def _log_found_tasks(self, tasks):
+        log.debug("Found %d kubernetes tasks (cumulatively %d cgroups leafs).",
+                  len(tasks), sum([len(task.subcgroups_paths) for task in tasks]))
+        log.log(logger.TRACE, "Found kubernetes tasks with (name, task_id, subcgroups_paths): %s.",
+                ", ".join([task.get_summary() for task in tasks]))
+
+    def get_tasks(self) -> List[Task]:
+        """Returns only running tasks."""
+        kubelet_json_response = self._request_kubetelet()
 
         tasks = []
-
-        for pod in state.get('items'):
+        for pod in kubelet_json_response.get('items'):
             container_statuses = pod.get('status').get('containerStatuses')
             if not container_statuses:
+                # Lacking needed information.
                 continue
 
-            # Ignore Kubernetes internal pods. Not even logging about it.
-            if pod.get('metadata').get('namespace') == 'kube-system':
+            # Ignore Kubernetes internal pods.
+            if pod.get('metadata').get('namespace') not in self.monitored_namespaces:
                 continue
 
+            # Read into variables essential information about pod.
             pod_id = pod.get('metadata').get('uid')
             pod_name = pod.get('metadata').get('name')
-            log.debug("Found pod with uid={} name={}".format(pod_id, pod_name))
             qos = pod.get('status').get('qosClass')
             if pod.get('metadata').get('labels'):
                 labels = {sanitize_label(key): value
@@ -115,37 +122,28 @@ class KubernetesNode(Node):
                 if not container.get('ready'):
                     are_all_containers_ready = False
                     break
-
                 container_id = container.get('containerID').split('docker://')[1]
-                containers_cgroups.append(self.find_cgroup_path_for_pod(qos, pod_id, container_id))
+                containers_cgroups.append(self._find_cgroup_path_for_pod(qos, pod_id, container_id))
             if not are_all_containers_ready:
                 log.debug('Ignore pod with uid={} name={} as one or more of'
                           ' its containers are not ready.'
                           .format(pod_id, pod_name))
                 continue
+            else:
+                log.debug('Pod with uid={} name={} is ready and monitored by the system.'
+                          .format(pod_id, pod_name))
 
             container_spec = pod.get('spec').get('containers')
+            tasks.append(KubernetesTask(name=pod_name, task_id=pod_id, qos=qos.lower(),
+                                        labels=labels,
+                                        resources=_find_resources_for_pod(container_spec),
+                                        cgroup_path=self._find_cgroup_path_for_pod(qos, pod_id),
+                                        subcgroups_paths=containers_cgroups))
+            self._log_found_tasks(tasks)
 
-            tasks.append(
-                KubernetesTask(
-                    name=pod_name,
-                    task_id=pod_id,
-                    qos=qos.lower(),
-                    labels=labels,
-                    resources=find_resources(container_spec),
-                    cgroup_path=self.find_cgroup_path_for_pod(qos, pod_id),
-                    subcgroups_paths=containers_cgroups))
-        log.debug("Found %d kubernetes tasks (cumulatively %d cgroups leafs).",
-                  len(tasks), sum([len(task.subcgroups_paths) for task in tasks]))
-        tasks_summary = ", ".join(["({} {} -> {})".format(task.name,
-                                                          task.task_id,
-                                                          task.subcgroups_paths)
-                                   for task in tasks])
-        log.log(logger.TRACE, "Found kubernetes tasks with (name, task_id, subcgroups_paths): %s.",
-                tasks_summary)
         return tasks
 
-    def find_cgroup_path_for_pod(self, qos, pod_id, container_id=None):
+    def _find_cgroup_path_for_pod(self, qos, pod_id, container_id=None):
         """Return cgroup path for pod or a pod container."""
         if container_id is None:
             container_subdirectory = ""
@@ -177,7 +175,7 @@ class KubernetesNode(Node):
                                 container_subdirectory=container_subdirectory))
 
 
-def find_resources(containers_spec):
+def _find_resources_for_pod(containers_spec):
     resources = dict()
 
     MEMORY_UNITS = {'Ki': 1024, 'Mi': 1024**2, 'Gi': 1024**3, }
@@ -186,50 +184,44 @@ def find_resources(containers_spec):
 
     for container in containers_spec:
         container_resources = container.get('resources')
-        if container_resources:
-            for resource_type in RESOURCE_TYPES:
-                resource_exists = bool(container_resources.get(resource_type))
-                if resource_exists:
-                    for resource_name, resource_value in \
-                            container_resources.get(resource_type).items():
-                        value = None
-                        if resource_name == 'memory':
-                            for unit in MEMORY_UNITS:
-                                if resource_value.endswith(unit):
-                                    value = float(
-                                        resource_value.split(unit)[0]) \
-                                            * MEMORY_UNITS[unit]
-                                    break
+        if not container_resources:
+            continue
 
-                            if not value:
-                                value = resource_value
+        for resource_type in RESOURCE_TYPES:
+            resource_exists = bool(container_resources.get(resource_type))
+            if not resource_exists:
+                continue
 
-                        elif resource_name == 'cpu':
-                            for unit in CPU_UNIT:
-                                if resource_value.endswith(unit):
-                                    value = float(
-                                        resource_value.split(unit)[0]) \
-                                            * CPU_UNIT[unit]
-                                    break
+            for resource_name, resource_value in \
+                    container_resources.get(resource_type).items():
+                value = None
+                if resource_name == 'memory':
+                    for unit in MEMORY_UNITS:
+                        if resource_value.endswith(unit):
+                            value = float(
+                                resource_value.split(unit)[0]) * MEMORY_UNITS[unit]
+                            break
 
-                            if not value:
-                                value = resource_value
+                    if not value:
+                        value = resource_value
 
-                        if resource_type + '_' + resource_name in resources:
-                            resources[resource_type + '_' + resource_name] += \
-                                float(value)
-                        else:
-                            resources[resource_type + '_' + resource_name] = \
-                                float(value)
+                elif resource_name == 'cpu':
+                    for unit in CPU_UNIT:
+                        if resource_value.endswith(unit):
+                            value = float(
+                                resource_value.split(unit)[0]) * CPU_UNIT[unit]
+                            break
+
+                    if not value:
+                        value = resource_value
+
+                if resource_type + '_' + resource_name in resources:
+                    resources[resource_type + '_' + resource_name] += float(value)
+                else:
+                    resources[resource_type + '_' + resource_name] = float(value)
 
     return resources
 
 
 def sanitize_label(label_key):
     return label_key.replace('.', '_').replace('-', '_')
-
-
-if __name__ == "__main__":
-    node = KubernetesNode(client_private_key="/home/vagrant/apiserver-kubelet.client.key",
-                          client_cert="/home/vagrant/apiserver-kubelet-client.crt")
-    pprint.PrettyPrinter(indent=4).pprint(node.get_tasks())
