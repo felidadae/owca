@@ -19,6 +19,13 @@ Check `Prometheus metrics types`_ for further reference
 .. _`Prometheus metrics types`: https://prometheus.io/docs/concepts/metric_types
 
 
+Supported orchestration systems
+-----------
+We support both Mesos and Kubernetes (Kubernetes is currently supported only in the detect mode).
+Use `config kubernetes`_ as a reference configuration file.
+
+.. _`config kubernetes`: configs/kubernetes_example.yaml
+
 Detector callback API
 ----------------------
 
