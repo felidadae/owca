@@ -185,28 +185,12 @@ class ContainerSet(ContainerInterface):
             self._resgroup.remove(self._name)
 
     def get_allocations(self) -> TaskAllocations:
-        # In only detect mode, without allocation configuration return nothing.
-        if not self._allocation_configuration:
-            return {}
-        allocations: TaskAllocations = dict()
-        allocations.update(self._cgroup.get_allocations())
-        if self._rdt_enabled:
-            allocations.update(self._resgroup.get_allocations())
-
-        log.debug('allocations on task=%r from resgroup=%r allocations:\n%s',
-                  self._name, self._resgroup, pprint.pformat(allocations))
-
-        return allocations
+        # Currently only detect mode is supported.
+        return {}
 
     def __repr__(self):
         return "ContainerSet(cgroup_path={}, resgroup={})".format(
             self._cgroup_path, self._resgroup)
-
-    # TODO remove from code or rename to a standard function
-    # def __eq__(self, other):
-    #     return (self._cgroup_path == other._cgroup_path and
-    #             len(self._subcontainers) == len(other._subcontainers) and
-    #             all([child_a == child_b for child_a, child_b in zip(self._subcontainers, other._subcontainers)]))
 
 
 class Container(ContainerInterface):
@@ -273,8 +257,9 @@ class Container(ContainerInterface):
         # In only detect mode, without allocation configuration return nothing.
         if not self._allocation_configuration:
             return {}
+
         allocations: TaskAllocations = dict()
-        allocations.update(self.cgroup.get_allocations())
+        allocations.update(self._cgroup.get_allocations())
         if self._rdt_enabled:
             allocations.update(self._resgroup.get_allocations())
 
@@ -282,10 +267,6 @@ class Container(ContainerInterface):
                   self._name, self._resgroup, pprint.pformat(allocations))
 
         return allocations
-
-    # TODO remove, as may give wrong impression.
-    # def __eq__(self, other):
-    #     return self._cgroup_path == other._cgroup_path
 
 
 class ContainerManager:
@@ -315,6 +296,8 @@ class ContainerManager:
         - perf counters opens file descriptors for counters,
         - resctrl (ResGroups) creates and manages directories under resctrl fs and scarce "clsid"
             hardware identifiers
+
+        Can throw OutOfClosidsException.
         """
 
         # Find difference between discovered Mesos tasks and already watched containers.

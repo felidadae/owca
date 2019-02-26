@@ -28,11 +28,11 @@ platform_mock = Mock(
     spec=platforms.Platform, sockets=1,
     rdt_cbm_mask='fffff', rdt_min_cbm_bits=1, rdt_mb_control_enabled=False, rdt_num_closids=2)
 
-
 CPU_USAGE=23
 CPU_COUNT = 8.
 TIME_TICK=1234567890.123
 TASK_UUID='fake-uuid'
+@patch('resource.getrusage', return_value=Mock(ru_maxrss=1234))
 @patch('owca.platforms.collect_platform_information', return_value=(
         platform_mock, [metric('platform-cpu-usage')], {}))
 @patch('owca.testing._create_uuid_from_tasks_ids', return_value=TASK_UUID)
@@ -44,7 +44,7 @@ TASK_UUID='fake-uuid'
 @patch('owca.containers.Cgroup.get_measurements', return_value=dict(cpu_usage=CPU_USAGE))
 @patch('time.time', return_value=TIME_TICK)
 @pytest.mark.parametrize('subcgroups', ([], ['/t1/c1'], ['/t1/c1', '/t1/c2']))
-def test_detection_runner_containers_state(_1,_2,_3,_4,_5,_6,_7,_8,_9, subcgroups):
+def test_detection_runner_containers_state(_1,_2,_3,_4,_5,_6,_7,_8,_9, _10, subcgroups):
     """Tests proper interaction between runner instance and functions for
     creating anomalies and calculating the desired state.
     Also tests labelling of metrics during iteration loop.
@@ -99,6 +99,20 @@ def test_detection_runner_containers_state(_1,_2,_3,_4,_5,_6,_7,_8,_9, subcgroup
     assert metrics_storage.store.call_args[0][0] == [
         Metric('owca_up', type=MetricType.COUNTER, value=TIME_TICK, labels=extra_labels),
         Metric('owca_tasks', type=MetricType.GAUGE, value=1, labels=extra_labels),
+        Metric('owca_memory_usage_bytes', type=MetricType.GAUGE, value=2468*1024,
+               labels=extra_labels),
+        Metric('owca_duration_seconds', value=0.0, type='gauge',
+               labels=dict(extra_labels, function='collect_platform_information'), ),
+        Metric('owca_duration_seconds', value=0.0, type='gauge',
+               labels=dict(extra_labels, function='get_tasks')),
+        Metric('owca_duration_seconds', value=0.0, type='gauge',
+               labels=dict(extra_labels, function='iteration')),
+        Metric('owca_duration_seconds', value=0.0, type='gauge',
+               labels=dict(extra_labels, function='prepare_task_data')),
+        Metric('owca_duration_seconds', value=0.0, type='gauge',
+               labels=dict(extra_labels, function='sleep')),
+        Metric('owca_duration_seconds', value=0.0, type='gauge',
+               labels=dict(extra_labels, function='sync')),
         metric('platform-cpu-usage', labels=extra_labels),
         Metric(name='cpu_usage', value=CPU_USAGE * (len(subcgroups) if subcgroups else 1),
                labels=dict(extra_labels, **task_labels_sanitized_with_task_id))]

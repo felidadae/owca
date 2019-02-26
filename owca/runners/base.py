@@ -13,6 +13,7 @@
 # limitations under the License.
 import logging
 import time
+import resource
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Tuple, List
 
@@ -68,6 +69,7 @@ class BaseRunnerMixin:
         self.rdt_enabled = rdt_enabled  # as mixin it can override the value from base class
         self.rdt_mb_control_enabled = rdt_mb_control_enabled
         self.allocation_configuration = allocation_configuration
+        self.last_iteration = time.time()
 
     def configure_rdt(self, rdt_enabled, ignore_privileges_check: bool):
         """Check required permission for using rdt and initilize subsystem.
@@ -121,12 +123,38 @@ class BaseRunnerMixin:
         time.sleep(delay)
         return True
 
-    def get_internal_metrics(self, tasks):
+    def get_internal_metrics(self, tasks, durations: Dict[str, float]):
         """Internal owca metrics."""
-        return [
+
+        # Iteration_duration.
+        now = time.time()
+        iteration_duration = now - self.last_iteration
+        self.last_iteration = now
+
+        durations['iteration'] = iteration_duration
+        durations['sleep'] = self.action_delay
+
+        # Memory usage.
+        memory_usage_rss_self = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        memory_usage_rss_children = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
+        memory_usage_rss = memory_usage_rss_self + memory_usage_rss_children
+
+        metrics = [
             Metric(name='owca_up', type=MetricType.COUNTER, value=time.time()),
             Metric(name='owca_tasks', type=MetricType.GAUGE, value=len(tasks)),
+            Metric(name='owca_memory_usage_bytes', type=MetricType.GAUGE,
+                   value=int(memory_usage_rss*1024)),
         ]
+
+        for duration_name, duration_value in sorted(durations.items()):
+            metrics.append(
+                Metric(name='owca_duration_seconds',
+                       type=MetricType.GAUGE, value=duration_value,
+                       labels=dict(function=duration_name),
+                       ),
+            )
+
+        return metrics
 
     def get_anomalies_statistics_metrics(self, anomalies, detect_duration=None):
         """Extra external plugin anomaly statistics."""
@@ -179,25 +207,41 @@ class BaseRunnerMixin:
         """Prepare data required for both detect() and allocate() methods."""
 
         # Collect information about tasks running on node.
+        get_tasks_start = time.time()
         tasks = node.get_tasks()
+        get_tasks_duration = time.time() - get_tasks_start
 
         # Keep sync of found tasks and internally managed containers.
+        sync_duration_start = time.time()
         containers = self.containers_manager.sync_containers_state(tasks)
-
-        metrics_package = MetricPackage(metrics_storage)
-        metrics_package.add_metrics(self.get_internal_metrics(tasks))
+        sync_duration = time.time() - sync_duration_start
 
         # Platform information
+        collect_platform_information_start = time.time()
         platform, platform_metrics, platform_labels = platforms.collect_platform_information(
             self.rdt_enabled)
-        metrics_package.add_metrics(platform_metrics)
+        collect_platform_information_duration = time.time() - collect_platform_information_start
 
         # Common labels
         common_labels = dict(platform_labels, **extra_labels)
 
         # Tasks informations
+        prepare_task_data_start = time.time()
         (tasks_metrics, tasks_measurements, tasks_resources, tasks_labels,
          current_tasks_allocations) = _prepare_tasks_data(containers)
+        prepare_task_data_duration = time.time() - prepare_task_data_start
+
+        durations = dict(
+            get_tasks=get_tasks_duration,
+            sync=sync_duration,
+            collect_platform_information=collect_platform_information_duration,
+            prepare_task_data=prepare_task_data_duration,
+        )
+        internal_metrics = self.get_internal_metrics(tasks, durations)
+
+        metrics_package = MetricPackage(metrics_storage)
+        metrics_package.add_metrics(internal_metrics)
+        metrics_package.add_metrics(platform_metrics)
         metrics_package.add_metrics(tasks_metrics)
         metrics_package.send(common_labels)
 

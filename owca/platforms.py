@@ -21,10 +21,9 @@ import time
 from typing import List, Dict, Set, Tuple, Optional
 
 from dataclasses import dataclass
+from pkg_resources import DistributionNotFound, get_distribution
 
 from owca.metrics import Metric, MetricName
-
-from pkg_resources import DistributionNotFound, get_distribution
 
 log = logging.getLogger(__name__)
 
@@ -70,6 +69,8 @@ class Platform:
     rdt_cbm_mask: Optional[str]  # based on /sys/fs/resctrl/info/L3/cbm_mask
     rdt_min_cbm_bits: Optional[str]  # based on /sys/fs/resctrl/info/L3/min_cbm_bits
     rdt_num_closids: Optional[int]  # based on /sys/fs/resctrl/info/L3/num_closids
+    rdt_mb_bandwidth_gran: Optional[int]  # based on /sys/fs/resctrl/info/MB/bandwidth_gran
+    rdt_mb_min_bandwidth: Optional[int]  # based on /sys/fs/resctrl/info/MB/bandwidth_gran
 
 
 def create_metrics(platform: Platform) -> List[Metric]:
@@ -232,8 +233,15 @@ def collect_topology_information() -> (int, int, int):
     return nr_of_online_cpus, nr_of_cores, nr_of_sockets
 
 
-def collect_rdt_information(rdt_enabled: bool) -> (str, str, bool, int):
-    """Returns rdt_cbm_mask, min_cbm_bits values."""
+def collect_rdt_information(rdt_enabled: bool) -> (
+        Optional[str],  # cbm_mask
+        Optional[str],  # min_cbm_bits
+        bool,           # rdt_mb_control_enabled,
+        Optional[int],  # min of L3/num_closids or MB/num_closids
+        Optional[int],  # mb_bandwidth_gran
+        Optional[int]   # mb_min_bandwidth
+        ):
+    """Returns rdt information values."""
     if rdt_enabled:
         with open('/sys/fs/resctrl/info/L3/cbm_mask') as f:
             cbm_mask = f.read().strip()
@@ -244,9 +252,21 @@ def collect_rdt_information(rdt_enabled: bool) -> (str, str, bool, int):
         with open('/sys/fs/resctrl/schemata') as f:
             schemata_body = f.read()
             rdt_mb_control_enabled = 'MB:' in schemata_body
-        return cbm_mask, min_cbm_bits, rdt_mb_control_enabled, num_closids
+        if rdt_mb_control_enabled:
+            with open('/sys/fs/resctrl/info/MB/bandwidth_gran') as f:
+                mb_bandwidth_gran = int(f.read())
+            with open('/sys/fs/resctrl/info/MB/min_bandwidth') as f:
+                mb_min_bandwidth = int(f.read())
+            with open('/sys/fs/resctrl/info/MB/num_closids') as f:
+                mb_num_closids = int(f.read())
+                num_closids = min(num_closids, mb_num_closids)
+        else:
+            mb_bandwidth_gran, mb_min_bandwidth = None, None
+
+        return (cbm_mask, min_cbm_bits, rdt_mb_control_enabled, num_closids,
+                mb_bandwidth_gran, mb_min_bandwidth)
     else:
-        return None, None, False, None
+        return None, None, False, None, None, None
 
 
 def collect_platform_information(rdt_enabled: bool = True) -> (
@@ -264,8 +284,8 @@ def collect_platform_information(rdt_enabled: bool = True) -> (
     """
     # Static information
     nr_of_cpus, nr_of_cores, no_of_sockets = collect_topology_information()
-    rdt_cbm_mask, rdt_min_cbm_bits, rdt_mb_control_enabled, num_closids = \
-        collect_rdt_information(rdt_enabled)
+    (rdt_cbm_mask, rdt_min_cbm_bits, rdt_mb_control_enabled, num_closids,
+     rdt_mb_bandwidth_gran, rdt_mb_min_bandwidth) = collect_rdt_information(rdt_enabled)
 
     # Dynamic information
     cpus_usage = parse_proc_stat(read_proc_stat())
@@ -280,7 +300,9 @@ def collect_platform_information(rdt_enabled: bool = True) -> (
                         rdt_cbm_mask=rdt_cbm_mask,
                         rdt_min_cbm_bits=rdt_min_cbm_bits,
                         rdt_num_closids=num_closids,
+                        rdt_mb_bandwidth_gran=rdt_mb_bandwidth_gran,
+                        rdt_mb_min_bandwidth=rdt_mb_min_bandwidth,
                         )
-    assert len(platform.cpus_usage) == platform.cpus,\
+    assert len(platform.cpus_usage) == platform.cpus, \
         "Inconsistency in cpu data returned by kernel"
     return platform, create_metrics(platform), create_labels(platform)

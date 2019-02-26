@@ -101,6 +101,9 @@ def test_collect_topology_information_2_cores_per_socket_all_cpus_online(*mocks)
     "/sys/fs/resctrl/info/L3/cbm_mask": "fffff",
     "/sys/fs/resctrl/info/L3/min_cbm_bits": "2",
     "/sys/fs/resctrl/info/L3/num_closids": "16",
+    "/sys/fs/resctrl/info/MB/bandwidth_gran": "10",
+    "/sys/fs/resctrl/info/MB/min_bandwidth": "20",
+    "/sys/fs/resctrl/info/MB/num_closids": "8",
     "/sys/fs/resctrl/schemata": "MB:0=100",
     "/proc/stat": "parsed value mocked below",
     "/proc/meminfo": "parsed value mocked below",
@@ -113,7 +116,8 @@ def test_collect_topology_information_2_cores_per_socket_all_cpus_online(*mocks)
 @patch('time.time', return_value=1536071557.123456)
 def test_collect_platform_information(*mocks):
     assert collect_platform_information() == (
-        Platform(1, 1, 2, {0: 100, 1: 200}, 1337, 1536071557.123456, True, 'fffff', '2', 16),
+        Platform(1, 1, 2, {0: 100, 1: 200}, 1337, 1536071557.123456, True, 'fffff', '2',
+                 8, 10, 20),
         [
             Metric.create_metric_with_metadata(
                 name=MetricName.MEM_USAGE, value=1337

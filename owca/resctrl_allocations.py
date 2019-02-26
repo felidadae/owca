@@ -253,7 +253,7 @@ class RDTAllocationValue(AllocationValue):
 
     def perform_allocations(self):
         """Enforce L3 or MB isolation including:
-        - moving to new group is source_group is not None
+        - moving to new group if source_group is not None
         - update schemata file for given RDT resources
         - remove old group (source) optional
         """

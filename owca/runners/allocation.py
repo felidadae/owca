@@ -147,43 +147,35 @@ class AllocationRunner(Runner, BaseRunnerMixin):
 
             log.debug('Anomalies detected: %d', len(anomalies))
 
-            log.debug('current: %s', current_tasks_allocations)
+            log.debug('Current allocations: %s', current_tasks_allocations)
             current_allocations = TasksAllocationsValues.create(
                 current_tasks_allocations, self.containers_manager.containers, platform)
 
             allocations_changeset = None
             try:
 
-                log.debug('new: %s', new_tasks_allocations)
+                log.debug('New allocations: %s', new_tasks_allocations)
                 new_allocations = TasksAllocationsValues.create(
                     new_tasks_allocations, self.containers_manager.containers, platform)
 
                 new_allocations.validate()
-
-                # if there are left allocations to apply
                 if new_allocations is not None:
-
-                    # log.log(TRACE, 'new (after validation):\n %s', pprint.pformat(
-                    # new_allocations))
-
                     target_allocations, allocations_changeset = new_allocations.calculate_changeset(
                         current_allocations)
                     target_allocations.validate()
-
                 else:
                     target_allocations = current_allocations
-
                 errors = []
 
             except InvalidAllocations as e:
-                log.error('invalid allocations: %s', str(e))
+                log.error('Invalid allocations: %s', str(e))
                 errors = [str(e)]
                 target_allocations = TasksAllocationsValues.create(
                     current_tasks_allocations, self.containers_manager.containers, platform)
 
             if allocations_changeset:
-                log.debug('changeset: %s', allocations_changeset)
-                log.info('performing allocations on %d tasks', len(allocations_changeset))
+                log.debug('Allocations changeset: %s', allocations_changeset)
+                log.info('Performing allocations on %d tasks.', len(allocations_changeset))
                 allocations_changeset.perform_allocations()
 
             # Note: anomaly metrics include metrics found in ContentionAnomaly.metrics.

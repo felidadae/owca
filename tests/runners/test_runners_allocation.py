@@ -26,14 +26,13 @@ platform_mock = Mock(
     spec=platforms.Platform, sockets=1,
     rdt_cbm_mask='fffff', rdt_min_cbm_bits=1, rdt_mb_control_enabled=False, rdt_num_closids=2)
 
-import pytest
-@pytest.mark.skip(reason="no way of currently testing this")
 @patch('time.time', return_value=1234567890.123)
 @patch('owca.platforms.collect_topology_information', return_value=(1, 1, 1))
 @patch('owca.platforms.collect_platform_information', return_value=(
         platform_mock, [metric('platform-cpu-usage')], {}))
 @patch('owca.runners.base.are_privileges_sufficient', return_value=True)
 @patch('owca.runners.allocation.AllocationRunner.configure_rdt', return_value=True)
+@patch('resource.getrusage', return_value=Mock(ru_maxrss=1234))
 @patch('owca.containers.PerfCounters')
 @patch('owca.cgroups.Cgroup.get_measurements', return_value=dict(cpu_usage=23))
 @patch('owca.cgroups.Cgroup.get_pids', return_value=['123'])
@@ -61,7 +60,9 @@ def test_allocation_runner_containers_state(*mocks):
 
     # Patch Container get_allocations
     initial_tasks_allocations = {AllocationType.QUOTA: 1.,
-                                 AllocationType.RDT: RDTAllocation(name='', l3='L3:0=fffff')}
+                                 AllocationType.RDT: RDTAllocation(name='',
+                                                                   l3='L3:0=fffff',
+                                                                   mb='mb:0=50')}
     patch('owca.containers.Container.get_allocations',
           return_value=initial_tasks_allocations).__enter__()
 
@@ -167,6 +168,10 @@ def test_allocation_runner_containers_state(*mocks):
                labels={'allocation_type': 'rdt_l3_mask', 'group_name': '',
                        'domain_id': '0', 'container_name': 't2', 'task': 't2_task_id'},
                type='gauge'),
+        Metric(name='allocation_rdt_mb', value=50,
+               labels={'allocation_type': 'rdt_mb',
+                       'group_name': '', 'domain_id': '0', 'container_name': 't2',
+                       'task': 't2_task_id'}, type='gauge'),
         Metric(name='allocations_count', value=2, labels={}, type='counter'),
         Metric(name='allocations_errors', value=0, labels={}, type='counter'),
         Metric(name='allocation_duration', value=0.0, labels={}, type='gauge')

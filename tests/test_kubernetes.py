@@ -39,8 +39,8 @@ def test_get_tasks(get_mock):
                                   labels={'exampleKey': 'value'},
                                   resources={'requests_cpu': 0.25,
                                              'requests_memory': 64*1024**2},
-                                  cgroup_path='/kubepods/4d6a81df-3448-11e9-8e'
-                                              '1d-246e96663c22/podBurstable/',
+                                  cgroup_path='/kubepods/burstable/pod4d6a81df-3448-11e9-8e'
+                                              '1d-246e96663c22/',
                                   subcgroups_paths=['/kubepods/burstable/pod4d'
                                                     '6a81df-3448-11e9-8e1d-246'
                                                     'e96663c22/eb9c378219b6a4e'
@@ -53,8 +53,8 @@ def test_get_tasks(get_mock):
                                   qos='besteffort',
                                   labels={},
                                   resources={},
-                                  cgroup_path='/kubepods/567975a0-3448-11e9-8e'
-                                              '1d-246e96663c22/podBestEffort/',
+                                  cgroup_path='/kubepods/besteffort/pod567975a0-3448-11e9-8e'
+                                              '1d-246e96663c22/',
                                   subcgroups_paths=['/kubepods/besteffort/pod5'
                                                     '67975a0-3448-11e9-8e1d-24'
                                                     '6e96663c22/e90bbbb3b060ba'
