@@ -16,7 +16,6 @@ from enum import Enum
 from dataclasses import dataclass, field
 from typing import List
 import logging
-import pprint
 import requests
 import urllib.parse
 
@@ -123,7 +122,8 @@ class KubernetesNode(Node):
                     are_all_containers_ready = False
                     break
                 container_id = container.get('containerID').split('docker://')[1]
-                containers_cgroups.append(self._find_cgroup_path_for_pod(qos, pod_id, container_id))
+                containers_cgroups.append(_find_cgroup_path_for_pod(self.cgroup_driver,
+                                                                    qos, pod_id, container_id))
             if not are_all_containers_ready:
                 log.debug('Ignore pod with uid={} name={} as one or more of'
                           ' its containers are not ready.'
@@ -137,42 +137,44 @@ class KubernetesNode(Node):
             tasks.append(KubernetesTask(name=pod_name, task_id=pod_id, qos=qos.lower(),
                                         labels=labels,
                                         resources=_find_resources_for_pod(container_spec),
-                                        cgroup_path=self._find_cgroup_path_for_pod(qos, pod_id),
+                                        cgroup_path=_find_cgroup_path_for_pod(self.cgroup_driver,
+                                                                              qos, pod_id),
                                         subcgroups_paths=containers_cgroups))
             self._log_found_tasks(tasks)
 
         return tasks
 
-    def _find_cgroup_path_for_pod(self, qos, pod_id, container_id=None):
-        """Return cgroup path for pod or a pod container."""
-        if container_id is None:
-            container_subdirectory = ""
 
-        if self.cgroup_driver == CgroupDriverType.SYSTEMD:
-            pod_id = pod_id.replace('-', '_')
-            if container_id is not None:
-                container_subdirectory = 'docker-{container_id}.scope'.format(
-                    container_id=container_id)
+def _find_cgroup_path_for_pod(cgroup_driver, qos, pod_id, container_id=None):
+    """Return cgroup path for pod or a pod container."""
+    if container_id is None:
+        container_subdirectory = ""
 
-            return ('/kubepods.slice/'
-                    'kubepods-{qos}.slice/'
-                    'kubepods-{qos}-pod{pod_id}.slice/'
-                    '{container_subdirectory}'.format(
-                                qos=qos.lower(),
-                                pod_id=pod_id,
-                                container_subdirectory=container_subdirectory))
+    if cgroup_driver == CgroupDriverType.SYSTEMD:
+        pod_id = pod_id.replace('-', '_')
+        if container_id is not None:
+            container_subdirectory = 'docker-{container_id}.scope'.format(
+                container_id=container_id)
 
-        elif self.cgroup_driver == CgroupDriverType.CGROUPFS:
-            if container_id is not None:
-                container_subdirectory = container_id
+        return ('/kubepods.slice/'
+                'kubepods-{qos}.slice/'
+                'kubepods-{qos}-pod{pod_id}.slice/'
+                '{container_subdirectory}'.format(
+                            qos=qos.lower(),
+                            pod_id=pod_id,
+                            container_subdirectory=container_subdirectory))
 
-            return ('/kubepods/'
-                    '{qos}/'
-                    'pod{pod_id}/'
-                    '{container_subdirectory}'.format(
-                                qos=qos.lower(),
-                                pod_id=pod_id,
-                                container_subdirectory=container_subdirectory))
+    elif cgroup_driver == CgroupDriverType.CGROUPFS:
+        if container_id is not None:
+            container_subdirectory = container_id
+
+        return ('/kubepods/'
+                '{qos}/'
+                'pod{pod_id}/'
+                '{container_subdirectory}'.format(
+                            qos=qos.lower(),
+                            pod_id=pod_id,
+                            container_subdirectory=container_subdirectory))
 
 
 def _find_resources_for_pod(containers_spec):

@@ -15,7 +15,8 @@
 import json
 from unittest.mock import patch, Mock
 
-from owca.kubernetes import KubernetesNode, KubernetesTask, _find_resources_for_pod
+from owca.kubernetes import KubernetesNode, KubernetesTask, _find_resources_for_pod, \
+    _find_cgroup_path_for_pod
 from owca.testing import relative_module_path
 
 
@@ -135,10 +136,9 @@ def test_find_resources_multiple_containers():
 
 
 def test_find_cgroup_path_for_pod_systemd():
-    node = KubernetesNode()
-    node.cgroup_driver = 'systemd'
+    cgroup_driver = 'systemd'
     qos = 'burstable'
     pod_id = '12345-67890'
     assert '/kubepods.slice/kubepods-burstable.slice/' \
            'kubepods-burstable-pod12345_67890.slice/' == \
-           node._find_cgroup_path_for_pod(qos, pod_id)
+           _find_cgroup_path_for_pod(cgroup_driver, qos, pod_id)
