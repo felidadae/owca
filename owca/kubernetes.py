@@ -129,9 +129,9 @@ class KubernetesNode(Node):
                           ' its containers are not ready.'
                           .format(pod_id, pod_name))
                 continue
-            else:
-                log.debug('Pod with uid={} name={} is ready and monitored by the system.'
-                          .format(pod_id, pod_name))
+
+            log.debug('Pod with uid={} name={} is ready and monitored by the system.'
+                      .format(pod_id, pod_name))
 
             container_spec = pod.get('spec').get('containers')
             tasks.append(KubernetesTask(name=pod_name, task_id=pod_id, qos=qos.lower(),
