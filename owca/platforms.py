@@ -36,11 +36,8 @@ def get_owca_version():
     try:
         version = get_distribution('owca').version
     except DistributionNotFound:
-        log.warning("Version is not available. "
-                    "Probably egg-info directory does not exist"
-                    "(which is required for pkg_resources module "
-                    "to find the version).")
-        return "unknown_version"
+        log.warning("Version is not available.")
+        return None
 
     return version
 
