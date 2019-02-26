@@ -43,37 +43,29 @@ def assert_equal_containers(containers_a: List[ContainerInterface],
                                                     list(b._subcontainers.values()))])
 
 
-# Parametrize scenarios:
-# 1) One new task (t1) was discovered - before there was no containers.
-# 2) No changes in environment - no actions are expected.
-# 3) One new task (t2) was discovered.
-# 4) No changes in environment - no actions are expected
-#    (but now two containers already are running).
-# 5) First task just disappeared - corresponding container should be removed.
-# 6) Two new task were discovered.
-# 7) New task was discovered and one task disappeared.
 @pytest.mark.parametrize(
     'discovered_tasks, containers, '
     'expected_new_tasks, expected_containers_to_delete', (
-        # 1)
+        # 1) One new task (t1) was discovered - before there was no containers.
         ([task('/t1')], [],
          [task('/t1')], []),
-        # 2)
+        # 2) No changes in environment - no actions are expected.
         ([task('/t1')], [container('/t1')],
          [], []),
-        # 3)
+        # 3) One new task (t2) was discovered.
         ([task('/t1'), task('/t2')], [container('/t1')],
          [task('/t2')], []),
-        # 4)
+        # 4) No changes in environment - no actions are expected
+        #    (but now two containers already are running).
         ([task('/t1'), task('/t2')], [container('/t1'), container('/t2')],
          [], []),
-        # 5)
+        # 5) First task just disappeared - corresponding container should be removed.
         ([task('/t2')], [container('/t1'), container('/t2')],
          [], [container('/t1')]),
-        # 6)
+        # 6) Two new task were discovered.
         ([task('/t1'), task('/t2')], [],
          [task('/t1'), task('/t2')], []),
-        # 7)
+        # 7) New task was discovered and one task disappeared.
         ([task('/t1'), task('/t3')], [container('/t1'), container('/t2')],
          [task('/t3')], [container('/t2')]),
     ))
@@ -86,29 +78,23 @@ def test_calculate_desired_state(discovered_tasks, containers,
     assert_equal_containers(containers_to_delete, expected_containers_to_delete)
 
 
-# Parametrize scenarios:
-# 1) Before the start - expecting no running containers.
-# 2) One new task arrived - expecting that new container will be created.
-# 3) One task dissapeared, one appeared.
-# 4) One (of two) task dissapeared.
-# 5) Two task (of two) dissapeared.
 @patch('owca.containers.PerfCounters')
 @patch('owca.containers.Container.sync')
 @pytest.mark.parametrize('subsgroups', ([], ['/t1/c1', '/t1/c2']))
 @pytest.mark.parametrize('tasks_, existing_containers_, expected_running_containers_', (
-    # 1)
+    # 1) Before the start - expecting no running containers.
     ([], {},
      {}),
-    # 2)
+    # 2) One new task arrived - expecting that new container will be created.
     (['/t1'], {},
      {'/t1': '/t1'}),
-    # 3)
+    # 3) One task dissapeared, one appeared.
     (['/t1'], {'/t2': '/t2'},
      {'/t1': '/t1'}),
-    # 4)
+    # 4) One (of two) task dissapeared.
     (['/t1'], {'/t1': '/t1', '/t2': '/t2'},
      {'/t1': '/t1'}),
-    # 5)
+    # 5) Two task (of two) dissapeared.
     ([], {'/t1': '/t1', '/t2': '/t2'},
      {}),
 ))
