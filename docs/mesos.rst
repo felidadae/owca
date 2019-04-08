@@ -15,7 +15,7 @@ Mesos supported features
 Mesos restrictions
 ==================
 
-- Mesos version > 1.2.x,
+- Mesos version >= 1.2.x,
 - `Mesos containerizer <http://mesos.apache.org/documentation/latest/containerizers/#Mesos>`_,
 - `Tasks groups <http://mesos.apache.org/documentation/latest/nested-container-and-task-group/>`_ are currently not supported.
 
@@ -41,3 +41,22 @@ Mesos agent was configured with non-default options:
 - ``hostname_lookup=false``
 - ``image_providers=docker``
 - ``attributes/own_ip=HOST_IP``
+
+Possible configuration options
+==============================
+In OWCA configuration file one can set below listed parameters.
+Please refer to `example configuration file for mesos <configs/mesos/mesos_external_detector.yaml>`_.
+
+.. code-block:: python
+
+    @dataclass
+    class MesosNode(Node):
+        mesos_agent_endpoint: str = 'https://127.0.0.1:5051'
+
+        # A flag of python requests library to enable ssl_verify or pass CA bundle:
+        # https://github.com/kennethreitz/requests/blob/5c1f72e80a7d7ac129631ea5b0c34c7876bc6ed7/requests/api.py#L41
+        ssl_verify: Union[bool, str] = True
+
+        # Timeout to access mesos agent.
+        timeout: float = 5.
+
