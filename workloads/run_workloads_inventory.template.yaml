@@ -16,18 +16,20 @@ application_hosts:
     10.10.10.2:
       env_uniq_id: 2
       load_generator_host_ip: 10.10.10.12
+
       # Overwrite choosen keys.
+      # Note: must then be used with ANSIBLE_HASH_BEHAVIOUR=merge.
       workloads:
-        cassandra_ycsb: {'count': 1, 'resources': {'cpu', 0.1}}
-        cassandra_stress: {'count': 0}
-        redis_rpc_perf: {'count': 0}
-        twemcache_rpc_perf: {'count': 0}
-        twemcache_mutilate: {'count': 0}
-        specjbb: {'count': 1}
-        tensorflow_train: {'count': 0}
-        tensorflow_inference: {'count': 0}
-        tensorflow_benchmark_prediction: {'count': 0}
-        tensorflow_benchmark_train: {'count': 0}
+        cassandra_ycsb: {'default': {'count': 1, 'resources': {'cpu', 3}}}
+        cassandra_stress: {'default': {'count': 0}}
+        redis_rpc_perf: {'default': {'count': 0}}
+        twemcache_rpc_perf: {'default': {'count': 0}}
+        twemcache_mutilate: {'default': {'count': 0}}
+        specjbb: {'default': {'count': 0}}
+        tensorflow_train: {'default': {'count': 0}}
+        tensorflow_inference: {'default': {'count': 0}}
+        tensorflow_benchmark_prediction: {'default': {'count': 0}}
+        tensorflow_benchmark_train: {'default': {'count': 0}}
 
   vars:
     # Variables for setting ansible.
