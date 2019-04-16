@@ -216,7 +216,7 @@ def prepare_argument_parser():
 
 def debug():
     """Debug hook to allow entering debug mode in compiled pex.
-    Run it as PEX_MODULE=owca.wrapper.wrapper_main.main:debug
+    Run it as PEX_MODULE=owca.wrapper.wrapper_main:debug
     """
     import warnings
     try:
