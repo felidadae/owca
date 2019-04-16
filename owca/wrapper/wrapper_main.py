@@ -214,5 +214,19 @@ def prepare_argument_parser():
     return parser
 
 
+def debug():
+    """Debug hook to allow entering debug mode in compiled pex.
+    Run it as PEX_MODULE=owca.wrapper.wrapper_main.main:debug
+    """
+    import warnings
+    try:
+        import ipdb as pdb
+    except ImportError:
+        warnings.warn('ipdb not available, using pdb')
+        import pdb
+    pdb.set_trace()
+    main()
+
+
 if __name__ == "__main__":
     main()
