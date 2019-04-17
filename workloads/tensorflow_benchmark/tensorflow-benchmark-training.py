@@ -37,5 +37,6 @@ command.append(
                 kafka_topic=wrapper_kafka_topic,
                 labels=wrapper_labels, slo=slo))
 
+
 json_format = json.dumps(pod)
 print(json_format)
