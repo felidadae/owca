@@ -14,25 +14,28 @@
 
 
 import os
-from common import application_host_ip, command, image_name, \
-    initContainers, json, securityContext, pod, volumeMounts
+from common import command, json, pod, wrapper_kafka_brokers, \
+    wrapper_log_level, wrapper_kafka_topic, wrapper_labels, slo
 
-#----------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 ###
 # Params which can be modified by exporting environment variables.
 ###
 
 # Batch size and epochs.
-tensorflow_train_batch_size = os.environ.get('tensorflow_train_batch_size', '100')
+tensorflow_train_batch_size = os.environ.get(
+    'tensorflow_train_batch_size', '100')
 tensorflow_train_epochs = os.environ.get('tensorflow_train_epochs', '100')
-#----------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 command.append(
-    "/wrapper.pex --command 'training --dataset_path '/' --batch_size {batch_size} --epochs {epochs}' "
+    "/wrapper.pex --command 'training --dataset_path '/' "
+    "--batch_size {batch_size} --epochs {epochs}' "
     "--stderr 0 --kafka_brokers '{kafka_brokers}' --kafka_topic {kafka_topic} "
     "--log_level {log_level} "
     "--metric_name_prefix 'tensorflow_train_' "
-    "--slo {slo} --sli_metric_name tensorflow_train_images_processed --inverse_sli_metric_value "
+    "--slo {slo} --sli_metric_name tensorflow_train_images_processed "
+    "--inverse_sli_metric_value "
     "--peak_load 1 --load_metric_name const "
     "--labels \"{labels}\"".format(batch_size=tensorflow_train_batch_size,
                                    epochs=tensorflow_train_epochs,
