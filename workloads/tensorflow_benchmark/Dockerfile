@@ -15,6 +15,7 @@
 
 FROM intelaipg/intel-optimized-tensorflow:1.12.0-mkl-py3
 
+
 RUN apt-get update && apt-get -y install git wget
 
 WORKDIR /opt
