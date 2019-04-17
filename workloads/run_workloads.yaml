@@ -24,7 +24,7 @@
     job_key: "{{cluster}}/{{role}}/staging{{env_uniq_id}}/{{job_name}}"
     aurora_file: "{{job_id}}/{{job_id}}.aurora"
     create_job_command: "aurora job create {{job_key}} {{aurora_file}}"
-    create_job_command_k8s: "python36 {{job_id}}/{{job_id}}.py | kubectl create -f -"
+    create_job_command_k8s: "python36 {{job_id}}/{{job_id}}.py | tee .pod_definition__{{job_id}}.yaml | kubectl create -f -"
 
     workload_version: "{{workloads[workload_name][workload_version_name] if workload_name in workloads else dict(count=0) }}"
 
@@ -45,12 +45,9 @@
                   else docker_registry + '/' + image_prefix + '/' + image_subname}}"
 
     # Incrementing communication port for multiple instances of the same workload.
-    communication_port: "{{workload_version.communication_port | int + item.workload_instance_index }}"
+    communication_port: "{{workload_version.communication_port | int + item.workload_instance_index}}"
 
     application_host_ip: "{{inventory_hostname}}"
-    orchestrator: "Kubernetes"
-
-
 
   environment:
     PYTHONPATH: "."
@@ -84,6 +81,8 @@
 
     slo: "{{workload_version.get('slo')}}"
 
+    k8s_namespace: "{{k8s_namespace}}"
+
 
   tasks:
     - name: Clean jobs
@@ -111,7 +110,7 @@
         xargs --no-run-if-empty -n 1 -P0 aurora job killall"
         when: orchestrator == "Mesos"
       - name: Kubernetes | Clean jobs
-        shell: "kubectl delete --all pods --namespace=default"
+        shell: "kubectl delete --all pods --namespace={{k8s_namespace}}"
         when: orchestrator == "Kubernetes"
       delegate_to: localhost
       tags: clean_jobs
@@ -144,6 +143,7 @@
           loop: "{{instances_version_iterator}}"
           when: orchestrator == "Kubernetes"
         tags: cassandra_ycsb--cassandra
+
       - name: Create ycsb for cassandra
         vars:
           job_id: ycsb
@@ -386,6 +386,7 @@
       tags: specjbb
 
 
+    # Drop???
     - name: Create tensorflow/inference workload
       vars:
         workload_name: tensorflow_inference
@@ -404,6 +405,7 @@
       loop: "{{instances_version_iterator}}"
 
 
+    # Drop???
     - name: Create tensorflow/train workload
       vars:
         workload_name: tensorflow_train
@@ -436,10 +438,17 @@
         own_ip: "{{application_host_ip}}"
         communication_port: 0
       environment: "{{workload_version.env | default({}) }}"
+      block:
+      - name: Mesos | Create stress_ng
+        shell: "{{create_job_command}}"
+        loop: "{{instances_version_iterator}}"
+        when: orchestrator == "Mesos"
+      - name: Kubernetes | Create stress_ng
+        shell: "python36 tensorflow_benchmark/tensorflow-benchmark-training.py | tee .pod_definition__{{job_id}}.yaml | kubectl create -f -"
+        loop: "{{instances_version_iterator}}"
+        when: orchestrator == "Kubernetes"
       delegate_to: localhost
       tags: tensorflow_benchmark_train
-      command: "{{create_job_command}}"
-      loop: "{{instances_version_iterator}}"
 
 
     - name: Create tensorflow-benchmark/prediction workload
@@ -456,10 +465,17 @@
         own_ip: "{{application_host_ip}}"
         communication_port: 0
       environment: "{{workload_version.env | default({}) }}"
+      block:
+      - name: Mesos | Create stress_ng
+        shell: "{{create_job_command}}"
+        loop: "{{instances_version_iterator}}"
+        when: orchestrator == "Mesos"
+      - name: Kubernetes | Create stress_ng
+        shell: "python36 tensorflow_benchmark/tensorflow-benchmark-prediction.py | tee .pod_definition__{{job_id}}.yaml | kubectl create -f -"
+        loop: "{{instances_version_iterator}}"
+        when: orchestrator == "Kubernetes"
       delegate_to: localhost
       tags: tensorflow_benchmark_prediction
-      command: "{{create_job_command}}"
-      loop: "{{instances_version_iterator}}"
 
 
     - name: Create stress_ng workload

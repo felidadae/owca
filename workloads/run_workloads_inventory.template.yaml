@@ -12,10 +12,12 @@ application_hosts:
     10.10.10.1:
       env_uniq_id: 1
       load_generator_host_ip: 10.10.10.11
+      orchestrator: "Mesos"
 
     10.10.10.2:
       env_uniq_id: 2
       load_generator_host_ip: 10.10.10.12
+      orchestrator: "Kubernetes"
 
       # Overwrite choosen keys.
       # Note: must then be used with ANSIBLE_HASH_BEHAVIOUR=merge.
@@ -44,6 +46,11 @@ application_hosts:
 
     wrapper_kafka_brokers: 10.10.10.99
     docker_registry: 10.10.10.99:80
+
+    # Possible values: 'Kubernetes', 'Mesos'.
+    orchestrator: "Kubernetes"
+    # Option available only when orchestrator == "Kubernetes".
+    k8s_namespace: "default"
 
     # Allow to add additional labels to all newly created workloads.
     additional_labels:

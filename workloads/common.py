@@ -55,6 +55,9 @@ cpu = os.getenv('cpu', '1')
 ram = os.getenv('ram', '1') + 'Gi'
 disk = os.getenv('disk', '1') + 'Gi'
 
+# K8s specific variables
+pod_namespace = os.getenv('k8s_namespace', 'default')
+
 
 # Wrapper variables:
 wrapper_kafka_brokers = os.getenv('wrapper_kafka_brokers', '')
@@ -126,6 +129,7 @@ containers = [
 ]
 
 metadata = {
+    "namespace": pod_namespace,
     "name": job_name.replace('_', '-').replace('.', '-'),
     "labels": wrapper_labels
 }

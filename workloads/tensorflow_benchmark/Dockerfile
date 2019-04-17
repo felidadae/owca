@@ -17,6 +17,14 @@ FROM intelaipg/intel-optimized-tensorflow:1.12.0-mkl-py3
 RUN apt-get update
 RUN apt-get -y install git
 
+WORKDIR /opt
+RUN wget https://www.python.org/ftp/python/3.6.6/Python-3.6.6.tgz
+RUN tar -xvf Python-3.6.6.tgz
+WORKDIR /opt/Python-3.6.6
+RUN ./configure
+RUN make
+RUN make install
+
 WORKDIR /root
 RUN git clone https://github.com/tensorflow/benchmarks
 RUN cd benchmarks/ && git checkout cnn_tf_v1.12_compatible
