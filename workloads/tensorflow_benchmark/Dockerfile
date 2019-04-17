@@ -14,8 +14,8 @@
 
 
 FROM intelaipg/intel-optimized-tensorflow:1.12.0-mkl-py3
-RUN apt-get update
-RUN apt-get -y install git wget
+
+RUN apt-get update && apt-get -y install git wget
 
 WORKDIR /opt
 RUN wget https://www.python.org/ftp/python/3.6.6/Python-3.6.6.tgz
