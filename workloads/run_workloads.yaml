@@ -437,11 +437,11 @@
         communication_port: 0
       environment: "{{workload_version.env | default({}) }}"
       block:
-      - name: Mesos | Create stress_ng
+      - name: Mesos | Create tensorflow-benchmark/train workload
         shell: "{{create_job_command}}"
         loop: "{{instances_version_iterator}}"
         when: orchestrator == "Mesos"
-      - name: Kubernetes | Create stress_ng
+      - name: Kubernetes | Create tensorflow-benchmark/train workload
         shell: "python36 tensorflow_benchmark/tensorflow-benchmark-training.py | tee .pod_definition__{{job_id}}.yaml | kubectl create -f -"
         loop: "{{instances_version_iterator}}"
         when: orchestrator == "Kubernetes"
@@ -464,11 +464,11 @@
         communication_port: 0
       environment: "{{workload_version.env | default({}) }}"
       block:
-      - name: Mesos | Create stress_ng
+      - name: Mesos | Create tensorflow-benchmark/prediction workload
         shell: "{{create_job_command}}"
         loop: "{{instances_version_iterator}}"
         when: orchestrator == "Mesos"
-      - name: Kubernetes | Create stress_ng
+      - name: Kubernetes | Create tensorflow-benchmark/prediction workload
         shell: "python36 tensorflow_benchmark/tensorflow-benchmark-prediction.py | tee .pod_definition__{{job_id}}.yaml | kubectl create -f -"
         loop: "{{instances_version_iterator}}"
         when: orchestrator == "Kubernetes"

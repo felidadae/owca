@@ -18,7 +18,7 @@ from common import command, json, pod, \
     wrapper_labels, slo
 
 command.append(
-    "/tensorflow_benchmark_prediction_wrapper.pex --command '/usr/bin/python3"
+    "/tensorflow_benchmark_prediction_wrapper.pex --command '/usr/bin/python3.5"
     " -u /root/benchmarks/scripts/tf_cnn_benchmarks/tf_cnn_benchmarks.py "
     "--eval=True --datasets_use_prefetch=True --batch_group_size=1 "
     "--device=cpu --data_format=NHWC --data_name=cifar10 --batch_size=8 "
