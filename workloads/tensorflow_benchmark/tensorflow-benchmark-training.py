@@ -20,7 +20,7 @@ from common import command, json, pod, \
 
 command.append(
     "/tensorflow_benchmark_training_wrapper.pex --command '/usr/bin/python3.5"
-    "-u /root/benchmarks/scripts/tf_cnn_benchmarks/tf_cnn_benchmarks.py "
+    " -u /root/benchmarks/scripts/tf_cnn_benchmarks/tf_cnn_benchmarks.py "
     "--datasets_use_prefetch=True --batch_group_size=1 --device=cpu "
     "--data_format=NHWC --data_name=cifar10 --batch_size=64 --display_every=1 "
     "--model=resnet56 --train_dir=/saved_model/ --num_epochs=100 "
