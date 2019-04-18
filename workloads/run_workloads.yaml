@@ -386,7 +386,6 @@
       tags: specjbb
 
 
-    # Drop???
     - name: Create tensorflow/inference workload
       vars:
         workload_name: tensorflow_inference
@@ -405,7 +404,6 @@
       loop: "{{instances_version_iterator}}"
 
 
-    # Drop???
     - name: Create tensorflow/train workload
       vars:
         workload_name: tensorflow_train

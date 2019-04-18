@@ -35,7 +35,6 @@ cmdline_config = ["sh", "-c",
                    redis.conf && "
                    "sed -i \"s/port 6379/port {communication_port}/\" \
                    redis.conf && "
-                   "sed -i"
                    "sed -i \"s/bind 127.0.0.1/bind {application_host_ip}/\" \
                    redis.conf ".format(communication_port=communication_port,
                                        application_host_ip=application_host_ip
