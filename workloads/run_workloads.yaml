@@ -386,42 +386,6 @@
       tags: specjbb
 
 
-    - name: Create tensorflow/inference workload
-      vars:
-        workload_name: tensorflow_inference
-        job_uniq_id: "{{item.workload_instance_index}}"
-        application: tensorflow
-        load_generator: inference
-        job_id: tensorflow_inference
-        job_name: "{{job_id}}.{{workload_version_name}}--{{job_uniq_id}}"
-        resources: "{{workload_version.resources | default(default_resources)}}"
-        own_ip: "{{application_host_ip}}"
-        communication_port: 0
-      environment: "{{workload_version.env | default({}) }}"
-      delegate_to: localhost
-      tags: tensorflow_inference
-      command: "{{create_job_command}}"
-      loop: "{{instances_version_iterator}}"
-
-
-    - name: Create tensorflow/train workload
-      vars:
-        workload_name: tensorflow_train
-        job_uniq_id: "{{item.workload_instance_index}}"
-        application: tensorflow
-        load_generator: train
-        job_id: tensorflow_train
-        job_name: "{{job_id}}.{{workload_version_name}}--{{job_uniq_id}}"
-        resources: "{{workload_version.resources | default(default_resources)}}"
-        own_ip: "{{application_host_ip}}"
-        communication_port: 0
-      environment: "{{workload_version.env | default({}) }}"
-      delegate_to: localhost
-      tags: tensorflow_train
-      command: "{{create_job_command}}"
-      loop: "{{instances_version_iterator}}"
-
-
     - name: Create tensorflow-benchmark/train workload
       vars:
         workload_name: tensorflow_benchmark_train

@@ -28,8 +28,6 @@ application_hosts:
         twemcache_rpc_perf: {'default': {'count': 0}}
         twemcache_mutilate: {'default': {'count': 0}}
         specjbb: {'default': {'count': 0}}
-        tensorflow_train: {'default': {'count': 0}}
-        tensorflow_inference: {'default': {'count': 0}}
         tensorflow_benchmark_prediction: {'default': {'count': 0}}
         tensorflow_benchmark_train: {'default': {'count': 0}}
 
@@ -156,20 +154,6 @@ application_hosts:
           backend:
           injector:
           controller:
-
-      tensorflow_inference:
-        default:
-          count: 1
-          slo: 2 # in seconds (maximum time to process a single image)
-          resources:
-            cpu: 1
-            ram: 2
-            disk: 2
-
-      tensorflow_train:
-        default:
-          count: 1
-          slo: 0.5
 
       tensorflow_benchmark_train:
         default:
