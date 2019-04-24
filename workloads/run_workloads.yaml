@@ -81,7 +81,8 @@
 
     slo: "{{workload_version.get('slo')}}"
 
-    k8s_namespace: "{{k8s_namespace}}"
+    k8s_namespace: "{{k8s_namespace | default('default')}}"
+    k8s_pod_naming: "{{k8s_pod_naming | default('short')}}"
 
 
   tasks:

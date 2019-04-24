@@ -57,6 +57,9 @@ disk = os.getenv('disk', '1') + 'Gi'
 
 # K8s specific variables:
 pod_namespace = os.getenv('k8s_namespace', 'default')
+pod_naming_types = ('short', 'full')
+pod_naming = os.getenv('k8s_pod_naming', 'short')
+assert pod_naming in pod_naming_types
 
 # Wrapper variables:
 wrapper_kafka_brokers = os.getenv('wrapper_kafka_brokers', '')
@@ -127,9 +130,14 @@ containers = [
     }
 ]
 
+# Creates uniq name of a pod from job_name, env_uniq_id, role and cluster.
+pod_name = env_uniq_id + "--" + job_name.replace('_', '-').replace('.', '-')
+if pod_naming == "full":
+    pod_name = cluster + "--" + role + "--" + pod_name
+
 metadata = {
     "namespace": pod_namespace,
-    "name": job_name.replace('_', '-').replace('.', '-'),
+    "name": pod_name,
     "labels": wrapper_labels
 }
 

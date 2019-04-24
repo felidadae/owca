@@ -49,6 +49,7 @@ application_hosts:
     orchestrator: "Kubernetes"
     # Option available only when orchestrator == "Kubernetes".
     k8s_namespace: "default"
+    k8s_pod_naming: "short" # When set to "short" in name of a pod there will be no cluster and roles names.
 
     # Allow to add additional labels to all newly created workloads.
     additional_labels:
