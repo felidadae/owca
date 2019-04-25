@@ -227,6 +227,12 @@ def _prepare_tasks_data(containers: Dict[Task, Container]) -> \
         }
         task_labels['task_id'] = task.task_id
 
+        # Add additional label with cpu initial assignment, to simplify
+        # management of distributed model system for plugin:
+        # https://github.com/intel/platform-resource-manager/tree/master/prm
+        task_labels['initial_task_cpu_assignment'] = \
+            str(task.resources.get('cpus', task.resources.get('cpu_limits', "unknown")))
+
         # Aggregate over all tasks.
         tasks_labels[task.task_id] = task_labels
         tasks_measurements[task.task_id] = task_measurements

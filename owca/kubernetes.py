@@ -179,6 +179,8 @@ _RESOURCE_TYPES = ['requests', 'limits']
 
 
 def _calculate_pod_resources(containers_spec: List[Dict[str, str]]):
+    """Returns flat dictionary with keys created as resource_name + '_' + resource_type,
+       e.g. 'cpu_limits': '0.25' """
     resources = dict()
 
     units = {'memory': _MEMORY_UNITS,  'ephemeral-storage': _MEMORY_UNITS,

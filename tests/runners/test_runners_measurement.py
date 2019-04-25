@@ -85,4 +85,6 @@ def test_prepare_tasks_data(*mocks):
 
     assert tasks_measurements == {'t1_task_id': {'cpu_usage': 13}}
     assert tasks_resources == {'t1_task_id': {'cpu': 3}}
-    assert tasks_labels == {'t1_task_id': {'label_key': 'label_value', 'task_id': 't1_task_id'}}
+    assert tasks_labels == {'t1_task_id': {'initial_task_cpu_assignment': 'unknown',
+                                           'label_key': 'label_value',
+                                           'task_id': 't1_task_id'}}

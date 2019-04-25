@@ -50,6 +50,19 @@ def get_owca_version():
     return version
 
 
+def get_cpu_model():
+    """Returns information about cpu model from /proc/cpuinfo."""
+    if os.path.isfile('/proc/cpuinfo'):
+        with open('/proc/cpuinfo') as fref:
+            for line in fref.readlines():
+                if line.startswith("model name"):
+                    s = re.search("model name\\s*:\\s*(.*)\\s*$", line)
+                    if s:
+                        return s.group(1)
+                    break
+    return "unknown_cpu_model"
+
+
 @dataclass
 class RDTInformation:
     cbm_mask: Optional[str]  # based on /sys/fs/resctrl/info/L3/cbm_mask
@@ -112,6 +125,7 @@ def create_labels(platform: Platform) -> Dict[str, str]:
     # Additional labels
     labels["host"] = socket.gethostname()
     labels["owca_version"] = get_owca_version()
+    labels["cpu_model"] = get_cpu_model()
     return labels
 
 

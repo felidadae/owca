@@ -118,7 +118,7 @@ class MesosNode(Node):
 
             labels = {label['key']: label['value'] for label in launched_task['labels']['labels']}
 
-            # Extract scalar resoruces.
+            # Extract scalar resources.
             resources = dict()
             for resource in launched_task['resources']:
                 if resource['type'] == 'SCALAR':

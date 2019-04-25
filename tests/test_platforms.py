@@ -107,6 +107,7 @@ def test_collect_topology_information_2_cores_per_socket_all_cpus_online(*mocks)
     "/sys/fs/resctrl/schemata": "MB:0=100",
     "/proc/stat": "parsed value mocked below",
     "/proc/meminfo": "parsed value mocked below",
+    "/proc/cpuinfo": "model name : intel xeon"
 }))
 @patch('owca.platforms.get_owca_version', return_value="0.1")
 @patch('socket.gethostname', return_value="test_host")
@@ -129,5 +130,6 @@ def test_collect_platform_information(*mocks):
                 name=MetricName.CPU_USAGE_PER_CPU, value=200, labels={"cpu": "1"}
             ),
         ],
-        {"sockets": "1", "cores": "1", "cpus": "2", "host": "test_host", "owca_version": "0.1"}
+        {"sockets": "1", "cores": "1", "cpus": "2", "host": "test_host",
+         "owca_version": "0.1", "cpu_model": "intel xeon"}
     )
