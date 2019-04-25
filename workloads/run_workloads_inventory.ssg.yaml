@@ -1,0 +1,178 @@
+# ------------------------------------------------------------------------------------------------------------------------------------
+# DOC
+
+# run_workloads.yaml must be run from master kubernetes node, which is 100.64.176.33,
+# so please copy the repository there.
+
+# Before running please run command on master node for your user:
+# sudo cp /etc/kubernetes/admin.conf $HOME/ && sudo chown $(id -u):$(id -g) $HOME/admin.conf && export KUBECONFIG=$HOME/admin.conf
+
+# To change namespace where pods are running please change var >>k8s_namespace<< in this file.
+# I defined the namespace ssg just to show the feature - its useful for us when mutliple users runs jobs on the same node and as well
+# to simple delete all pods in the namespace:
+# kubectl delete pods --all --namespace=ssg
+
+# And then to run workloads:
+# ANSIBLE_HASH_BEHAVIOUR=merge ansible-playbook -i run_workloads_inventory.ssg.yaml run_workloads.yaml -l 100.64.176.31
+# ANSIBLE_HASH_BEHAVIOUR=merge ansible-playbook -i run_workloads_inventory.ssg.yaml run_workloads.yaml -l 100.64.176.31 --skip-tags=clean_jobs
+
+# Check whether pods are working:
+# namespace=ssg
+# kubectl get pods --namespace=$namespace -o=wide
+# kubectl get pods --all-namespaces -o=wide
+
+# Check a specific workload:
+# pod_name_app=31--cassandra-stress-default--cassandra--9142-0
+# pod_name_lg=31--cassandra-stress-default--cassandra-stress--9142-0
+# kubectl describe pod --namespace=$namespace $pod_name_app
+# kubectl describe pod --namespace=$namespace $pod_name_lg
+# kubectl logs --namespace=$namespace $pod_name_app
+# kubectl logs --namespace=$namespace $pod_name_lg
+#
+# Check in prometheus if the metrics are available for the workload.
+#
+# Additional note: at default pods names do not contain role and cluster names.
+# Please change variable k8s_pod_naming to `full`, to have that elements included in the name.
+# ------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+application_hosts:
+  hosts:
+    # Mesos testing pair (for reference):
+    100.64.176.XX:
+      env_uniq_id: XX 
+      load_generator_host_ip: 100.64.176.YY
+      orchestrator: "Mesos"
+
+    # Three nodes are currently available 18,31,32: here we use 31/32
+    100.64.176.31:
+      env_uniq_id: 31
+      load_generator_host_ip: 100.64.176.32
+      orchestrator: "Kubernetes"
+      # Overwrite workloads only on hosts 31,32.
+      workloads:
+        cassandra_ycsb: {'default': {'count': 1}}
+        cassandra_stress: {'default': {'count': 1}}
+        redis_rpc_perf: {'default': {'count': 0}}
+        twemcache_rpc_perf: {'default': {'count': 0}}
+        twemcache_mutilate: {'default': {'count': 0}}
+        specjbb: {'default': {'count': 0}}
+        tensorflow_benchmark_prediction: {'default': {'count': 0}}
+        tensorflow_benchmark_train: {'default': {'count': 0}}
+
+  vars:
+    # Variables for setting ansible.
+    ansible_connection: local
+    ansible_ssh_user: root
+    ansible_user: root
+
+    # Global variables to run workloads.
+    cluster: example
+    role: root
+    image_tag: c011494156b33f61d8984329dcca354ad553dc2d
+
+    wrapper_kafka_brokers: 100.64.176.12
+    docker_registry: 100.64.176.12:80
+
+    orchestrator: "Kubernetes"
+    k8s_namespace: "ssg"
+    k8s_pod_naming: "short" # When set to "short" in name of a pod there will be no cluster and roles names.
+
+    default_resources:
+      cpu: 5
+      ram: 5
+      disk: 5
+
+    workloads:
+      cassandra_ycsb:
+        default:
+          count: 1
+          slo: 2500
+          jmx_port: 7152
+          storage_port: 7100
+          communication_port: 9042
+          cassandra:
+            image_name: cassandra
+            image_tag: 3.11.3
+          ycsb:
+
+      cassandra_stress:
+        default:
+          count: 0
+          communication_port: 9142
+          jmx_port: 7250
+          storage_port: 7200
+          slo: 1000
+          cassandra:
+            image_name: cassandra
+            image_tag: 3.11.3
+          cassandra_stress:
+
+      redis_rpc_perf:
+        default:
+          labels:
+              foo: bar
+          count: 0
+          slo: 100000
+          communication_port: 6789
+          redis:
+            image_name: centos/redis
+            image_tag: latest
+          rpc_perf:
+
+      twemcache_rpc_perf:
+        default:
+          count: 0
+          slo: 100000
+          communication_port: 11211
+          twemcache:
+            threads: 1
+            max_memory: 1234
+          rpc_perf:
+
+
+      twemcache_mutilate:
+        default:
+          count: 0
+          slo: 3200
+          communication_port: 11311
+          twemcache:
+          mutilate:
+
+
+      specjbb:
+        default:
+          count: 0
+          slo: 26000000
+          communication_port: 42000
+          backend:
+          injector:
+          controller:
+
+      tensorflow_benchmark_train:
+        default:
+          count: 0
+          slo: 0.03
+          resources:
+            cpu: 10
+            ram: 50
+            disk: 30
+
+      tensorflow_benchmark_prediction:
+        default:
+          count: 0
+          slo: 0.03
+          resources:
+            cpu: 10
+            ram: 50
+            disk: 30
+
+      stress_ng:
+        default:
+          count: 0
+          timeout: 30
+          stressor: stream
+          number_workers: 2
+          resources:
+            cpu: 1
