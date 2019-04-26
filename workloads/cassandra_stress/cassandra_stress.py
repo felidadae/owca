@@ -58,7 +58,7 @@ cassandra_warmup_container = {
 initContainers.append(cassandra_warmup_container)
 
 
-cassandra_stress_cmd = ['"while true; do cassandra-stress mixed duration=90s '
+cassandra_stress_cmd = ['sh', '-c', "while true; do cassandra-stress mixed duration=90s '
                         '-pop seq=1..{} -node {} -port native={} -rate '
                         'threads={}; done"'.format(number_of_rows,
                                                    application_host_ip,
