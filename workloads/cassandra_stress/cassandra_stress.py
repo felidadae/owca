@@ -64,7 +64,7 @@ cassandra_stress_cmd = ['sh', '-c', '"while true; do cassandra-stress mixed dura
                                                    application_host_ip,
                                                    communication_port,
                                                    threads)]
-cmd = """sleep inf && /usr/bin/cassandra_stress_wrapper.pex \
+cmd = """/usr/bin/cassandra_stress_wrapper.pex \
 --command '{cassandra_stress_cmd}' \
 --metric_name_prefix 'cassandra_'  \
 --stderr 0 --kafka_brokers '{kafka_brokers}' --kafka_topic {kafka_topic}  \
