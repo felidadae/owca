@@ -43,8 +43,8 @@ mutilate_warmup_container = {
 }
 initContainers.append(mutilate_warmup_container)
 
-mutilate_cmd = """""while true; do /mutilate/mutilate -s {}:{} \
--Q {} --time={} --update=0.01 --threads={} -C {}; done""""".format(
+mutilate_cmd = """ \"while true; do /mutilate/mutilate -s {}:{} \
+-Q {} --time={} --update=0.01 --threads={} -C {}; done\" """.format(
     application_host_ip, communication_port, qps, time, threads, connections)
 
 mutilate_run_cmd = """/usr/bin/mutilate_wrapper.pex --command '{mutilate_cmd}' \
