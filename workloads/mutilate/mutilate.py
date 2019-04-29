@@ -48,11 +48,11 @@ initContainers.append(mutilate_warmup_container)
 if mutilate_scan:
     mutilate_cmd = """ \"while true; do /mutilate/mutilate -s {}:{} \
     --scan {}:{}:0 --time={} --update=0.01 --threads={} -c {}; done\" """.format(
-    application_host_ip, communication_port, qps, qps, time, threads, connections)
+        application_host_ip, communication_port, qps, qps, time, threads, connections)
 else:
     mutilate_cmd = """ \"while true; do /mutilate/mutilate -s {}:{} \
     -Q {} --time={} --update=0.01 --threads={} -c {}; done\" """.format(
-    application_host_ip, communication_port, qps, time, threads, connections)
+        application_host_ip, communication_port, qps, time, threads, connections)
 
 mutilate_run_cmd = """/usr/bin/mutilate_wrapper.pex --command '{mutilate_cmd}' \
 --metric_name_prefix {metric_name_prefix} \
