@@ -29,6 +29,8 @@ time = int(os.environ.get('time') or 90)
 threads = int(os.environ.get('threads') or 8)
 connections = int(os.environ.get('connections') or 24)
 warmup_time = int(os.environ.get('warmup_time') or 30)
+# Tells if scan mode is used
+mutilate_scan = bool(os.environ.get('mutilate_scan') or False)
 # ----------------------------------------------------------------------------------------------------
 
 mutilate_warmup_cmd = ["sh", "-c", """/mutilate/mutilate -s {}:{} --time={} \
@@ -43,8 +45,13 @@ mutilate_warmup_container = {
 }
 initContainers.append(mutilate_warmup_container)
 
-mutilate_cmd = """ \"while true; do /mutilate/mutilate -s {}:{} \
--Q {} --time={} --update=0.01 --threads={} -C {}; done\" """.format(
+if mutilate_scan:
+    mutilate_cmd = """ \"while true; do /mutilate/mutilate -s {}:{} \
+    --scan {}:{}:0 --time={} --update=0.01 --threads={} -c {}; done\" """.format(
+    application_host_ip, communication_port, qps, qps, time, threads, connections)
+else:
+    mutilate_cmd = """ \"while true; do /mutilate/mutilate -s {}:{} \
+    -Q {} --time={} --update=0.01 --threads={} -c {}; done\" """.format(
     application_host_ip, communication_port, qps, time, threads, connections)
 
 mutilate_run_cmd = """/usr/bin/mutilate_wrapper.pex --command '{mutilate_cmd}' \
