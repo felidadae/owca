@@ -39,7 +39,12 @@ pipeline {
                 stage("Using tester") {
                   steps {
                     sh '''
-                      sudo dist/wca.pex -c configs/extra/tester_example.yaml -r wca.extra.tester:Tester -r wca.extra.tester:MetricCheck -r wca.extra.tester:FileCheck --log=debug --root
+						sudo bash -c "
+							export PYTHONPATH=$PYTHONPATH;$(pwd)/tests/tester
+							dist/wca.pex -c tests/tester/configs/tester_example.yaml \
+								-r tester:Tester -r tester:MetricCheck -r tester:FileCheck \
+								--log=debug --root
+						"
                     '''
                      }
                 }

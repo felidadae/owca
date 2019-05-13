@@ -15,12 +15,13 @@ from unittest.mock import MagicMock, patch
 from wca.nodes import Task
 from wca.config import register
 
-from wca.extra.tester import Tester, FileCheck, MetricCheck
 from wca.extra.static_allocator import StaticAllocator
 
+from tests.tester.tester import Tester, FileCheck, MetricCheck
 
-@patch('wca.extra.tester._delete_cgroup')
-@patch('wca.extra.tester._create_cgroup')
+
+@patch('tests.tester.tester._delete_cgroup')
+@patch('tests.tester.tester._create_cgroup')
 @patch('sys.exit')
 def test_tester(
         mock_sys_exit: MagicMock,
@@ -32,7 +33,7 @@ def test_tester(
 
     mock_check = MagicMock()
 
-    tester = Tester('tests/extra/tester_config.yaml')
+    tester = Tester('tests/tester/tester_config.yaml')
 
     tester.testcases[0]['checks'] = [mock_check]
     tester.testcases[1]['checks'] = [mock_check]

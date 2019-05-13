@@ -1,6 +1,6 @@
 tests:
-  - test_case_name1:	
-    tasks: 
+  - test_case_name1:
+    tasks:
       - /wca/task1
       - /wca/task2
 
@@ -19,8 +19,8 @@ tests:
         name: anomaly_count
         value: 0
 
-  - test_case_name2:	
-    tasks: 
+  - test_case_name2:
+    tasks:
       - /wca/task2
       - /wca/task4
 
