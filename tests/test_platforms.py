@@ -121,7 +121,7 @@ def test_collect_topology_information_2_cores_per_socket_all_cpus_online(*mocks)
 @patch('time.time', return_value=1536071557.123456)
 def test_collect_platform_information(*mocks):
     assert collect_platform_information() == (
-        Platform(1, 1, 2, {0: 100, 1: 200}, 1337, 1536071557.123456,
+        Platform(1, 1, 2, 'intel xeon', {0: 100, 1: 200}, 1337, 1536071557.123456,
                  RDTInformation(True, True, True, True, 'fffff', '2', 8, 10, 20)),
         [
             Metric.create_metric_with_metadata(
