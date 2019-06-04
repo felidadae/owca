@@ -1,5 +1,5 @@
 tests:
-  - test_case_name1:	
+  - test_case_name1:
     tasks: 
       - /test/task1 
       - /test/task2
@@ -19,7 +19,7 @@ tests:
         name: anomaly_count
         value: 0
 
-  - test_case_name2:	
+  - test_case_name2:
     tasks: 
       - /test/task2 
       - /test/task4
