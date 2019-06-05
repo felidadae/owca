@@ -6,6 +6,13 @@ Mesos integration
 
 .. contents:: Table of Contents
 
+Introduction
+============
+
+The diagram below puts Mesos integration in context of a cluster and monitoring infrastructure:
+
+.. image:: mesos_context.png
+
 Mesos supported features
 ========================
 

@@ -66,11 +66,11 @@ when configuration file `mesos_external_detector.yaml <example/mesos_external_de
         task_id: 'some_task_id'
 
 
-you can run WCA in following way:
+you can run WCA in following way. Remember to use the absolute configuration path:
 
 .. code:: shell-session
 
-    dist/wca.pex -c configs/mesos_external_detector.yaml -r example.external_package:ExampleDetector -l debug
+    dist/wca.pex -c ${pwd}configs/mesos_external_detector.yaml -r example.external_package:ExampleDetector -l debug
 
 you will see similar output:
 
@@ -104,4 +104,4 @@ then you can run WCA just providing configuration file:
 
 .. code:: shell-session
 
-    dist/wca.pex -c example.yaml -l debug
+    dist/wca.pex -c /etc/wca/example.yaml -l debug

@@ -143,6 +143,9 @@ This is example of how to ``Platform`` instance looks like on two sockets "Intel
         cores = 28,
         cpus = 56,
 
+        # Additional information about platform.
+        cpu_model = "Intel(R) Xeon(R) CPU E5-2660 v4"
+
         # Utilization
         cpus_usage = {
             0: 4412451, 

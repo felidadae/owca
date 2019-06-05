@@ -60,7 +60,8 @@ def _build_allocations_from_rules(all_tasks_ids: Set[TaskId],
             log.log(TRACE, 'StaticAllocator(%s): allocations are empty - ignore!', rule_idx)
             continue
 
-        if 'rdt' in new_task_allocations:
+        # Convert if nessesary.
+        if 'rdt' in new_task_allocations and isinstance(new_task_allocations['rdt'], dict):
             new_task_allocations[AllocationType.RDT] = RDTAllocation(
                 **new_task_allocations['rdt'])
 

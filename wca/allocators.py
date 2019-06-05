@@ -31,6 +31,7 @@ class AllocationType(str, Enum):
     QUOTA = 'cpu_quota'
     SHARES = 'cpu_shares'
     RDT = 'rdt'
+    CPUSET = 'cpu_set'
 
     def __repr__(self):
         return repr(self.value)
@@ -46,7 +47,7 @@ class RDTAllocation:
     mb: Str = None
 
 
-TaskAllocations = Dict[AllocationType, Union[float, int, RDTAllocation]]
+TaskAllocations = Dict[AllocationType, Union[float, int, RDTAllocation, str]]
 TasksAllocations = Dict[TaskId, TaskAllocations]
 
 

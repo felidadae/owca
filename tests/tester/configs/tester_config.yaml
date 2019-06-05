@@ -1,8 +1,8 @@
 tests:
   - test_case_name1:
     tasks:
-      - /wca/task1
-      - /wca/task2
+      - /wcatask1
+      - /wcatask2
 
     allocator: !StaticAllocator
       rules:
@@ -10,19 +10,26 @@ tests:
           allocations:
             cpu_quota: 0.5
             cpu_shares: 10
+            cpu_set: '0-3'
     checks:
       - !FileCheck
-        path: /sys/fs/cgroup/cpu/wca/task1/cpu.shares
+        path: /sys/fs/cgroup/cpu/wcatask1/cpu.shares
         line: '10000'
         subvalue: '100'
+      - !FileCheck
+        path: /sys/fs/cgroup/cpuset/wcatask1/cpuset.cpus
+        line: '0-3'
+      - !FileCheck
+        path: /sys/fs/cgroup/cpuset/wcatask1/cpuset.mems
+        subvalue: '0'
       - !MetricCheck
         name: anomaly_count
         value: 0
 
   - test_case_name2:
     tasks:
-      - /wca/task2
-      - /wca/task4
+      - /wcatask2
+      - /wcatask4
 
     allocator: !StaticAllocator
       rules:
@@ -30,10 +37,17 @@ tests:
           allocations:
             cpu_quota: 1.0
             cpu_shares: 20
+            cpu_set: '1,2,4-5'
     checks:
       - !FileCheck
-        path: /sys/fs/cgroup/cpu/wca/task2/cpu.shares
+        path: /sys/fs/cgroup/cpu/wcatask2/cpu.shares
         line: '20000'
         subvalue: '20'
+      - !FileCheck
+        path: /sys/fs/cgroup/cpuset/wcatask4/cpuset.cpus
+        line: '1-2,4-5'
+      - !FileCheck
+        path: /sys/fs/cgroup/cpuset/wcatask4/cpuset.mems
+        subvalue: '0'
       - !MetricCheck
         name: anomaly_count

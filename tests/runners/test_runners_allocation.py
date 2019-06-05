@@ -19,7 +19,8 @@ from wca.allocators import AllocationType, RDTAllocation, Allocator
 from wca.mesos import MesosNode
 from wca.runners.allocation import AllocationRunner
 from wca.testing import redis_task_with_default_labels,\
-    prepare_runner_patches, assert_subdict, assert_metric
+    prepare_runner_patches, assert_subdict, assert_metric,\
+    platform_mock
 
 # Patch Container get_allocations (simulate allocations read from OS filesystem)
 _os_tasks_allocations = {
@@ -31,8 +32,10 @@ _os_tasks_allocations = {
 @prepare_runner_patches
 @patch('wca.containers.Container.get_allocations',    return_value=_os_tasks_allocations)
 @patch('wca.containers.ContainerSet.get_allocations', return_value=_os_tasks_allocations)
+@patch('wca.platforms.collect_platform_information', return_value=(platform_mock, [], {}))
 @pytest.mark.parametrize('subcgroups', ([], ['/T/c1'], ['/T/c1', '/T/c2']))
-def test_allocation_runner(_get_allocations_mock, _get_allocations_mock_, subcgroups):
+def test_allocation_runner(
+        _get_allocations_mock, _get_allocations_mock_, platform_mock, subcgroups):
     """ Low level system calls are not mocked - but higher level objects and functions:
         Cgroup, Resgroup, Platform, etc. Thus the test do not cover the full usage scenario
         (such tests would be much harder to write).
@@ -75,13 +78,28 @@ def test_allocation_runner(_get_allocations_mock, _get_allocations_mock_, subcgr
     # Check allocation metrics ...
     got_allocations_metrics = runner._allocations_storage.store.call_args[0][0]
     # ... generic allocation metrics ...
-    assert_metric(got_allocations_metrics, 'allocations_count', expected_metric_value=1)
-    assert_metric(got_allocations_metrics, 'allocations_errors', expected_metric_value=0)
-    assert_metric(got_allocations_metrics, 'allocation_duration')
+    assert_metric(got_allocations_metrics,
+                  'allocations_count',
+                  dict(extra_labels='extra_value'),
+                  expected_metric_value=1)
+    assert_metric(got_allocations_metrics,
+                  'allocations_errors',
+                  dict(extra_labels='extra_value'),
+                  expected_metric_value=0)
+    assert_metric(got_allocations_metrics,
+                  'allocation_duration',
+                  dict(extra_labels='extra_value'))
     # ... and allocation metrics for task t1.
-    assert_metric(got_allocations_metrics, 'allocation_cpu_quota', dict(task=t1.task_id), 0.5)
-    assert_metric(got_allocations_metrics, 'allocation_rdt_l3_cache_ways', dict(task=t1.task_id), 4)
-    assert_metric(got_allocations_metrics, 'allocation_rdt_l3_mask', dict(task=t1.task_id), 15)
+    assert_metric(got_allocations_metrics,
+                  'allocation_cpu_quota',
+                  dict(task=t1.task_id,
+                       extra_labels='extra_value'), 0.5)
+    assert_metric(got_allocations_metrics,
+                  'allocation_rdt_l3_cache_ways',
+                  dict(task=t1.task_id, extra_labels='extra_value'), 4)
+    assert_metric(got_allocations_metrics,
+                  'allocation_rdt_l3_mask',
+                  dict(task=t1.task_id, extra_labels='extra_value'), 15)
 
     ############################
     # Second run (two tasks, one allocation)

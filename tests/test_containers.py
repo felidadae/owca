@@ -93,30 +93,35 @@ def test_find_new_and_dead_tasks(discovered_tasks, containers,
 @patch('wca.containers.Container.get_pids')
 @pytest.mark.parametrize('subcgroups', ([], ['/t1/c1', '/t1/c2']))
 @pytest.mark.parametrize(
-    'tasks_, pre_running_containers_, mon_groups_relation, expected_running_containers_',
+    'tasks_, pre_running_containers_, mon_groups_relation,'
+    'expected_running_containers_, labels_relation_,'
+    'pre_running_labels_relation_',
     (
         # 1) Before the start - expecting no running containers.
         ([], {}, {},
-         {}),
+         {}, {}, {}),
         # 2) One new task arrived - expecting that new container will be created.
         (['/t1'], {}, {},
-         {'/t1': '/t1'}),
-        # 3) One task dissapeared, one appeared.
-        (['/t1'], {'/t2': '/t2'}, {'be': ['t2', 't1']},
-         {'/t1': '/t1'}),
-        # 4) One (of two) task dissapeared (t2 has it's own resgroup).
-        (['/t1'], {'/t1': '/t1', '/t2': '/t2'}, {'t2': ['t2']},
-         {'/t1': '/t1'}),
-        # 5) Two task (of two) dissapeared.
-        ([], {'/t1': '/t1', '/t2': '/t2'}, {},
+         {'/t1': '/t1'}, {'/t1': {'some_label': 'some_value'}},
          {}),
+        # 3) One task disappeared, one appeared.
+        (['/t1'], {'/t2': '/t2'}, {'be': ['t2', 't1']},
+         {'/t1': '/t1'}, {'/t1': {'some_label': 'new_value'}},
+         {'/t1': {'some_label': 'some_value'}}),
+        # 4) One (of two) task disappeared (t2 has it's own resgroup).
+        (['/t1'], {'/t1': '/t1', '/t2': '/t2'}, {'t2': ['t2']},
+         {'/t1': '/t1'}, {}, {'/t1': {'some_label': 'new_value'}}),
+        # 5) Two task (of two) disappeared.
+        ([], {'/t1': '/t1', '/t2': '/t2'}, {},
+         {}, {}, {}),
     )
 )
 def test_sync_containers_state(_, get_pids_mock, sync_mock, perf_counters_mock,
                                add_pids_mock, clean_taskless_groups_mock,
                                subcgroups,
                                tasks_, pre_running_containers_,
-                               mon_groups_relation, expected_running_containers_):
+                               mon_groups_relation, expected_running_containers_,
+                               labels_relation_, pre_running_labels_relation_):
     """Tests both Container and ContainerSet classes.
 
         Note: the input arguments tasks_, existing_containers_, expected_running_containers_
@@ -135,15 +140,21 @@ def test_sync_containers_state(_, get_pids_mock, sync_mock, perf_counters_mock,
     # Create Task and Container/ContainerSet objects from input arguments.
     #   This is done to both test Container and ContainerSet classes (to pass
     #   subcgroups argument into the constructing function >>container<<.
-    tasks = [task(t, subcgroups_paths=subcgroups) for t in tasks_]
-    pre_running_containers = {task(t, subcgroups_paths=subcgroups): container(c, subcgroups)
-                              for t, c in pre_running_containers_.items()}
-    expected_running_containers = {task(t, subcgroups_paths=subcgroups): container(c, subcgroups)
-                                   for t, c in expected_running_containers_.items()}
+    tasks = [task(t, subcgroups_paths=subcgroups, labels=labels_relation_.get(t)) for t in tasks_]
+    pre_running_containers = \
+        {task(t, subcgroups_paths=subcgroups,
+              labels=pre_running_labels_relation_): container(c, subcgroups)
+         for t, c in pre_running_containers_.items()}
+
+    expected_running_containers = \
+        {task(t, subcgroups_paths=subcgroups,
+              labels=labels_relation_.get(t)): container(c, subcgroups)
+         for t, c in expected_running_containers_.items()}
 
     rdt_information = RDTInformation(True, True, True, True, 'fff', '1', 0, 0, 0)
     containers_manager = ContainerManager(rdt_information=rdt_information,
                                           platform_cpus=1,
+                                          platform_sockets=1,
                                           allocation_configuration=AllocationConfiguration(),
                                           event_names=[],
                                           )

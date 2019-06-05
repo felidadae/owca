@@ -2,7 +2,7 @@
 WCA - Workload Collocation Agent
 =====================================================
 
-.. image:: https://travis-ci.com/intel/wca.svg?branch=master
+.. image:: https://travis-ci.com/intel/workload-collocation-agent.svg?branch=master
     :target: https://travis-ci.com/intel/workload-collocation-agent
 
 .. contents:: Table of Contents
@@ -29,12 +29,13 @@ An externally provided algorithm is responsible for allocating resources or anom
 and the algorithm exchange information about current resource usage, isolation actuations or detected
 anomalies. WCA stores information about detected anomalies, resource allocation and platform utilization metrics to a remote storage such as Kafka.
 
-The diagram below puts WCA in context of an example Mesos cluster and monitoring infrastructure:
+The diagram below puts WCA in context of a cluster and monitoring infrastructure:
 
 .. image:: docs/context.png
 
+For context regarding Mesos see `this document <docs/mesos.rst>`_ and for Kubernetes see `this document <docs/kubernetes.rst>`_.
 
-See `WCA Architecture 1.5.pdf`_ for further details.
+See `WCA Architecture 1.7.pdf`_ for further details.
 
 
 Getting started
@@ -63,10 +64,10 @@ WCA is targeted at and tested on Centos 7.5.
     sudo mkdir /sys/fs/cgroups/{cpu,cpuacct,perf_event}/task1
 
     # Example of running agent in measurments-only mode with predefined static list of tasks
-    sudo dist/wca.pex --config configs/extra/static_measurements.yaml --root
+    sudo dist/wca.pex --config /etc/wca/configs/extra/static_measurements.yaml --root
 
     # Example of static allocation with predefined rules on predefined list of tasks.
-    sudo dist/wca.pex --config configs/extra/static_allocator.yaml --root
+    sudo dist/wca.pex --config /etc/wca/configs/extra/static_allocator.yaml --root
 
 
 Running those commands outputs metrics in Prometheus format to standard error like this:
@@ -161,6 +162,7 @@ Components
 Following built-in components are available (stable API):
 
 - `MesosNode <wca/mesos.py#L64>`_ provides workload discovery on Mesos cluster node where `mesos containerizer <http://mesos.apache.org/documentation/latest/mesos-containerizer/>`_ is used (see the docs `here <docs/mesos.rst>`_)
+- `KubernetesNode <wca/kubernetes.py#L64>`_ provides workload discovery on Kubernetes cluster node (see the docs `here <docs/kubernetes.rst>`_)
 - `MeasurementRunner <wca/runners/measurement.py#L36>`_ implements simple loop that reads state of the system, encodes this information as metrics and stores them,
 - `DetectionRunner <wca/runners/detection.py#L52>`_ extends ``MeasurementRunner`` and additionally implements anomaly detection callback and encodes anomalies as metrics to enable alerting and analysis. See `Detection API <docs/detection.rst>`_ for more details.
 - `AllocationRunner <wca/runners/allocation.py#L127>`_ extends ``MeasurementRunner`` and additionally implements resource allocation callback. See `Allocation API <docs/allocation.rst>`_ for more details .
@@ -205,7 +207,7 @@ Further reading
 - `Kubernetes integration <docs/kubernetes.rst>`_
 - `Logging configuration <docs/logging.rst>`_
 - `Supported workloads and definitions </workloads>`_
-- `WCA Architecture 1.5.pdf`_
+- `WCA Architecture 1.7.pdf`_
 
-.. _`WCA Architecture 1.5.pdf`: docs/WCA_Architecture_v1.5.pdf
+.. _`WCA Architecture 1.7.pdf`: docs/WCA_Architecture_v1.7.pdf
 

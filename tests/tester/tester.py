@@ -10,6 +10,7 @@ from typing import List, Dict, Set, Union, Optional
 
 from wca.allocators import Allocator, TasksAllocations
 from wca.config import load_config
+from wca.cgroups import CgroupSubsystem, CgroupType
 from wca.detectors import TasksMeasurements, TasksResources, TasksLabels, Anomaly
 from wca.metrics import Metric
 from wca.nodes import Node, Task
@@ -18,9 +19,6 @@ from wca.storage import Storage
 from wca.testing import assert_metric
 
 log = logging.getLogger(__name__)
-
-CPU_PATH = '/sys/fs/cgroup/cpu'
-PERF_PATH = '/sys/fs/cgroup/perf_event'
 
 
 @dataclass
@@ -153,43 +151,57 @@ def _create_dumb_process(cgroup_path, command: str):
     splitted_command = command.split()
 
     p = subprocess.Popen(splitted_command)
-    cpu_path, perf_path = _get_cgroup_full_path(cgroup_path)
+    paths = _get_cgroup_full_path(cgroup_path)
 
-    with open(os.path.join(cpu_path, 'tasks'), 'a') as f:
+    with open(os.path.join(paths[CgroupType.CPU], 'tasks'), 'a') as f:
         f.write(str(p.pid))
-    with open(os.path.join(perf_path, 'tasks'), 'a') as f:
+    with open(os.path.join(paths[CgroupType.PERF_EVENT], 'tasks'), 'a') as f:
         f.write(str(p.pid))
-
     return p
 
 
 def _get_cgroup_full_path(cgroup):
-    return os.path.join(CPU_PATH, cgroup[1:]), os.path.join(PERF_PATH, cgroup[1:])
+    return {
+            CgroupType.CPU: os.path.join(CgroupSubsystem.CPU, cgroup[1:]),
+            CgroupType.CPUSET: os.path.join(CgroupSubsystem.CPUSET, cgroup[1:]),
+            CgroupType.PERF_EVENT: os.path.join(CgroupSubsystem.PERF_EVENT, cgroup[1:]),
+            }
 
 
 def _create_cgroup(cgroup_path):
-    cpu_path, perf_path = _get_cgroup_full_path(cgroup_path)
+    paths = _get_cgroup_full_path(cgroup_path)
+
     try:
-        os.makedirs(cpu_path)
+        os.makedirs(paths[CgroupType.CPU])
     except FileExistsError:
         log.warning('cpu cgroup "{}" already exists'.format(cgroup_path))
 
     try:
-        os.makedirs(perf_path)
+        os.makedirs(paths[CgroupType.CPUSET])
+    except FileExistsError:
+        log.warning('cpuset cgroup "{}" already exists'.format(cgroup_path))
+
+    try:
+        os.makedirs(paths[CgroupType.PERF_EVENT])
     except FileExistsError:
         log.warning('perf_event cgroup "{}" already exists'.format(cgroup_path))
 
 
 def _delete_cgroup(cgroup_path):
-    cpu_path, perf_path = _get_cgroup_full_path(cgroup_path)
+    paths = _get_cgroup_full_path(cgroup_path)
 
     try:
-        os.rmdir(cpu_path)
+        os.rmdir(paths[CgroupType.CPU])
     except FileNotFoundError:
         log.warning('cpu cgroup "{}" not found'.format(cgroup_path))
 
     try:
-        os.rmdir(perf_path)
+        os.rmdir(paths[CgroupType.CPUSET])
+    except FileNotFoundError:
+        log.warning('cpuset cgroup "{}" not found'.format(cgroup_path))
+
+    try:
+        os.rmdir(paths[CgroupType.PERF_EVENT])
     except FileNotFoundError:
         log.warning('perf_event cgroup "{}" not found'.format(cgroup_path))
 
@@ -219,12 +231,15 @@ class FileCheck(Check):
         with open(self.path) as f:
             for line in f:
                 if self.line:
-                    if line.rstrip('\n\r') == self.line:
-                        break
-                    if self.subvalue in line:
-                        break
-            else:
-                raise CheckFailed(str(self))
+                    if not line.rstrip('\n\r') == self.line:
+                        raise CheckFailed(
+                                'Expected value "{}" but got "{}"\n{}'.
+                                format(self.line, line, str(self)))
+                if self.subvalue:
+                    if self.subvalue not in line:
+                        raise CheckFailed(
+                                'Expected subvalue "{}" in "{}"\n{}'.
+                                format(self.subvalue, line, str(self)))
 
 
 @dataclass

@@ -6,6 +6,13 @@ Kubernetes integration
 
 .. contents:: Table of Contents
 
+Introduction
+============
+
+The diagram below puts Kubernetes integration in context of a cluster and monitoring infrastructure:
+
+.. image:: kubernetes_context.png
+
 Kubernetes supported features
 ========================
 

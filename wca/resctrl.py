@@ -241,7 +241,8 @@ class ResGroup:
                 schemata_file.write(bytes(value + '\n', encoding='utf-8'))
                 schemata_file.flush()
             except OSError as e:
-                log.error('Cannot set rdt allocation: {}'.format(e))
+                log.error('Cannot set rdt allocation: {} with {} error is {}'.format(
+                    schemata_file.name, value, e))
 
         with open(os.path.join(self.fullpath, SCHEMATA), 'bw') as schemata_file:
             for line in lines:

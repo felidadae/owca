@@ -140,6 +140,7 @@ class MeasurementRunner(Runner):
         self._containers_manager = ContainerManager(
             rdt_information=rdt_information,
             platform_cpus=platform_cpus,
+            platform_sockets=platform_sockets,
             allocation_configuration=self._allocation_configuration,
             event_names=self._event_names,
             enable_derived_metrics=self._enable_derived_metrics,

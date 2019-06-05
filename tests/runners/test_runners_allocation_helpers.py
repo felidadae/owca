@@ -98,7 +98,8 @@ rdta = RDTAllocation
          {"rdt": rdta(name='x', l3='L3:0=ff')}, {"rdt": rdta(name='x', l3='L3:0=ff')}),
         ({"rdt": rdta(name='x', l3='L3:0=ff')}, {"rdt": rdta(name='x', l3='L3:0=dd')},
          {"rdt": rdta(name='x', l3='L3:0=dd')}, {"rdt": rdta(name='x', l3='L3:0=dd')}),
-        ({"rdt": rdta(name='x', l3='L3:0=dd', mb='MB:0=ff')}, {"rdt": rdta(name='x', mb='MB:0=ff')},
+        ({"rdt": rdta(name='x', l3='L3:0=dd', mb='MB:0=ff')},
+            {"rdt": rdta(name='x', mb='MB:0=ff')},
          {"rdt": rdta(name='x', l3='L3:0=dd', mb='MB:0=ff')}, None),
     ]
 )
@@ -248,6 +249,9 @@ def test_unique_rdt_allocations(tasks_allocations, expected_resgroup_reallocatio
         (None, None, True, False, True, False, None, True, (None, 'MB:0=100', False)),
         # rdt mb is enabled and available on platform, there should be no exception, but use MB=50
         (None, 'MB:0=50', True, True, True, True, None, True, ('L3:0=fff', 'MB:0=50', False)),
+        # rdt mb is enabled and available on platform, there should be no exception, but use MB=10
+        # which is the same as minimal bandwidth
+        (None, 'MB:0=10', True, True, True, True, None, True, ('L3:0=fff', 'MB:0=10', False)),
         # rdt mb is enabled and available on platform, there should be no exception, but use L3=f
         ('L3:0=00f', None, True, True, True, True, None, True, ('L3:0=00f', 'MB:0=100', False)),
         # rdt mb is enabled and available on platform, there should be no exception, but use both
@@ -257,6 +261,8 @@ def test_unique_rdt_allocations(tasks_allocations, expected_resgroup_reallocatio
         # wrong values
         ('wrongl3', 'MB:0=50', True, True, True, True, 'wrong', True, None),
         ('L3:0=00f', 'wrong mb', True, True, True, True, 'wrong', True, None),
+        # rdt mb is less than minimal bandwidth
+        ('L3:0=00f', 'MB:0=9', True, True, True, True, 'wrong', True, None),
     ]
 )
 @patch('wca.resctrl.cleanup_resctrl')
@@ -291,6 +297,7 @@ def test_rdt_initialize(rdt_max_values_mock, cleanup_resctrl_mock,
     with patch('wca.testing.platform_mock.rdt_information', Mock(
             spec=RDTInformation,
             cbm_mask='fff', min_cbm_bits='2',
+            mb_min_bandwidth=10,
             rdt_mb_control_enabled=platform_rdt_mb_control_enabled,
             rdt_cache_control_enabled=platform_rdt_cache_control_enabled)):
         assert runner._initialize_rdt() is not expected_error

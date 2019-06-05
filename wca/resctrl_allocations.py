@@ -239,6 +239,7 @@ class RDTAllocationValue(AllocationValue):
             if not self.rdt_information.rdt_cache_control_enabled:
                 raise InvalidAllocations('Allocator requested RDT cache allocation but '
                                          'RDT cache control is not enabled!')
+
             validate_l3_string(self.rdt_allocation.l3,
                                self.platform_sockets,
                                self.rdt_information.cbm_mask,
@@ -248,7 +249,8 @@ class RDTAllocationValue(AllocationValue):
                 raise InvalidAllocations('Allocator requested RDT MB allocation but '
                                          'RDT memory bandwidth is not enabled!')
             validate_mb_string(self.rdt_allocation.mb,
-                               self.platform_sockets)
+                               self.platform_sockets,
+                               self.rdt_information.mb_min_bandwidth)
 
         self.rdt_groups.validate(self)
 
@@ -385,12 +387,29 @@ def validate_l3_string(l3, platform_sockets, rdt_cbm_mask, rdt_min_cbm_bits):
                        rdt_min_cbm_bits)
 
 
-def validate_mb_string(mb, platform_sockets):
+def validate_mb_string(mb, platform_sockets, mb_min_bandwidth):
+    assert mb_min_bandwidth is not None
     if not mb.startswith('MB:'):
         raise InvalidAllocations(
             'mb resources setting should start with "MB:" prefix (got %r)' % mb)
+
     domains = _parse_schemata_file_row(mb)
     _validate_domains(domains, platform_sockets)
+
+    for mb_value in domains.values():
+        check_mb_value(mb_value, mb_min_bandwidth)
+
+
+def check_mb_value(mb_value: str, mb_min_bandwidth):
+    try:
+        mb_value = int(mb_value)
+    except ValueError:
+        raise InvalidAllocations("{} is not integer format".format(mb_value))
+
+    if mb_value < mb_min_bandwidth:
+        raise InvalidAllocations(
+                "mb allocation smaller than minimum value {}"
+                .format(str(mb_min_bandwidth)))
 
 
 def _count_enabled_bits(hexstr: str) -> int:

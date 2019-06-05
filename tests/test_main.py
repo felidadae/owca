@@ -23,7 +23,7 @@ runner: !DummyRunner
 
 
 @mock.patch('sys.argv', ['wca', '-c',
-                         'configs/see_yaml_config_variable_above.yaml',
+                         '/etc/configs/see_yaml_config_variable_above.yaml',
                          '-r', 'wca.testing:DummyRunner', '-l', 'critical',
                          '--root'])
 @mock.patch('os.rmdir')
@@ -43,7 +43,7 @@ runner: !DummyRunner
 
 @mock.patch('wca.main.log.error')
 @mock.patch('sys.argv', ['wca', '-c',
-                         'configs/see_yaml_config_variable_above.yaml',
+                         '/etc/configs/see_yaml_config_variable_above.yaml',
                          '-r', 'wca.testing:DummyRunner', '-l', 'critical',
                          '--root'])
 @mock.patch('os.rmdir')
@@ -59,3 +59,18 @@ def test_main_unknown_field(mock_exit, perf_counters, mock_rmdir,
                                            'configuration file: unknownRunner.'
                                            ' Possible fields are: \'loggers\', '
                                            '\'runner\'')
+
+
+@mock.patch('wca.main.log.error')
+@mock.patch('sys.argv', ['wca', '-c',
+                         'configs/see_yaml_config_variable_above.yaml',
+                         '-r', 'wca.testing:DummyRunner', '-l', 'critical',
+                         '--root'])
+@mock.patch('wca.config.exists', return_value=True)
+@mock.patch('wca.config.open', mock.mock_open(read_data=yaml_config))
+@mock.patch('wca.main.exit')
+def test_main_not_absolute_path(mock_exit, mock_argv, mock_log_error):
+    main.main()
+    mock_log_error.assert_called_once_with(
+        'Error: The config path \'configs/see_yaml_config_variable_above.yaml\' is not valid. '
+        'The path must be absolute.')

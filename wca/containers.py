@@ -28,6 +28,7 @@ from wca.nodes import Task
 from wca.platforms import RDTInformation
 from wca.profiling import profiler
 from wca.resctrl import ResGroup
+from wca.logger import TRACE
 
 log = logging.getLogger(__name__)
 
@@ -101,6 +102,7 @@ class ContainerInterface(ABC):
 class ContainerSet(ContainerInterface):
     def __init__(self,
                  cgroup_path: str, cgroup_paths: List[str], platform_cpus: int,
+                 platform_sockets: int,
                  rdt_information: Optional[RDTInformation],
                  allocation_configuration: Optional[AllocationConfiguration] = None,
                  resgroup: ResGroup = None,
@@ -118,6 +120,7 @@ class ContainerSet(ContainerInterface):
         self._cgroup = cgroups.Cgroup(
             cgroup_path=self._cgroup_path,
             platform_cpus=platform_cpus,
+            platform_sockets=platform_sockets,
             allocation_configuration=allocation_configuration)
 
         # Create Cgroup objects for children.
@@ -127,6 +130,7 @@ class ContainerSet(ContainerInterface):
                 cgroup_path=cgroup_path,
                 rdt_information=None,
                 platform_cpus=platform_cpus,
+                platform_sockets=platform_sockets,
                 allocation_configuration=allocation_configuration,
                 event_names=event_names,
                 enable_derived_metrics=enable_derived_metrics,
@@ -205,6 +209,7 @@ class ContainerSet(ContainerInterface):
 
 class Container(ContainerInterface):
     def __init__(self, cgroup_path: str, platform_cpus: int,
+                 platform_sockets: int,
                  rdt_information: Optional[RDTInformation],
                  resgroup: ResGroup = None,
                  allocation_configuration:
@@ -221,6 +226,7 @@ class Container(ContainerInterface):
         self._cgroup = cgroups.Cgroup(
             cgroup_path=self._cgroup_path,
             platform_cpus=platform_cpus,
+            platform_sockets=platform_sockets,
             allocation_configuration=allocation_configuration)
 
         self._derived_metrics_generator = None
@@ -319,12 +325,13 @@ class ContainerManager:
     their containers and resctrl system. """
 
     def __init__(self, rdt_information: Optional[RDTInformation], platform_cpus: int,
+                 platform_sockets: int,
                  allocation_configuration: Optional[AllocationConfiguration],
                  event_names: List[str], enable_derived_metrics: bool = False):
         self.containers: Dict[Task, ContainerInterface] = {}
         self._rdt_information = rdt_information
-
         self._platform_cpus = platform_cpus
+        self._platform_sockets = platform_sockets
         self._allocation_configuration = allocation_configuration
         self._event_names = event_names
         self._enable_derived_metrics = enable_derived_metrics
@@ -339,6 +346,7 @@ class ContainerManager:
                 cgroup_paths=task.subcgroups_paths,
                 rdt_information=self._rdt_information,
                 platform_cpus=self._platform_cpus,
+                platform_sockets=self._platform_sockets,
                 allocation_configuration=self._allocation_configuration,
                 event_names=self._event_names,
                 enable_derived_metrics=self._enable_derived_metrics,
@@ -348,6 +356,7 @@ class ContainerManager:
                 cgroup_path=task.cgroup_path,
                 rdt_information=self._rdt_information,
                 platform_cpus=self._platform_cpus,
+                platform_sockets=self._platform_sockets,
                 allocation_configuration=self._allocation_configuration,
                 event_names=self._event_names,
                 enable_derived_metrics=self._enable_derived_metrics,
@@ -355,7 +364,7 @@ class ContainerManager:
         return container
 
     @profiler.profile_duration('sync_containers_state')
-    def sync_containers_state(self, tasks) -> Dict[Task, ContainerInterface]:
+    def sync_containers_state(self, tasks: List[Task]) -> Dict[Task, ContainerInterface]:
         """Syncs state of ContainerManager with a system by removing orphaned containers,
         and creating containers for newly arrived tasks, and synchronizing containers' state.
 
@@ -382,12 +391,17 @@ class ContainerManager:
                 container_to_cleanup.cleanup()
 
         # Recreate self.containers.
-        self.containers = {task: container
-                           for task, container in self.containers.items()
-                           if task in tasks}
+        # mutated state e.g. labels for Kubernetes
+        containers = {}
+        for task in tasks:
+            for known_task, container in self.containers.items():
+                if task.cgroup_path == known_task.cgroup_path:
+                    containers[task] = container
+                    continue
+        self.containers = containers
 
         if new_tasks:
-            log.debug('sync_containers_state: found %d new tasks', len(new_tasks))
+            log.debug('Found %d new tasks', len(new_tasks))
             log.log(logger.TRACE, 'sync_containers_state: new_tasks=%r', new_tasks)
 
         # Prepare state of currently assigned resgroups
@@ -397,21 +411,21 @@ class ContainerManager:
             assert self._rdt_information.is_monitoring_enabled(), \
                 "rdt_enabled requires RDT monitoring for keeping groups relation."
             mon_groups_relation = resctrl.read_mon_groups_relation()
-            log.debug('mon_groups_relation (before cleanup): %s',
-                      pprint.pformat(mon_groups_relation))
+            log.log(TRACE, 'mon_groups_relation (before cleanup): %s',
+                    pprint.pformat(mon_groups_relation))
             resctrl.clean_taskless_groups(mon_groups_relation)
 
             mon_groups_relation = resctrl.read_mon_groups_relation()
-            log.debug('mon_groups_relation (after cleanup): %s',
-                      pprint.pformat(mon_groups_relation))
+            log.log(TRACE, 'mon_groups_relation (after cleanup): %s',
+                    pprint.pformat(mon_groups_relation))
 
             # Calculate inverse relation of container_name
             # to res_group name based on mon_groups_relations.
             for ctrl_group, container_names in mon_groups_relation.items():
                 for container_name in container_names:
                     container_name_to_ctrl_group[container_name] = ctrl_group
-            log.debug('container_name_to_ctrl_group: %s',
-                      pprint.pformat(container_name_to_ctrl_group))
+            log.log(TRACE, 'container_name_to_ctrl_group: %s',
+                    pprint.pformat(container_name_to_ctrl_group))
 
         # Create new containers and store them.
         for new_task in new_tasks:
@@ -428,6 +442,8 @@ class ContainerManager:
                     # Every newly detected container is first assigned to the root group.
                     container.set_resgroup(ResGroup(name=''))
             container.sync()
+
+        log.log(logger.TRACE, 'sync_containers_state: containers=%r', self.containers)
 
         return self.containers
 

@@ -15,7 +15,7 @@ import logging
 import time
 from typing import Dict, List, Optional
 
-from wca.config import Numeric, Str
+from wca.config import Numeric, Str, assure_type
 from wca import nodes, storage, detectors
 from wca.detectors import convert_anomalies_to_metrics, \
     update_anomalies_metrics_with_task_information, Anomaly
@@ -33,8 +33,14 @@ class AnomalyStatistics:
         self._anomaly_last_occurrence = None
         self._anomaly_counter = 0
 
+    def validate(self, anomalies: List[Anomaly]):
+        assure_type(anomalies, List[Anomaly])
+
     def get_metrics(self, anomalies: List[Anomaly]) -> List[Metric]:
         """Extra external plugin anomaly statistics."""
+
+        self.validate(anomalies)
+
         if len(anomalies):
             self._anomaly_last_occurrence = time.time()
             self._anomaly_counter += len(anomalies)

@@ -27,6 +27,7 @@ from wca import components
 from wca import config
 from wca import logger
 from wca import platforms
+from wca.config import assure_type
 from wca.runners import Runner
 
 log = logging.getLogger('wca.main')
@@ -80,6 +81,12 @@ def main():
     # Register internal & external components.
     components.register_components(extra_components=args.components)
 
+    if not os.path.isabs(args.config):
+        log.error(
+            'Error: The config path \'%s\' is not valid. The path must be absolute.'
+            % args.config)
+        exit(1)
+
     # Initialize all necessary objects.
     try:
         configuration = config.load_config(args.config)
@@ -96,8 +103,7 @@ def main():
                       '\'runner\''.format(key))
             exit(1)
 
-    # TODO: replace with proper validation base on config._assure_type
-    assert isinstance(configuration, dict), 'Improper config! - expected dict'
+    assure_type(configuration, dict)
     assert 'runner' in configuration, 'Improper config - missing runner instance!'
 
     # Configure loggers using configuration file.
@@ -121,7 +127,7 @@ def main():
 
     # Extract main loop component.
     runner = configuration['runner']
-    assert isinstance(runner, Runner), 'Improper config - expected runner type!'
+    assure_type(runner, Runner)
 
     # Prepare and run the "main loop".
     exit_code = runner.run()

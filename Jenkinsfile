@@ -41,7 +41,7 @@ pipeline {
                     sh '''
 						sudo bash -c "
 							export PYTHONPATH=$PYTHONPATH;$(pwd)/tests/tester
-							dist/wca.pex -c tests/tester/configs/tester_example.yaml \
+							dist/wca.pex -c $(pwd)/tests/tester/configs/tester_example.yaml \
 								-r tester:Tester -r tester:MetricCheck -r tester:FileCheck \
 								--log=debug --root
 						"

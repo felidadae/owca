@@ -80,7 +80,7 @@ def test_prepare_tasks_data(*mocks):
     rdt_information = RDTInformation(True, True, True, True, '0', '0', 0, 0, 0)
     containers = {
         task('/t1', labels={'label_key': 'label_value'}, resources={'cpu': 3}):
-            Container('/t1', 1, rdt_information)
+            Container('/t1', 1, 1, rdt_information)
     }
 
     tasks_measurements, tasks_resources, tasks_labels = _prepare_tasks_data(containers)

@@ -50,7 +50,7 @@ def get_wca_version():
     return version
 
 
-def get_cpu_model():
+def get_cpu_model() -> str:
     """Returns information about cpu model from /proc/cpuinfo."""
     if os.path.isfile('/proc/cpuinfo'):
         with open('/proc/cpuinfo') as fref:
@@ -98,6 +98,8 @@ class Platform:
     sockets: int  # number of sockets
     cores: int  # number of physical cores in total (sum over all sockets)
     cpus: int  # logical processors equal to the output of "nproc" Linux command
+
+    cpu_model: str
 
     # Utilization (usage):
     # counter like, sum of all modes based on /proc/stat
@@ -357,6 +359,7 @@ def collect_platform_information(rdt_enabled: bool = True) -> (
         sockets=no_of_sockets,
         cores=nr_of_cores,
         cpus=nr_of_cpus,
+        cpu_model=get_cpu_model(),
         cpus_usage=cpus_usage,
         total_memory_used=total_memory_used,
         timestamp=time.time(),
