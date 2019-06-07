@@ -24,7 +24,7 @@ from functools import partial
 from wca.storage import KafkaStorage, LogStorage
 from wca.logger import TRACE
 from wrapper.parser import (default_parse, parse_loop, DEFAULT_REGEXP,
-                                ParseFunc, ServiceLevelArgs, append_service_level_metrics)
+                            ParseFunc, ServiceLevelArgs, append_service_level_metrics)
 from wca.platforms import get_wca_version
 
 log = logging.getLogger(__name__)
