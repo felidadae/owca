@@ -16,7 +16,7 @@
 import os
 
 from wca.metrics import Metric, MetricType
-from wca.wrapper.parser_specjbb import parse
+from wrapper.parser_specjbb import parse
 
 
 def test_parse():

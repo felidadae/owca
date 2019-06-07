@@ -16,7 +16,7 @@
 from io import StringIO
 
 from wca.metrics import Metric, MetricType
-from wca.wrapper.parser_cassandra_stress import parse
+from wrapper.parser_cassandra_stress import parse
 
 
 def test_parse():

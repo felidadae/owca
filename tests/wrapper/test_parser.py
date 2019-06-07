@@ -19,8 +19,8 @@ from io import StringIO
 
 from wca.metrics import Metric
 from wca.storage import FailedDeliveryException
-from wca.wrapper.parser import (default_parse, kafka_store_with_retry,
-                                DEFAULT_REGEXP, MAX_ATTEMPTS, readline_with_check)
+from wrapper.parser import (default_parse, kafka_store_with_retry,
+                            DEFAULT_REGEXP, MAX_ATTEMPTS, readline_with_check)
 
 
 @pytest.mark.parametrize("input,separator,expected", [

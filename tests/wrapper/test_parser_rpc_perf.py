@@ -16,7 +16,7 @@
 from io import StringIO
 
 from wca.metrics import Metric, MetricType
-from wca.wrapper.parser_rpc_perf import parse
+from wrapper.parser_rpc_perf import parse
 
 
 def test_parse():

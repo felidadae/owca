@@ -14,11 +14,11 @@ flake8:
 
 unit: 
 	@echo Running unit tests.
-	pipenv run env PYTHONPATH=. pytest --cov-report term-missing --cov=wca tests
+	pipenv run env PYTHONPATH=.:workloads/wrapper pytest --cov-report term-missing --cov=wca tests
 
 junit: 
 	@echo Running unit tests.
-	pipenv run env PYTHONPATH=. pytest --cov-report term-missing --cov=wca tests --junitxml=unit_results.xml -vvv -s
+	pipenv run env PYTHONPATH=.:workloads:wrapper pytest --cov-report term-missing --cov=wca tests --junitxml=unit_results.xml -vvv -s
 
 wca_package:
 	@echo Building wca pex file.

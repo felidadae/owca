@@ -16,7 +16,7 @@
 from io import StringIO
 
 from wca.metrics import Metric, MetricType
-from wca.wrapper.parser_stress_ng import parse
+from wrapper.parser_stress_ng import parse
 
 
 def test_parse():
