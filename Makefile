@@ -31,16 +31,16 @@ wca_package:
 wrapper_package: 
 	@echo Building wrappers pex files.
 	-sh -c 'rm -f .pex-build/*wrapper.pex'
-	pipenv run pex . -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/wrapper.pex -m wca.wrapper.wrapper_main
-	pipenv run pex . -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/example_workload_wrapper.pex -m wca.wrapper.parser_example_workload
-	pipenv run pex . -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/specjbb_wrapper.pex -m wca.wrapper.parser_specjbb
-	pipenv run pex . -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/ycsb_wrapper.pex -m wca.wrapper.parser_ycsb
-	pipenv run pex . -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/rpc_perf_wrapper.pex -m wca.wrapper.parser_rpc_perf
-	pipenv run pex . -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/tensorflow_benchmark_training_wrapper.pex -m wca.wrapper.parser_tensorflow_benchmark_training
-	pipenv run pex . -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/tensorflow_benchmark_prediction_wrapper.pex -m wca.wrapper.parser_tensorflow_benchmark_prediction
-	pipenv run pex . -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/mutilate_wrapper.pex -m wca.wrapper.parser_mutilate
-	pipenv run pex . -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/cassandra_stress_wrapper.pex -m wca.wrapper.parser_cassandra_stress
-	pipenv run pex . -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/stress_ng_wrapper.pex -m wca.wrapper.parser_stress_ng
+	pipenv run pex . -D workloads/wrapper -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/wrapper.pex -m wrapper.wrapper_main
+	pipenv run pex . -D workloads/wrapper -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/example_workload_wrapper.pex -m wrapper.parser_example_workload
+	pipenv run pex . -D workloads/wrapper -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/specjbb_wrapper.pex -m wrapper.parser_specjbb
+	pipenv run pex . -D workloads/wrapper -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/ycsb_wrapper.pex -m wrapper.parser_ycsb
+	pipenv run pex . -D workloads/wrapper -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/rpc_perf_wrapper.pex -m wrapper.parser_rpc_perf
+	pipenv run pex . -D workloads/wrapper -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/tensorflow_benchmark_training_wrapper.pex -m wrapper.parser_tensorflow_benchmark_training
+	pipenv run pex . -D workloads/wrapper -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/tensorflow_benchmark_prediction_wrapper.pex -m wrapper.parser_tensorflow_benchmark_prediction
+	pipenv run pex . -D workloads/wrapper -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/mutilate_wrapper.pex -m wrapper.parser_mutilate
+	pipenv run pex . -D workloads/wrapper -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/cassandra_stress_wrapper.pex -m wrapper.parser_cassandra_stress
+	pipenv run pex . -D workloads/wrapper -v -R component-licenses --cache-dir=.pex-build $(PEX_OPTIONS) -o dist/stress_ng_wrapper.pex -m wrapper.parser_stress_ng
 	./dist/wrapper.pex --help >/dev/null
 
 check: flake8 unit
