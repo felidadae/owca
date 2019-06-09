@@ -21,7 +21,7 @@ from typing import List, Union
 import requests
 from dataclasses import dataclass
 
-from wca.config import Numeric, Path, Url
+from wca.config import assure_type, Numeric, Path, Url
 from wca.metrics import Measurements, Metric
 from wca.nodes import Node, Task
 
@@ -38,6 +38,12 @@ class MesosTask(Task):
     container_id: str  # Mesos containerizer identifier "ID used to uniquely identify a container"
     executor_id: str
     agent_id: str
+
+    def __post_init__(self):
+        assure_type(self.executor_pid, int)
+        assure_type(self.container_id, str)
+        assure_type(self.executor_id, str)
+        assure_type(self.agent_id, str)
 
     def __hash__(self):
         """Override __hash__ method from base class and call it explicitly to workaround

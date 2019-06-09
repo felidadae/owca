@@ -143,7 +143,7 @@ def test_sync_containers_state(_, get_pids_mock, sync_mock, perf_counters_mock,
     tasks = [task(t, subcgroups_paths=subcgroups, labels=labels_relation_.get(t)) for t in tasks_]
     pre_running_containers = \
         {task(t, subcgroups_paths=subcgroups,
-              labels=pre_running_labels_relation_): container(c, subcgroups)
+              labels=pre_running_labels_relation_.get(t)): container(c, subcgroups)
          for t, c in pre_running_containers_.items()}
 
     expected_running_containers = \

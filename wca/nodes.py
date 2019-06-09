@@ -17,6 +17,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Union
 
 from dataclasses import dataclass
+from wca.config import assure_type
 
 TaskId = str
 
@@ -49,6 +50,14 @@ class Task:
     def __hash__(self):
         """Every instance of task is uniquely identified by cgroup_path."""
         return hash(self.cgroup_path)
+
+    def __post_init__(self):
+        assure_type(self.name, str)
+        assure_type(self.task_id, TaskId)
+        assure_type(self.cgroup_path, str)
+        assure_type(self.subcgroups_paths, List[str])
+        assure_type(self.labels, Dict[str, str])
+        assure_type(self.resources, Dict[str, Union[float, int, str]])
 
 
 class Node(ABC):
