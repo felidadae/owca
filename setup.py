@@ -18,7 +18,7 @@ import json
 install_requires = ['%s%s' % (name, spec['version'])
                     for name, spec in
                     json.load(open('Pipfile.lock'))['default'].items()]
-packages = ['wca']
+packages = ['wca', 'wca.extra', 'wca.runners']
 
 print("Install requires:")
 print(install_requires)
