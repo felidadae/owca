@@ -16,7 +16,7 @@
 import pytest
 
 from wca.detectors import convert_anomalies_to_metrics
-from wca.testing import anomaly, anomaly_metrics
+from tests.testing import anomaly, anomaly_metrics
 
 
 @pytest.mark.parametrize('anomalies,tasks_labels,expected_metrics', (

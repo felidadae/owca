@@ -19,7 +19,7 @@ import pytest
 from wca.allocators import AllocationConfiguration
 from wca.cgroups import Cgroup, CgroupType, CgroupResource
 from wca.metrics import MetricName
-from wca.testing import create_open_mock
+from tests.testing import create_open_mock
 
 
 @patch('builtins.open', mock_open(read_data='100'))

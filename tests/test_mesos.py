@@ -19,7 +19,7 @@ from unittest.mock import patch, Mock
 import pytest
 
 from wca.mesos import MesosNode, MesosTask
-from wca.testing import relative_module_path
+from tests.testing import relative_module_path
 
 
 def create_json_fixture_mock(name, status_code=200):

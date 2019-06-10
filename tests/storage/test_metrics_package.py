@@ -16,7 +16,7 @@
 from unittest.mock import Mock
 
 from wca.storage import MetricPackage, Storage
-from wca.testing import metric
+from tests.testing import metric
 
 
 def test_metrics_package():

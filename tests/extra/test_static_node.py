@@ -15,7 +15,7 @@ from unittest.mock import Mock, patch
 
 from wca.extra.static_node import StaticNode
 from wca.nodes import Task
-from wca.testing import mock_open
+from tests.testing import mock_open
 
 
 @patch('os.path.exists', Mock(return_value=True))

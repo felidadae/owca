@@ -22,7 +22,7 @@ from wca.cgroups import Cgroup
 from wca.platforms import RDTInformation
 from wca.perf import PerfCounters
 from wca.resctrl import ResGroup
-from wca.testing import task, container
+from tests.testing import task, container
 from wca.allocators import AllocationConfiguration
 
 

@@ -20,7 +20,7 @@ import pytest
 from wca.metrics import Metric, MetricName
 from wca.platforms import Platform, parse_proc_meminfo, parse_proc_stat, \
     collect_topology_information, collect_platform_information, RDTInformation
-from wca.testing import create_open_mock
+from tests.testing import create_open_mock
 
 
 @pytest.mark.parametrize("raw_meminfo_output,expected", [

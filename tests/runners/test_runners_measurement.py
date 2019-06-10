@@ -21,7 +21,7 @@ from wca.containers import Container
 from wca.mesos import MesosNode
 from wca.platforms import RDTInformation
 from wca.runners.measurement import MeasurementRunner, _build_tasks_metrics, _prepare_tasks_data
-from wca.testing import assert_metric, redis_task_with_default_labels, prepare_runner_patches, \
+from tests.testing import assert_metric, redis_task_with_default_labels, prepare_runner_patches, \
     TASK_CPU_USAGE, WCA_MEMORY_USAGE, metric, DEFAULT_METRIC_VALUE, task
 
 

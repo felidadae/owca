@@ -19,7 +19,7 @@ from wca.cgroups_allocations import QuotaAllocationValue, SharesAllocationValue,
                                     CPUSetAllocationValue
 from wca.containers import Container
 from wca.platforms import RDTInformation
-from wca.testing import allocation_metric
+from tests.testing import allocation_metric
 
 
 @patch('wca.perf.PerfCounters')

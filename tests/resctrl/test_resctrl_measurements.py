@@ -18,7 +18,7 @@ from unittest.mock import patch, mock_open, call, Mock, MagicMock
 
 from wca.resctrl import ResGroup
 from wca.resctrl import RESCTRL_ROOT_NAME
-from wca.testing import create_open_mock
+from tests.testing import create_open_mock
 
 import pytest
 

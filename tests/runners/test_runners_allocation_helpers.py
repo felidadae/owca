@@ -27,8 +27,8 @@ from wca.runners.allocation import (TasksAllocationsValues,
                                     TaskAllocationsValues,
                                     AllocationRunner,
                                     validate_shares_allocation_for_kubernetes)
-from wca.testing import allocation_metric, task, container
-from wca.testing import platform_mock
+from tests.testing import allocation_metric, task, container
+from tests.testing import platform_mock
 
 
 @pytest.mark.parametrize('tasks_allocations, expected_metrics', (

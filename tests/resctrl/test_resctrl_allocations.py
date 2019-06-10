@@ -23,7 +23,7 @@ from wca.platforms import RDTInformation
 from wca.resctrl import ResGroup
 from wca.resctrl_allocations import RDTAllocationValue, RDTGroups, _parse_schemata_file_row, \
     _count_enabled_bits, check_cbm_mask, _is_rdt_suballocation_changed, _validate_domains
-from wca.testing import create_open_mock, allocation_metric
+from tests.testing import create_open_mock, allocation_metric
 
 
 @pytest.mark.parametrize(

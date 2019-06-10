@@ -25,7 +25,7 @@ from wca import perf
 from wca import perf_const as pc
 from wca.metrics import MetricName, DerivedMetricName, DerivedMetricsGenerator
 from wca.perf import _parse_raw_event_name
-from wca.testing import create_open_mock
+from tests.testing import create_open_mock
 
 
 @pytest.mark.parametrize("raw_value,time_enabled,time_running,expected", [

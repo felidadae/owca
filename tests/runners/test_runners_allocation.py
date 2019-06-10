@@ -18,7 +18,7 @@ from wca import storage
 from wca.allocators import AllocationType, RDTAllocation, Allocator
 from wca.mesos import MesosNode
 from wca.runners.allocation import AllocationRunner
-from wca.testing import redis_task_with_default_labels,\
+from tests.testing import redis_task_with_default_labels,\
     prepare_runner_patches, assert_subdict, assert_metric,\
     platform_mock
 

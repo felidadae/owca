@@ -16,7 +16,7 @@ from wca.metrics import Metric
 from wca.nodes import Node, Task
 from wca.platforms import Platform
 from wca.storage import Storage
-from wca.testing import assert_metric
+from tests.testing import assert_metric
 
 log = logging.getLogger(__name__)
 

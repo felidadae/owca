@@ -18,7 +18,7 @@ import pytest
 
 from wca.allocations import AllocationsDict, BoxedNumeric, AllocationValue, InvalidAllocations, \
     LabelsUpdater
-from wca.testing import allocation_metric, metric
+from tests.testing import allocation_metric, metric
 
 
 class BoxedNumericDummy(BoxedNumeric):

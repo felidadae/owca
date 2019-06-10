@@ -14,7 +14,7 @@
 from unittest.mock import patch
 
 from wca import profiling
-from wca.testing import assert_metric
+from tests.testing import assert_metric
 
 
 def test_profiler():

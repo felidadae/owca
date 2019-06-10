@@ -19,7 +19,7 @@ import pytest
 from wca.resctrl import check_resctrl, get_max_rdt_values, read_mon_groups_relation, \
     clean_taskless_groups
 from wca.resctrl_allocations import check_cbm_mask
-from wca.testing import create_open_mock
+from tests.testing import create_open_mock
 
 
 @patch('builtins.open', new=create_open_mock({
