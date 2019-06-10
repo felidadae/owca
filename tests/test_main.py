@@ -24,7 +24,7 @@ runner: !DummyRunner
 
 @mock.patch('sys.argv', ['wca', '-c',
                          '/etc/configs/see_yaml_config_variable_above.yaml',
-                         '-r', 'wca.testing:DummyRunner', '-l', 'critical',
+                         '-r', 'tests.testing:DummyRunner', '-l', 'critical',
                          '--root'])
 @mock.patch('os.rmdir')
 @mock.patch('wca.config.exists', return_value=True)
@@ -44,7 +44,7 @@ runner: !DummyRunner
 @mock.patch('wca.main.log.error')
 @mock.patch('sys.argv', ['wca', '-c',
                          '/etc/configs/see_yaml_config_variable_above.yaml',
-                         '-r', 'wca.testing:DummyRunner', '-l', 'critical',
+                         '-r', 'tests.testing:DummyRunner', '-l', 'critical',
                          '--root'])
 @mock.patch('os.rmdir')
 @mock.patch('wca.config.exists', return_value=True)
@@ -64,7 +64,7 @@ def test_main_unknown_field(mock_exit, perf_counters, mock_rmdir,
 @mock.patch('wca.main.log.error')
 @mock.patch('sys.argv', ['wca', '-c',
                          'configs/see_yaml_config_variable_above.yaml',
-                         '-r', 'wca.testing:DummyRunner', '-l', 'critical',
+                         '-r', 'tests.testing:DummyRunner', '-l', 'critical',
                          '--root'])
 @mock.patch('wca.config.exists', return_value=True)
 @mock.patch('wca.config.open', mock.mock_open(read_data=yaml_config))

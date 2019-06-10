@@ -294,7 +294,7 @@ def test_rdt_initialize(rdt_max_values_mock, cleanup_resctrl_mock,
         allocation_configuration=allocation_configuration,
     )
 
-    with patch('wca.testing.platform_mock.rdt_information', Mock(
+    with patch('tests.testing.platform_mock.rdt_information', Mock(
             spec=RDTInformation,
             cbm_mask='fff', min_cbm_bits='2',
             mb_min_bandwidth=10,
