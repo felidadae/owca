@@ -27,7 +27,6 @@ import tempfile
 import time
 from typing import List, Tuple, Dict, Optional
 
-import confluent_kafka
 from dataclasses import dataclass, field
 
 from wca.config import Numeric, Path, Str, IpPort
@@ -35,6 +34,10 @@ from wca import logger
 from wca.metrics import Metric, MetricType
 
 log = logging.getLogger(__name__)
+try:
+    import confluent_kafka
+except ModuleNotFoundError:
+    confluent_kafka = None
 
 
 class Storage(abc.ABC):
@@ -269,6 +272,10 @@ class KafkaStorage(Storage):
     extra_config: Dict[Str, Str] = None
 
     def __post_init__(self) -> None:
+        if confluent_kafka is None:
+            log.warning("KafkaStorage is not supported as confluent_kafka module is not present. Exiting.")
+            exit(1)
+
         try:
             self._create_producer()
         except Exception:

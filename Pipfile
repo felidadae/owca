@@ -10,7 +10,6 @@ requests = "==2.22.0"                 # 2019.05.16
 colorlog = "==4.0.2"                  # 2018.12.14
 logging-tree = "==1.8"                # 2018.08.05
 dataclasses = "==0.6"                 # 2018.05.18
-confluent-kafka = "==1.0.0rc1"        # 2018.11.31  - cannot be upgraded to 1.0.0 because of https://github.com/confluentinc/confluent-kafka-python/issues/482#issuecomment-490711109
 kazoo = "==2.6.1"                     # 2019.01.22
 
 [dev-packages]
