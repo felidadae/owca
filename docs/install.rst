@@ -43,8 +43,7 @@ which by default is not included in the distribution file.
 We suggest to clone the confluent-kafka-python repository, as wheel package included in PyPI is bundled with
 binary libraries which might be outdated. Please use version **v1.0.1**.
 
-To build pex file with confluent-kafka-python package please specify path to a directory where
-the confluent-kafka-python repository is located by assigning it to variable **OPTIONAL_MODULES**.
+To build pex file with confluent-kafka-python package please set **OPTIONAL_FEATURES** to `kafka_storage`.
 
 To build confluent-kafka-python librdkafka library needs to be installed on the machine.
 All commands which needs to be run to build WCA pex file with **KafkaStorage** component enabled:
@@ -54,7 +53,7 @@ All commands which needs to be run to build WCA pex file with **KafkaStorage** c
    yum install librdkafka
    git clone https://github.com/confluentinc/confluent-kafka-python
    git checkout v1.0.1
-   make wca_package OPTIONAL_MODULES=confluent-kafka-python
+   make wca_package OPTIONAL_FEATURES=kafka_storage
 
 
 Running

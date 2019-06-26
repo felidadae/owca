@@ -19,7 +19,7 @@ Wrapping ``stress-ng`` based workload example
 
 #. To build with KafkaStorage support please follow `Building executable binary with KafkaStorage component enabled <install.rst>`_ and run::
 
-    make wrapper_package OPTIONAL_MODULES=confluent-kafka-python
+    make wrapper_package OPTIONAL_FEATURES=kafka_storage
 
 #. Install stress-ng (for example using ``epel`` repository)::
 

@@ -1,11 +1,17 @@
 # Shell variables which can customize behaviour of this Makefiles:
 # * ADDITIONAL_PEX_OPTIONS
 # 	additional flags which can be passed to pex tool to be used while building distribution files
-# * OPTIONAL_MODULES
-# 	currently that flag is used only for enabling KafkaStorage class - for that goal the variable
-# 	must be set to path to confluent-kafka-python repository
+# * OPTIONAL_FEATURES
+# 	space seperated list of optional features to be included in the build of pex files;
+# 	optional features list:
+# 	* kafka_storage
 
 PEX_OPTIONS = -v -R component-licenses --cache-dir=.pex-build $(ADDITIONAL_PEX_OPTIONS)
+
+OPTIONAL_MODULES = 
+ifeq ($(OPTIONAL_FEATURES),kafka_storage)
+	OPTIONAL_MODULES = 'confluent-kafka-python'
+endif
 
 
 # Do not really on artifacts created by make for all targets.
