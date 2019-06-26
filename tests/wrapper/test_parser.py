@@ -19,7 +19,7 @@ from io import StringIO
 
 from wca.metrics import Metric
 from wca.storage import FailedDeliveryException
-from wrapper.parser import (default_parse, kafka_store_with_retry,
+from wrapper.parser import (default_parse, store_with_retry,
                             DEFAULT_REGEXP, MAX_ATTEMPTS, readline_with_check)
 
 
@@ -66,19 +66,19 @@ def test_readline_with_check():
 
 
 @patch('time.sleep')
-def test_kafka_store_with_retry_failure(sleep_mock):
+def test_store_with_retry_failure(sleep_mock):
     kafka_mock = Mock()
     kafka_mock.store = Mock(side_effect=[FailedDeliveryException] * MAX_ATTEMPTS)
     with pytest.raises(FailedDeliveryException):
-        kafka_store_with_retry(kafka_mock, Mock())
+        store_with_retry(kafka_mock, Mock())
     sleep_mock.assert_has_calls([call(1), call(2), call(4), call(8)])
 
 
 @patch('time.sleep')
-def test_kafka_store_with_retry_success(sleep_mock):
+def test_store_with_retry_success(sleep_mock):
     kafka_mock = Mock()
     kafka_mock.store = Mock(
         side_effect=[FailedDeliveryException, FailedDeliveryException, Mock()])
-    kafka_store_with_retry(kafka_mock, Mock())
+    store_with_retry(kafka_mock, Mock())
     sleep_mock.assert_has_calls([call(1), call(2)])
     # No other assert can be made, test should not throw an exception

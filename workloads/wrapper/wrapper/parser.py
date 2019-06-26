@@ -23,7 +23,7 @@ from typing import List, Dict, Callable
 
 import wca
 from wca.metrics import Metric, MetricType
-from wca.storage import KafkaStorage
+from wca.storage import Storage
 
 log = logging.getLogger(__name__)
 ParseFunc = Callable[[TextIOWrapper, str, str, Dict[str, str]], List[Metric]]
@@ -84,15 +84,15 @@ def default_parse(input: TextIOWrapper, regexp: str, separator: str = None,
     return new_metrics
 
 
-def kafka_store_with_retry(kafka_storage: KafkaStorage, metrics: List[Metric]):
+def store_with_retry(storage: Storage, metrics: List[Metric]):
     # Try MAX_ATTEMPTS times to send metrics to kafka server
     # with increasing sleep time between attempts
     backoff_delay = 1
     for attempt in range(MAX_ATTEMPTS):
         try:
-            kafka_storage.store(metrics)
+            storage.store(metrics)
         except wca.storage.FailedDeliveryException:
-            log.warning("Failed to deliver message to kafka, "
+            log.warning("Failed to deliver message to storage, "
                         "tried {0} times".format(attempt + 1))
             if attempt == MAX_ATTEMPTS - 1:
                 raise
@@ -167,7 +167,7 @@ def append_service_level_metrics(service_level_args: ServiceLevelArgs,
         metrics.append(Metric("load_normalized", 1.0, labels=labels))
 
 
-def parse_loop(parse: Callable[[], List[Metric]], kafka_storage: KafkaStorage,
+def parse_loop(parse: Callable[[], List[Metric]], storage: Storage,
                append_service_level_metrics_func: Callable[[List[Metric]], None]):
     """
     Runs parsing and kafka storage in loop. parse_loop.last_valid_metrics list is accessed
@@ -185,8 +185,8 @@ def parse_loop(parse: Callable[[], List[Metric]], kafka_storage: KafkaStorage,
                 for metric in parse_loop.metrics:
                     log.debug("Found metric: {}".format(metric))
                 parse_loop.last_valid_metrics = parse_loop.metrics.copy()
-                if kafka_storage is not None:
-                    kafka_store_with_retry(kafka_storage, parse_loop.last_valid_metrics)
+                if storage is not None:
+                    store_with_retry(storage, parse_loop.last_valid_metrics)
 
         except BaseException:
             _thread.interrupt_main()

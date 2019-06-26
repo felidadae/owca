@@ -273,8 +273,8 @@ class KafkaStorage(Storage):
 
     def __post_init__(self) -> None:
         if confluent_kafka is None:
-            log.warning("KafkaStorage is not supported as confluent_kafka module is not present. Exiting.")
-            exit(1)
+            log.warning("KafkaStorage is not supported as confluent_kafka "
+                        "module is not present.")
 
         try:
             self._create_producer()
@@ -286,10 +286,14 @@ class KafkaStorage(Storage):
         """used to pass error from within callback_on_delivery
           (called from different thread) to KafkaStorage instance"""
 
+    def get_producer(config):
+        # Created to simplify mocking confluent_kafka.Producer.
+        return confluent_kafka.Producer(config)
+
     def _create_producer(self) -> None:
         config = self.extra_config or dict()
         config.update({'bootstrap.servers': ",".join(self.brokers_ips)})
-        self.producer = confluent_kafka.Producer(config)
+        self.producer = self.get_producer(config)
 
     def callback_on_delivery(self, err, msg) -> None:
         """Called once for each message produced to indicate delivery result.

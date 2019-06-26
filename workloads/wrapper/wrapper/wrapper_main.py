@@ -77,13 +77,13 @@ def main(parse: ParseFunc = default_parse):
     kafka_brokers_addresses = args.kafka_brokers.replace(" ", "").split(',')
     if kafka_brokers_addresses != [""]:
         log.info("KafkaStorage {}".format(kafka_brokers_addresses))
-        kafka_storage = KafkaStorage(brokers_ips=kafka_brokers_addresses,
-                                     max_timeout_in_seconds=5.0,
-                                     topic=args.kafka_topic)
+        storage = KafkaStorage(brokers_ips=kafka_brokers_addresses,
+                               max_timeout_in_seconds=5.0,
+                               topic=args.kafka_topic)
     else:
-        kafka_storage = LogStorage(args.storage_output_filename)
+        storage = LogStorage(args.storage_output_filename)
 
-    t = threading.Thread(target=parse_loop, args=(parse, kafka_storage,
+    t = threading.Thread(target=parse_loop, args=(parse, storage,
                                                   append_service_level_metrics_func))
     t.start()
     t.join()
