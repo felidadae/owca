@@ -41,7 +41,7 @@ can be used. The component requires `confluent-kafka-python package <https://git
 which by default is not included in the distribution file.
 
 We suggest to clone the confluent-kafka-python repository, as wheel package included in PyPI is bundled with
-`zlib <https://zlib.net>`_ of version **1.2.3** containing security vulnerabilities.
+binary libraries which might be outdated. Please use version **v1.0.1**.
 
 To build pex file with confluent-kafka-python package please specify path to a directory where
 the confluent-kafka-python repository is located by assigning it to variable **OPTIONAL_MODULES**.
@@ -53,6 +53,7 @@ All commands which needs to be run to build WCA pex file with **KafkaStorage** c
 
    yum install librdkafka
    git clone https://github.com/confluentinc/confluent-kafka-python
+   git checkout v1.0.1
    make wca_package OPTIONAL_MODULES=confluent-kafka-python
 
 
