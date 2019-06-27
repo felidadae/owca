@@ -40,10 +40,14 @@ If there is need to store metrics from WCA, **KafkaStorage** component
 can be used. The component requires `confluent-kafka-python package <https://github.com/confluentinc/confluent-kafka-python>`_,
 which by default is not included in the distribution file.
 
+
+
 We suggest to clone the confluent-kafka-python repository, as wheel package included in PyPI is bundled with
 binary libraries which might be outdated. Please use version **v1.0.1**.
 
-To build pex file with confluent-kafka-python package please set **OPTIONAL_FEATURES** to `kafka_storage`.
+To build pex file with confluent-kafka-python package please set:
+* clone repository of confluent-kafka-python
+**OPTIONAL_FEATURES** to `kafka_storage`.
 
 To build confluent-kafka-python librdkafka library needs to be installed on the machine.
 All commands which needs to be run to build WCA pex file with **KafkaStorage** component enabled:
