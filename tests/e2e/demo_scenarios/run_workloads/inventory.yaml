@@ -1,0 +1,157 @@
+application_hosts:
+  vars:
+    workloads:
+      twemcache_mutilate:
+        default:
+          count: 1
+          slo: 500
+          communication_port: 11211
+          twemcache:
+            env:
+              worker_threads: 2
+              max_memory: 4024
+            resources:
+              cpu: 2
+              ram: 20
+              disk: 20
+          mutilate:
+            env:
+              sli_percentile: 95
+              threads: 2
+              connections: 1
+              warmup_time: 20
+              qps: 20000
+            resources:
+              cpu: 2
+              ram: 10
+              disk: 20
+
+      redis_rpc_perf:
+        default:
+          count: 1
+          slo: 10000
+          communication_port: 6789
+          redis:
+            image_name: centos/redis
+            image_tag: latest
+            resources:
+              cpu: 2
+              ram: 5
+              disk: 5
+          rpc_perf:
+            resources:
+              cpu: 2
+              ram: 5
+              disk: 5
+
+      cassandra_stress:
+        default:
+          count: 1
+          communication_port: 9143
+          jmx_port: 7300
+          storage_port: 7155
+          slo: 5
+          cassandra:
+            image_name: cassandra
+            image_tag: 3.11.3
+            resources:
+              cpu: 3
+              ram: 5
+              disk: 5
+          cassandra_stress:
+            env:
+              threads: 30
+              duration: 90
+            resources:
+              cpu: 3
+              ram: 5
+              disk: 5
+
+      cassandra_ycsb:
+        default:
+          count: 1
+          slo: 2500
+          jmx_port: 7152
+          storage_port: 7200
+          communication_port: 9042
+          cassandra:
+            image_name: cassandra
+            image_tag: 3.11.3
+            resources:
+              cpu: 3
+              ram: 5
+              disk: 5
+          ycsb:
+            resources:
+              cpu: 3
+              ram: 5
+              disk: 5
+
+      twemcache_rpc_perf:
+        default:
+          count: 1
+          slo: 100000
+          communication_port: 11311
+          twemcache:
+            threads: 1
+            max_memory: 1234
+            resources:
+              cpu: 2
+              ram: 5
+              disk: 5
+          rpc_perf:
+            resources:
+              cpu: 2
+              ram: 5
+              disk: 5
+
+      specjbb:
+        default:
+          count: 1
+          slo: 26000000
+          communication_port: 42000
+          backend:
+            resources:
+              cpu: 2
+              ram: 5
+              disk: 5
+          injector:
+            resources:
+              cpu: 2
+              ram: 5
+              disk: 5
+          controller:
+            resources:
+              cpu: 2
+              ram: 5
+              disk: 5
+
+      stress_ng:
+        default:
+          count: 1
+          timeout: 30
+          stressor: stream
+          slo: inf
+          number_workers: 2
+          resources:
+            cpu: 1
+            ram: 2
+            disk: 2
+
+      tensorflow_benchmark_prediction:
+        default:
+          count: 1
+          slo: 0.03
+          resources:
+            cpu: 10
+            ram: 30
+            disk: 30
+
+      tensorflow_benchmark_train:
+        default:
+          count: 1
+          slo: 0.03
+          resources:
+            cpu: 10
+            ram: 30
+            disk: 30

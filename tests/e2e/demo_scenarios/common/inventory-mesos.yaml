@@ -1,0 +1,13 @@
+application_hosts:
+  hosts:
+    100.64.176.14:
+      env_uniq_id: 14
+      load_generator_host_ip: 100.64.176.14
+      orchestrator: Mesos
+  vars:
+    ansible_connection: local
+    cluster: example
+    role: root
+    image_tag: BUILD_COMMIT
+    wrapper_kafka_brokers: 100.64.176.12
+    docker_registry: 100.64.176.12:80

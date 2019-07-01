@@ -1,0 +1,14 @@
+application_hosts:
+  hosts:
+    100.64.176.34:
+      env_uniq_id: 34
+      load_generator_host_ip: 100.64.176.34
+      orchestrator: Kubernetes
+      k8s_namespace: default
+  vars:
+    ansible_connection: local
+    cluster: example
+    role: root
+    image_tag: BUILD_COMMIT
+    wrapper_kafka_brokers: 100.64.176.12
+    docker_registry: 100.64.176.12:80

@@ -256,7 +256,7 @@ def _create_file_from_fd(pfd):
     # -1 is returned on error: http://man7.org/linux/man-pages/man2/open.2.html#RETURN_VALUE
     if pfd == -1:
         errno = ctypes.get_errno()
-        raise UnableToOpenPerfEvents('Invalid perf event file descriptor: {}, {}'
+        raise UnableToOpenPerfEvents('Invalid perf event file descriptor: {}, {}.'
                                      .format(errno, os.strerror(errno)))
     return os.fdopen(pfd, 'rb')
 

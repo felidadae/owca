@@ -1,0 +1,20 @@
+[Unit]
+Description=wca
+
+[Service]
+ExecStart=/usr/bin/wca.pex --config /etc/wca/wca_config.yml -l debug
+Environment=PYTHONPATH=/var/lib/wca
+Restart=no
+LimitNOFILE=500000
+# CAP_DAC_OVERRIDE allows to remove resctrl groups and CAP_SETUID allows to change effective uid to add tasks to the groups
+CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_SETUID
+AmbientCapabilities=CAP_DAC_OVERRIDE CAP_SETUID
+# We must avoid dropping capabilities after changing effective uid from root to wca
+SecureBits=no-setuid-fixup
+User=wca
+Group=wca
+WorkingDirectory=/var/lib/wca
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

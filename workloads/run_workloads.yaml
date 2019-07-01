@@ -32,7 +32,7 @@
     resources: "{{workload_version[job_id].resources if (workload_version[job_id].resources is defined) else default_resources}}"
 
     # By default image_name is {{docker_registry}}/wca/{{job_id}}
-    #   However, the image_name can be ovewritten on job level.
+    #   However, the image_name can be overwritten on job level.
     #   The same with image_tag
     image_prefix: "wca"
     image_subname: "{{job_id}}"

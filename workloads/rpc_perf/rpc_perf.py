@@ -69,7 +69,7 @@ cmd = ("""rpc_perf_wrapper.pex \
 --server {ip}:{port}' \
 --log_level {log_level} \
 --stderr 0 \
---labels '{labels}'
+--labels '{labels}' \
 --metric_name_prefix '{application}_' \
 --kafka_topic {kafka_topic} \
 --kafka_brokers {kafka_brokers} \

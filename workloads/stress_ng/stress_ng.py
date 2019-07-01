@@ -14,7 +14,7 @@
 
 import os
 from common import application, command, json, pod, wrapper_kafka_brokers, wrapper_log_level, \
-    wrapper_kafka_topic, wrapper_labels
+    wrapper_kafka_topic, wrapper_labels, slo
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -36,14 +36,17 @@ stress_ng_run_cmd = """/usr/bin/stress_ng_wrapper.pex --command '{stress_ng_cmd}
 --stderr 1 --kafka_brokers '{kafka_brokers}' --kafka_topic {kafka_topic} \
 --log_level {log_level} \
 --subprocess_shell \
---labels '{labels}'""".format(
+--labels '{labels}' \
+--slo {slo} --sli_metric_name '{sli_metric_name}'""".format(
     stress_ng_cmd=stress_ng_cmd,
     application=application,
     metric_name_prefix=application + "_",
     kafka_brokers=wrapper_kafka_brokers,
     kafka_topic=wrapper_kafka_topic,
     log_level=wrapper_log_level,
-    labels=json.dumps(wrapper_labels))
+    labels=json.dumps(wrapper_labels),
+    slo=slo,
+    sli_metric_name='stress_ng_bogo_ops_per_second_usr_sys_time')
 
 command.append(stress_ng_run_cmd)
 

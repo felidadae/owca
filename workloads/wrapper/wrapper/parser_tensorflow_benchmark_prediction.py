@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 
 def parse(input: TextIOWrapper, regexp: str, separator: str = None,
           labels: Dict[str, str] = {}, metric_name_prefix: str = '') -> List[Metric]:
-    """Custom parse function for tensorflow benchmark predition
+    """Custom parse function for tensorflow benchmark prediction
         580    248.7 examples/sec
     """
 

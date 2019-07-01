@@ -14,7 +14,7 @@ runner: !AllocationRunner
       client_cert_path: "$PATH/apiserver-kubelet-client.crt"
       client_key_path: "$PATH/apiserver-kubelet-client.key"
 
-    # If the kubelete agent does not listen on localhost, 
+    # If the kubelet agent does not listen on localhost,
     #   the endpoint must be provided.
     kubelet_endpoint: "https://$IP:10250"
 

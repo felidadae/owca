@@ -1,0 +1,20 @@
+runner: !AllocationRunner
+  rdt_enabled: True
+  node: !MesosNode
+    mesos_agent_endpoint: "http://127.0.0.1:5051"
+  action_delay: 10.
+  metrics_storage: !KafkaStorage
+    brokers_ips: ['100.64.176.12:9092']
+    topic: "wca_metrics"
+    max_timeout_in_seconds: 5.
+  anomalies_storage: !KafkaStorage
+    brokers_ips: ['100.64.176.12:9092']
+    topic: "wca_anomalies"
+    max_timeout_in_seconds: 5.
+  allocator: !NOPAllocator
+    
+  extra_labels:
+    env_uniq_id: "14"
+    own_ip: "100.64.176.14"
+    build_commit: "BUILD_COMMIT"
+    build_number: "BUILD_NUMBER"
