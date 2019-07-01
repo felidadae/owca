@@ -29,7 +29,7 @@ pipeline {
         stage("Build pex files") {
             steps {
                 sh '''
-                  make venv dist
+                  make venv dist OPTIONAL_FEATURES=kafka_storage
                 '''
                 archiveArtifacts(artifacts: "dist/**")
             }
