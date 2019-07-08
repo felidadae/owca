@@ -29,6 +29,17 @@ def test_get_measurements():
     assert measurements == {MetricName.CPU_USAGE_PER_TASK: 100}
 
 
+@patch('wca.cgroups.log.warning')
+@patch('builtins.open', side_effect=FileNotFoundError())
+def test_get_measurements_not_found_cgroup(mock_file, mock_log_warning):
+    cgroup = Cgroup('/some/foo1', platform_cpus=1)
+    measurements = cgroup.get_measurements()
+
+    mock_log_warning.assert_called_with(
+        'Could not read measurements for cgroup /some/foo1. ')
+    assert measurements == {}
+
+
 @patch('builtins.open', mock_open(read_data='100'))
 def test_cgroup_read():
     cgroup = Cgroup('/some/foo1', platform_cpus=1)

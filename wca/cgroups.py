@@ -88,7 +88,7 @@ class Cgroup:
                     cpu_usage_file:
                 cpu_usage = int(cpu_usage_file.read())
         except FileNotFoundError:
-            log.warning('Could not read measurements for cgroup %s. ', self._cgroup_path)
+            log.warning('Could not read measurements for cgroup %s. ' % self.cgroup_path)
             return {}
 
         return {MetricName.CPU_USAGE_PER_TASK: cpu_usage}

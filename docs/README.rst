@@ -13,8 +13,8 @@ Index of documents
 - `Logging configuration <logging.rst>`_
 - `Contribution guide <contributing.rst>`_
 - `Prometheus integration <prometheus.rst>`_
-- `Kubernetes integration <mesos.rst>`_
-- `Mesos integration <prometheus.rst>`_
+- `Kubernetes integration <kubernetes.rst>`_
+- `Mesos integration <mesos.rst>`_
 - `Extending WCA <extending.rst>`_
 - `Secure transport guide <ssl.rst>`_
 
