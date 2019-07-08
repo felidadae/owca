@@ -29,7 +29,7 @@ pipeline {
 		stage("Prepare confluent-kafka-python repository to support kafka_storage feature") {
             steps {
                 sh '''
-                  git clone https://github.com/confluentinc/confluent-kafka-python
+                  [ ! -d confluent-kafka-python ] && git clone https://github.com/confluentinc/confluent-kafka-python
                   cd confluent-kafka-python
                   git checkout v1.0.1
                   cd ..
