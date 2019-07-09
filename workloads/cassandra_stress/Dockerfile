@@ -18,11 +18,7 @@ RUN ln -sfn /usr/bin/python2 /usr/bin/python
 RUN apt-get update && apt-get -y upgrade
 RUN apt -y install build-essential
 RUN apt -y install libssl-dev zlib1g-dev libncurses5-dev libncursesw5-dev libreadline-dev libsqlite3-dev
-RUN apt -y install libgdbm-dev libdb5.3-dev libbz2-dev libexpat1-dev liblzma-dev tk-dev
-RUN apt -y install wget
-
-COPY /librdkafka_install.sh /usr/bin/librdkafka_install.sh
-RUN bash /usr/bin/librdkafka_install.sh
+RUN apt -y install libgdbm-dev libdb5.3-dev libbz2-dev libexpat1-dev liblzma-dev tk-dev 
 
 RUN wget https://www.python.org/ftp/python/3.6.6/Python-3.6.6.tar.xz
 RUN tar xf Python-3.6.6.tar.xz
@@ -35,3 +31,8 @@ COPY /dist/cassandra_stress_wrapper.pex /usr/bin/cassandra_stress_wrapper.pex
 RUN mkdir -p /stress
 
 RUN apt-get install -y netcat
+
+RUN apt -y install wget software-properties-common
+RUN wget -qO - https://packages.confluent.io/deb/5.2/archive.key | apt-key add -
+RUN add-apt-repository "deb [arch=amd64] https://packages.confluent.io/deb/5.2 stable main"
+RUN apt -y install librdkafka1

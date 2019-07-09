@@ -31,9 +31,9 @@ RUN yum install -y epel-release
 RUN yum makecache
 RUN yum install -y python36
 
-COPY /workloads/librdkafka_install.sh /usr/bin/librdkafka_install.sh
-RUN bash /usr/bin/librdkafka_install.sh
-
 RUN useradd -M stress-ng
 COPY /dist/stress_ng_wrapper.pex /usr/bin/stress_ng_wrapper.pex
 COPY --from=stress-ng /stress-ng-0.09.28/stress-ng /usr/bin/stress-ng
+
+COPY /workloads/librdkafka_install.sh /usr/bin/librdkafka_install.sh
+RUN bash /usr/bin/librdkafka_install.sh

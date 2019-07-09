@@ -21,8 +21,10 @@ RUN ln -sfn /usr/bin/python2 /usr/bin/python
 RUN apt -y install wget
 RUN apt-get -y install zlib1g-dev build-essential
 
-COPY /librdkafka_install.sh /usr/bin/librdkafka_install.sh
-RUN bash /usr/bin/librdkafka_install.sh
+RUN apt -y install wget software-properties-common
+RUN wget -qO - https://packages.confluent.io/deb/5.2/archive.key | apt-key add -
+RUN add-apt-repository "deb [arch=amd64] https://packages.confluent.io/deb/5.2 stable main"
+RUN apt -y install librdkafka1
 
 WORKDIR /opt
 RUN wget https://www.python.org/ftp/python/3.6.6/Python-3.6.6.tgz
