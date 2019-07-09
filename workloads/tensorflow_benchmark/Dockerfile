@@ -20,6 +20,9 @@ RUN apt-get update
 RUN apt -y install wget
 RUN apt-get -y install zlib1g-dev build-essential
 
+COPY /librdkafka_install.sh /usr/bin/librdkafka_install.sh
+RUN bash /usr/bin/librdkafka_install.sh
+
 WORKDIR /opt
 RUN wget https://www.python.org/ftp/python/3.6.6/Python-3.6.6.tgz
 RUN tar -xvf Python-3.6.6.tgz

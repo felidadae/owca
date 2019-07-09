@@ -55,6 +55,9 @@ RUN yum install -y epel-release
 RUN yum makecache
 RUN yum install -y python36
 
+COPY /librdkafka_install.sh /usr/bin/librdkafka_install.sh
+RUN bash /usr/bin/librdkafka_install.sh
+
 COPY /dist/rpc_perf_wrapper.pex /usr/bin/
 COPY rpc-perf.toml /etc/
 COPY --from=rpc-perf /rpc-perf/target/release/rpc-perf /usr/bin/

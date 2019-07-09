@@ -78,7 +78,7 @@ To build image:
 .. code-block:: sh
 
     # in repository top-level directory
-    docker build -f workloads/stress_ng/Dockerfile -t wca/stress_ng .
+    docker build -t stressng -f $(pwd)/workloads/stress_ng/Dockerfile $(pwd)/workloads/stress_ng
 
 
 Running individual Aurora jobs

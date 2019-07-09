@@ -20,6 +20,10 @@ RUN apt -y install build-essential
 RUN apt -y install libssl-dev zlib1g-dev libncurses5-dev libncursesw5-dev libreadline-dev libsqlite3-dev
 RUN apt -y install libgdbm-dev libdb5.3-dev libbz2-dev libexpat1-dev liblzma-dev tk-dev
 RUN apt -y install wget
+
+COPY /librdkafka_install.sh /usr/bin/librdkafka_install.sh
+RUN bash /usr/bin/librdkafka_install.sh
+
 RUN wget https://www.python.org/ftp/python/3.6.6/Python-3.6.6.tar.xz
 RUN tar xf Python-3.6.6.tar.xz
 WORKDIR /Python-3.6.6

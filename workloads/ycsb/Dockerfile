@@ -41,6 +41,9 @@ RUN /opt/maven/bin/mvn -pl com.yahoo.ycsb:core,com.yahoo.ycsb:cassandra-binding,
 RUN echo 'export M2_HOME=/usr/local/maven' >> /etc/profile.d/maven.sh
 RUN echo 'export PATH=${M2_HOME}/bin:${PATH}' >> /etc/profile.d/maven.sh
 
+COPY /librdkafka_install.sh /usr/bin/librdkafka_install.sh
+RUN bash /usr/bin/librdkafka_install.sh
+
 # Adding YCSB wrapper
 COPY /dist/ycsb_wrapper.pex /usr/bin/
 

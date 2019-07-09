@@ -20,6 +20,9 @@ RUN yum -y update
 RUN yum install -y epel-release && yum makecache
 RUN yum install -y java-1.8.0-openjdk-devel && yum install -y python36
 
+COPY /librdkafka_install.sh /usr/bin/librdkafka_install.sh
+RUN bash /usr/bin/librdkafka_install.sh
+
 # add the specjbb to docker
 COPY specjbb /home/specjbb
 
