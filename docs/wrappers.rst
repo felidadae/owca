@@ -17,7 +17,7 @@ Wrapping ``stress-ng`` based workload example
 
     make wrapper_package
 
-#. To build with KafkaStorage support please follow `Building executable binary with KafkaStorage component enabled <install.rst>`_ and run::
+#. To build with KafkaStorage support please follow `Building executable binary with KafkaStorage component enabled <kafka_storage.rst>`_ and run::
 
     make wrapper_package OPTIONAL_FEATURES=kafka_storage
 

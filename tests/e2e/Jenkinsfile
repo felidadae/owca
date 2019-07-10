@@ -60,6 +60,13 @@ pipeline {
 
 def wca_and_workloads_check() {
     sh "make venv"
+	print('Cloning confluent-kafka-python')
+	sh '''
+	  [ ! -d confluent-kafka-python ] && git clone https://github.com/confluentinc/confluent-kafka-python
+	  cd confluent-kafka-python
+	  git checkout v1.0.1
+	  cd ..
+	'''
     sh "make wca_package OPTIONAL_FEATURES=kafka_storage"
     print('Reconfiguring wca...')
     copy_files("${WORKSPACE}/tests/e2e/demo_scenarios/common/${CONFIG}", "${WORKSPACE}/tests/e2e/demo_scenarios/common/wca_config.yml.tmp")
