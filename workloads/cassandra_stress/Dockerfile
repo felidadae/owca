@@ -35,4 +35,4 @@ RUN apt-get install -y netcat
 RUN apt -y install wget software-properties-common
 RUN wget -qO - https://packages.confluent.io/deb/5.2/archive.key | apt-key add -
 RUN add-apt-repository "deb [arch=amd64] https://packages.confluent.io/deb/5.2 stable main"
-RUN apt -y install librdkafka1
+RUN apt -y install librdkafka1
