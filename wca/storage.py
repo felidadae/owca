@@ -286,7 +286,7 @@ class KafkaStorage(Storage):
         """used to pass error from within callback_on_delivery
           (called from different thread) to KafkaStorage instance"""
 
-    def get_producer(config):
+    def get_producer(self, config):
         # Created to simplify mocking confluent_kafka.Producer.
         return confluent_kafka.Producer(config)
 
