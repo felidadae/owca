@@ -25,7 +25,7 @@ WORKDIR /opt
 RUN wget https://www.python.org/ftp/python/3.6.6/Python-3.6.6.tgz
 RUN tar -xvf Python-3.6.6.tgz
 WORKDIR /opt/Python-3.6.6
-RUN ./configure
+RUN ./configure --with-shared
 RUN make
 RUN make install
 
