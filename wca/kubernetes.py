@@ -199,6 +199,7 @@ def _build_cgroup_path(cgroup_driver, qos, pod_id, container_id=''):
 _MEMORY_UNITS = {'Ki': 1024, 'Mi': 1024**2, 'Gi': 1024**3, }
 _CPU_UNITS = {'m': 0.001}
 _RESOURCE_TYPES = ['requests', 'limits']
+_MAPPING = {'requests_memory': 'mem', 'ephemeral-storage': 'disk', 'requests_cpu': 'cpus'}
 
 
 def _calculate_pod_resources(containers_spec: List[Dict[str, str]]):
@@ -231,6 +232,13 @@ def _calculate_pod_resources(containers_spec: List[Dict[str, str]]):
                     resources[resource_key] += float(value)
                 else:
                     resources[resource_key] = float(value)
+
+    # Mapping resource names to make them consistent with mesos
+    mapped_resources = dict()
+    for original_resource, mapped_resource in _MAPPING.items():
+        if original_resource in resources:
+            mapped_resources[mapped_resource] = resources[original_resource]
+    resources.update(mapped_resources)
 
     return resources
 

@@ -11,6 +11,9 @@ tests:
             cpu_quota: 0.5
             cpu_shares: 10
             cpu_set: '0-3'
+            rdt:
+              name: 'test'
+              l3: 'L3:0=3;1=2'
     checks:
       - !FileCheck
         path: /sys/fs/cgroup/cpu/wcatask1/cpu.shares
@@ -22,9 +25,62 @@ tests:
       - !FileCheck
         path: /sys/fs/cgroup/cpuset/wcatask1/cpuset.mems
         subvalue: '0'
+      - !FileCheck
+        path: /sys/fs/cgroup/cpu/wcatask2/cpu.shares
+        line: '10000'
+        subvalue: '100'
+      - !FileCheck
+        path: /sys/fs/cgroup/cpuset/wcatask2/cpuset.cpus
+        line: '0-3'
+      - !FileCheck
+        path: /sys/fs/cgroup/cpuset/wcatask2/cpuset.mems
+        subvalue: '0'
       - !MetricCheck
         name: anomaly_count
         value: 0
+      - !FileCheck
+        path: /sys/fs/resctrl/test/tasks
+      - !FileCheck
+        path: /sys/fs/resctrl/test/schemata
+        subvalue: 'L3:0=00003;1=00002'
+      - !MetricCheck
+        name: allocation_cpuset
+        labels:
+          task: wcatask1
+        value:
+          - 0
+          - 1
+          - 2
+          - 3
+      - !MetricCheck
+        name: allocation_cpuset
+        labels:
+          task: wcatask2
+        value:
+          - 0
+          - 1
+          - 2
+          - 3
+      - !MetricCheck
+        name: allocation_cpu_quota
+        labels:
+          task: wcatask1
+        value: 0.5
+      - !MetricCheck
+        name: allocation_cpu_quota
+        labels:
+          task: wcatask2
+        value: 0.5
+      - !MetricCheck
+        name: allocation_cpu_shares
+        labels:
+          task: wcatask1
+        value: 10
+      - !MetricCheck
+        name: allocation_cpu_shares
+        labels:
+          task: wcatask2
+        value: 10
 
   - test_case_name2:
     tasks:

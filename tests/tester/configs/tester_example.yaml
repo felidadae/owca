@@ -7,4 +7,4 @@ runner: !AllocationRunner
   anomalies_storage: *tester
   allocations_storage: *tester
   allocator: *tester
-  rdt_enabled: false
+  rdt_enabled: true

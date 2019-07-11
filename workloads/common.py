@@ -28,6 +28,8 @@ job_name = os.getenv('job_name')
 
 application = os.getenv('application')
 load_generator = os.getenv('load_generator', None)
+application_version_name = os.environ.get('application_version_name',
+                                          workload_version_name)
 
 # Cluster job key identification.
 cluster = os.getenv('cluster', 'example')
@@ -78,6 +80,8 @@ wrapper_labels = {
     'name': job_name,       # not to break compatibility
     'job_name': job_name,   #
     'application': application,
+    'application_version_name':
+        application_version_name,
     'load_generator': load_generator,
     'job_uniq_id': job_uniq_id,
     'env_uniq_id': env_uniq_id,

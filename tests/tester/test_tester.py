@@ -33,7 +33,7 @@ def test_tester(
 
     mock_check = MagicMock()
 
-    tester = Tester('tests/tester/tester_config.yaml')
+    tester = Tester('tests/tester/test_config.yaml')
 
     tester.testcases[0]['checks'] = [mock_check]
     tester.testcases[1]['checks'] = [mock_check]

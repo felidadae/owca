@@ -138,7 +138,7 @@ class ResGroup:
            If the resctrl group does not exists creates it (lazy creation).
            If the mongroup exists adds pids to the group (no error will be thrown)."""
         if self.name != RESCTRL_ROOT_NAME:
-            log.debug('creating restrcl group %r', self.name)
+            log.debug('creating resctrl group %r', self.name)
             self._create_controlgroup_directory()
 
         # CTRL GROUP
