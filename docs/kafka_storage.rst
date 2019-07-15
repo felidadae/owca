@@ -6,6 +6,7 @@ can be used. The component requires `confluent-kafka-python package <https://git
 which by default is not included in the pex WCA distribution file.
 
 To build pex file with confluent-kafka-python package one should:
+
 * follow part 'Get the software' points 1-4: https://docs.confluent.io/current/installation/installing_cp/rhel-centos.html
     and install librdkafka1 and librdkafka-devel-1.0.0_confluent5.2.2-1.el7.x86_64 packages
 * install gcc, python3 development files (for centos 7: gcc, python36-devel.x86_64)
@@ -16,6 +17,7 @@ To build pex file with confluent-kafka-python package one should:
 All commands which needs to be run to build WCA pex file with **KafkaStorage** component enabled are as follow for centos7:
 
 .. code:: shell
+
     sudo rpm --import https://packages.confluent.io/rpm/5.2/archive.key
     sudo tee /etc/yum.repos.d/confluent.repo > /dev/null <<'EOF'
     [Confluent.dist]
@@ -46,6 +48,7 @@ On the machine on which the pex file will be run one needs librdkafka 1.0.x dyna
 To install only it:
 
 .. code:: shell
+
     sudo rpm --import https://packages.confluent.io/rpm/5.2/archive.key
     sudo tee /etc/yum.repos.d/confluent.repo > /dev/null <<'EOF'
     [Confluent.dist]
@@ -73,5 +76,6 @@ contains bundled binary libraries, where some of them are outdated (e.g. zlib1.2
 Hovewer, if You want to use the package from PyPi and skip all described here steps please run:
 
 .. code:: shell
+
     export INCLUDE_UNSAFE_CONFLUENT_KAFKA_WHEEL=yes
     make wca_package
