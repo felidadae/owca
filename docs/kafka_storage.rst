@@ -7,8 +7,8 @@ which by default is not included in the pex WCA distribution file.
 
 To build pex file with confluent-kafka-python package one should:
 
-* follow part "Get the software" points 1-4: https://docs.confluent.io/current/installation/installing_cp/rhel-centos.html
-    and install librdkafka1 and librdkafka-devel-1.0.0_confluent5.2.2-1.el7.x86_64 packages
+* follow part "Get the software" points 1-4 from `confluent guide <https://docs.confluent.io/current/installation/installing_cp/rhel-centos.html>`_ 
+* install librdkafka1 and librdkafka-devel-1.0.0_confluent5.2.2-1.el7.x86_64 packages
 * install gcc, python3 development files (for centos 7: gcc, python36-devel.x86_64)
 * clone repository confluent-kafka-python in root repository directory to the directory confluent-kafka-python,
 * checkout the repository to tag **v1.0.1**
