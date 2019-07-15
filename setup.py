@@ -13,11 +13,20 @@
 # limitations under the License.
 
 from setuptools import setup, find_packages
+import os
 import json
 
+# Taking all packages from Pipfile.lock except for:
+# * confluent_kafka, unless INCLUDE_UNSAFE_CONFLUENT_KAFKA_WHEEL is set to 'yes'.
 install_requires = ['%s%s' % (name, spec['version'])
                     for name, spec in
                     json.load(open('Pipfile.lock'))['default'].items()]
+if os.environ.get('INCLUDE_UNSAFE_CONFLUENT_KAFKA_WHEEL', 'no') == 'yes':
+    print('Warning: bundling confluent_kafka package with binary libraries, '
+          'some of them are outdated and contains security vulnerabilities.')
+else:
+    install_requires = [item for item in install_requires if "confluent-kafka" not in item]
+
 packages = ['wca', 'wca.extra', 'wca.runners']
 
 print("Install requires:")

@@ -11,6 +11,7 @@ colorlog = "==4.0.2"                  # 2018.12.14
 logging-tree = "==1.8"                # 2018.08.05
 dataclasses = "==0.6"                 # 2018.05.18
 kazoo = "==2.6.1"                     # 2019.01.22
+confluent-kafka = "==1.0.0rc1"        # only for development; removed in setup.py for production distribution.
 
 [dev-packages]
 pex = "==1.6.8"                       # 2019.05.14
