@@ -44,7 +44,4 @@ RUN echo 'export PATH=${M2_HOME}/bin:${PATH}' >> /etc/profile.d/maven.sh
 # Adding YCSB wrapper
 COPY /dist/ycsb_wrapper.pex /usr/bin/
 
-COPY /librdkafka_install.sh /usr/bin/librdkafka_install.sh
-RUN bash /usr/bin/librdkafka_install.sh
-
 ENTRYPOINT ["./bin/ycsb"]

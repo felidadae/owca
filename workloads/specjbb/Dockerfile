@@ -26,9 +26,6 @@ COPY specjbb /home/specjbb
 # add specjbb custom wrapper to docker
 COPY /dist/specjbb_wrapper.pex /usr/bin/specjbb_wrapper.pex
 
-COPY /librdkafka_install.sh /usr/bin/librdkafka_install.sh
-RUN bash /usr/bin/librdkafka_install.sh
-
 # Note: will be ignored by mesos
 WORKDIR /home/specjbb
 

@@ -32,8 +32,3 @@ RUN cd /root/benchmarks && git checkout 44aeb98
 RUN /usr/bin/python3.5 /root/benchmarks/scripts/tf_cnn_benchmarks/tf_cnn_benchmarks.py --datasets_use_prefetch=True --batch_group_size=1 --device=cpu --data_format=NHWC --data_name=cifar10 --batch_size=128 --model=resnet56 --train_dir=/saved_model/ --num_epochs=2
 COPY dist/tensorflow_benchmark_training_wrapper.pex /
 COPY dist/tensorflow_benchmark_prediction_wrapper.pex /
-
-RUN apt -y install wget software-properties-common
-RUN wget -qO - https://packages.confluent.io/deb/5.2/archive.key | apt-key add -
-RUN add-apt-repository "deb [arch=amd64] https://packages.confluent.io/deb/5.2 stable main"
-RUN apt -y install librdkafka1

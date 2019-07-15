@@ -59,6 +59,3 @@ COPY /dist/rpc_perf_wrapper.pex /usr/bin/
 COPY rpc-perf.toml /etc/
 COPY --from=rpc-perf /rpc-perf/target/release/rpc-perf /usr/bin/
 COPY --from=rpc-perf /rpc-perf/configs /etc/rpc-perf/
-
-COPY /librdkafka_install.sh /usr/bin/librdkafka_install.sh
-RUN bash /usr/bin/librdkafka_install.sh
