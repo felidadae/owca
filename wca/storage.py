@@ -253,6 +253,23 @@ def convert_to_prometheus_exposition_format(metrics: List[Metric],
     return ''.join(output)
 
 
+def check_kafka_dependency():
+    if confluent_kafka is None:
+        log.error("KafkaStorage is not supported as confluent_kafka "
+                  "module is not present.")
+        raise ModuleNotFoundError("confluent_kafka module is required by KafkaStorage")
+
+
+def create_kafka_consumer(brokers_ips: str, extra_params: Dict):
+    config = extra_params or dict()
+    config.update({'bootstrap.servers': ",".join(brokers_ips)})
+    return confluent_kafka.Producer(config)
+
+
+class KafkaConsumerInitializationException(Exception):
+    pass
+
+
 @dataclass
 class KafkaStorage(Storage):
     """Storage for saving metrics in Kafka.
@@ -272,28 +289,15 @@ class KafkaStorage(Storage):
     extra_config: Dict[Str, Str] = None
 
     def __post_init__(self) -> None:
-        if confluent_kafka is None:
-            log.warning("KafkaStorage is not supported as confluent_kafka "
-                        "module is not present.")
-
+        check_kafka_dependency()
         try:
-            self._create_producer()
-        except Exception:
-            log.exception('Exception durning kafka consumer initialization:')
-            raise
-
+            self.producer = create_kafka_consumer(self.brokers_ips, self.extra_config)
+        except Exception as e:
+            log.exception('Exception during kafka consumer initialization:')
+            raise KafkaConsumerInitializationException(str(e))
         self.error_from_callback = None
         """used to pass error from within callback_on_delivery
           (called from different thread) to KafkaStorage instance"""
-
-    def get_producer(self, config):
-        # Created to simplify mocking confluent_kafka.Producer.
-        return confluent_kafka.Producer(config)
-
-    def _create_producer(self) -> None:
-        config = self.extra_config or dict()
-        config.update({'bootstrap.servers': ",".join(self.brokers_ips)})
-        self.producer = self.get_producer(config)
 
     def callback_on_delivery(self, err, msg) -> None:
         """Called once for each message produced to indicate delivery result.

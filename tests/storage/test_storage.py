@@ -117,9 +117,10 @@ def test_convert_to_prometheus_exposition_format(mock_get_current_time, sample_m
     )
 
 
-@mock.patch('wca.storage.KafkaStorage.get_producer',
+@mock.patch('wca.storage.check_kafka_dependency', return_value=None)
+@mock.patch('wca.storage.create_kafka_consumer',
             return_value=mock.Mock(flush=mock.Mock(return_value=1)))
-def test_when_brocker_unavailable(mock_producer, sample_metrics):
+def test_when_brocker_unavailable(mock_fun, mock_producer, sample_metrics):
     kafka_storage = storage.KafkaStorage(brokers_ips=["whatever because is ignored"], topic='some')
     with pytest.raises(storage.FailedDeliveryException, match="Maximum timeout"):
         kafka_storage.store(sample_metrics)
