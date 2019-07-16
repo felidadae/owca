@@ -29,7 +29,7 @@ from typing import List, Tuple, Dict, Optional
 
 from dataclasses import dataclass, field
 
-from wca.config import Numeric, Path, Str, IpPort
+from wca.config import Numeric, Path, Str, IpPort, ValidationError
 from wca import logger
 from wca.metrics import Metric, MetricType
 
@@ -38,6 +38,11 @@ try:
     import confluent_kafka
 except ModuleNotFoundError:
     confluent_kafka = None
+    confluent_kafka_import_error = 'confluent_kafka python package not included in pex file'
+except ImportError:
+    confluent_kafka = None
+    confluent_kafka_import_error = 'confluent_kafka python package requires librdkafka ' \
+                                   'dynamic library which is absent on the system'
 
 
 class Storage(abc.ABC):
@@ -255,9 +260,8 @@ def convert_to_prometheus_exposition_format(metrics: List[Metric],
 
 def check_kafka_dependency():
     if confluent_kafka is None:
-        log.error("KafkaStorage is not supported as confluent_kafka "
-                  "module is not present.")
-        raise ModuleNotFoundError("confluent_kafka module is required by KafkaStorage")
+        log.error(confluent_kafka_import_error)
+        raise ValidationError(confluent_kafka_import_error)
 
 
 def create_kafka_consumer(brokers_ips: str, extra_params: Dict):

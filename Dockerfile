@@ -16,17 +16,22 @@
 # Building wca.
 FROM centos:7 AS wca
 
+# RUN rpm --import https://packages.confluent.io/rpm/5.2/archive.key
+# COPY /configs/confluent_repo/confluent.repo /etc/yum.repos.d/confluent.repo
+
 RUN yum -y update
 RUN yum -y install epel-release
 RUN yum -y install python36 python-pip which make git
+# RUN yum install -y librdkafka1 librdkafka-devel-1.0.0_confluent5.2.2-1.el7.x86_64 gcc python36-devel.x86_64
 
 RUN pip install pipenv
 
 WORKDIR /wca
 COPY . .
 
+RUN git clean -fdx
 RUN pipenv install --dev
-RUN pipenv run make wca_package
+RUN pipenv run make wca_package OPTIONAL_FEATURES=kafka_storage
 
 # Building final container that consists of wca only.
 FROM centos:7
