@@ -84,7 +84,6 @@ pipeline {
                     IMAGE_NAME=${DOCKER_REPOSITORY_URL}/wca/tensorflow_benchmark:${GIT_COMMIT}
                     IMAGE_DIR=${WORKSPACE}/workloads/tensorflow_benchmark
                     cp -r dist ${IMAGE_DIR}
-                    cp workloads/librdkafka_install.sh ${IMAGE_DIR}/
                     docker build -t ${IMAGE_NAME} -f ${IMAGE_DIR}/Dockerfile ${IMAGE_DIR}
                     docker push ${IMAGE_NAME}
                     '''
@@ -108,7 +107,6 @@ pipeline {
                     IMAGE_NAME=${DOCKER_REPOSITORY_URL}/wca/stress_ng:${GIT_COMMIT}
                     IMAGE_DIR=${WORKSPACE}/workloads/stress_ng
                     cp -r dist ${IMAGE_DIR}
-                    cp workloads/librdkafka_install.sh ${IMAGE_DIR}/
                     docker build -t ${IMAGE_NAME} -f ${IMAGE_DIR}/Dockerfile ${IMAGE_DIR}
                     docker push ${IMAGE_NAME}
                     '''
@@ -121,7 +119,6 @@ pipeline {
                     IMAGE_NAME=${DOCKER_REPOSITORY_URL}/wca/rpc_perf:${GIT_COMMIT}
                     IMAGE_DIR=${WORKSPACE}/workloads/rpc_perf
                     cp -r dist ${IMAGE_DIR}
-                    cp workloads/librdkafka_install.sh ${IMAGE_DIR}/
                     docker build -t ${IMAGE_NAME} -f ${IMAGE_DIR}/Dockerfile ${IMAGE_DIR}
                     docker push ${IMAGE_NAME}
                     '''
@@ -134,7 +131,6 @@ pipeline {
                     IMAGE_NAME=${DOCKER_REPOSITORY_URL}/wca/twemcache:${GIT_COMMIT}
                     IMAGE_DIR=${WORKSPACE}/workloads/twemcache
                     cp -r dist ${IMAGE_DIR}
-                    cp workloads/librdkafka_install.sh ${IMAGE_DIR}/
                     docker build -t ${IMAGE_NAME} -f ${IMAGE_DIR}/Dockerfile ${IMAGE_DIR}
                     docker push ${IMAGE_NAME}
                     '''
@@ -147,7 +143,6 @@ pipeline {
                     IMAGE_NAME=${DOCKER_REPOSITORY_URL}/wca/ycsb:${GIT_COMMIT}
                     IMAGE_DIR=${WORKSPACE}/workloads/ycsb
                     cp -r dist ${IMAGE_DIR}
-                    cp workloads/librdkafka_install.sh ${IMAGE_DIR}/
                     docker build -t ${IMAGE_NAME} -f ${IMAGE_DIR}/Dockerfile ${IMAGE_DIR}
                     docker push ${IMAGE_NAME}
                     '''
@@ -160,7 +155,6 @@ pipeline {
                     IMAGE_NAME=${DOCKER_REPOSITORY_URL}/wca/cassandra_stress:${GIT_COMMIT}
                     IMAGE_DIR=${WORKSPACE}/workloads/cassandra_stress
                     cp -r dist ${IMAGE_DIR}
-                    cp workloads/librdkafka_install.sh ${IMAGE_DIR}/
                     docker build -t ${IMAGE_NAME} -f ${IMAGE_DIR}/Dockerfile ${IMAGE_DIR}
                     docker push ${IMAGE_NAME}
                     '''
@@ -173,7 +167,6 @@ pipeline {
                     IMAGE_NAME=${DOCKER_REPOSITORY_URL}/wca/mutilate:${GIT_COMMIT}
                     IMAGE_DIR=${WORKSPACE}/workloads/mutilate
                     cp -r dist ${IMAGE_DIR}
-                    cp workloads/librdkafka_install.sh ${IMAGE_DIR}/
                     docker build -t ${IMAGE_NAME} -f ${IMAGE_DIR}/Dockerfile ${IMAGE_DIR}
                     docker push ${IMAGE_NAME}
                     '''
@@ -187,7 +180,6 @@ pipeline {
                             IMAGE_NAME=${DOCKER_REPOSITORY_URL}/wca/specjbb:${GIT_COMMIT}
                             IMAGE_DIR=${WORKSPACE}/workloads/specjbb
                             cp ${SPECJBB_TAR} ${IMAGE_DIR}
-                            cp workloads/librdkafka_install.sh ${IMAGE_DIR}/
                             tar -xC ${IMAGE_DIR} -f ${IMAGE_DIR}/specjbb.tar.bz2
                             cp -r dist ${IMAGE_DIR}
                             docker build -t ${IMAGE_NAME} -f ${IMAGE_DIR}/Dockerfile ${IMAGE_DIR}
