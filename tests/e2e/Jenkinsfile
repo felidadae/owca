@@ -9,9 +9,9 @@ pipeline {
         BUILD_COMMIT="${GIT_COMMIT}"
         EXTRA_ANSIBLE_PARAMS = " "
         LABELS="{additional_labels: {build_number: \"${BUILD_NUMBER}\", build_node_name: \"${NODE_NAME}\", build_commit: \"${GIT_COMMIT}\"}}"
-		RUN_WORKLOADS_SLEEP_TIME = 300
-		INVENTORY="tests/e2e/demo_scenarios/common/inventory.yaml"
-		TAGS = "twemcache_mutilate,redis_rpc_perf,cassandra_stress,cassandra_ycsb,twemcache_rpc_perf,specjbb,stress_ng,tensorflow_benchmark_prediction,tensorflow_benchmark_train"
+        RUN_WORKLOADS_SLEEP_TIME = 300
+        INVENTORY="tests/e2e/demo_scenarios/common/inventory.yaml"
+        TAGS = "twemcache_mutilate,redis_rpc_perf,cassandra_stress,cassandra_ycsb,twemcache_rpc_perf,specjbb,stress_ng,tensorflow_benchmark_prediction,tensorflow_benchmark_train"
     }
     stages {
         stage('Wca metrics check') {
@@ -60,13 +60,13 @@ pipeline {
 
 def wca_and_workloads_check() {
     sh "make venv"
-	print('Cloning confluent-kafka-python')
-	sh '''
-	  [ ! -d confluent-kafka-python ] && git clone https://github.com/confluentinc/confluent-kafka-python
-	  cd confluent-kafka-python
-	  git checkout v1.0.1
-	  cd ..
-	'''
+    print('Cloning confluent-kafka-python')
+    sh '''
+      [ ! -d confluent-kafka-python ] && git clone https://github.com/confluentinc/confluent-kafka-python
+      cd confluent-kafka-python
+      git checkout v1.0.1
+      cd ..
+    '''
     sh "make wca_package OPTIONAL_FEATURES=kafka_storage"
     print('Reconfiguring wca...')
     copy_files("${WORKSPACE}/tests/e2e/demo_scenarios/common/${CONFIG}", "${WORKSPACE}/tests/e2e/demo_scenarios/common/wca_config.yml.tmp")
