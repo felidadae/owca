@@ -21,9 +21,6 @@ endif
 
 all: venv check dist
 
-test:
-	@echo test
-
 venv:
 	@echo Preparing virtual enviornment using pipenv.
 	pipenv --version
