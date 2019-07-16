@@ -48,6 +48,17 @@ junit:
 	@echo Running unit tests.
 	pipenv run env PYTHONPATH=.:workloads/wrapper pytest --cov-report term-missing --cov=wca tests --junitxml=unit_results.xml -vvv -s --ignore=tests/e2e/test_wca_metrics.py
 
+WCA_IMAGE := wca-$(shell git rev-parse HEAD)
+wca_package_in_docker:
+	@echo Building wca pex file inside docker and copying to ./dist/wca.pex
+	@echo WCA image name is: $(WCA_IMAGE)
+	sudo docker build --target wca -f Dockerfile -t $(WCA_IMAGE) .
+	CID=$(shell docker create $(WCA_IMAGE)); \
+	mkdir -p dist; \
+	docker cp $$CID:/wca/dist/wca.pex dist/ && \
+	docker rm $$CID && \
+	chown -R $$USER:$$USER dist/wca.pex
+
 wca_package:
 	@echo Building wca pex file.
 	-rm .pex-build/wca*

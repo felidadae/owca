@@ -26,20 +26,17 @@ pipeline {
                 }
             }
         }
-        stage("Prepare confluent-kafka-python repository to support kafka_storage feature") {
+        stage("Build WCA pex") {
             steps {
                 sh '''
-                  [ ! -d confluent-kafka-python ] && git clone https://github.com/confluentinc/confluent-kafka-python
-                  cd confluent-kafka-python
-                  git checkout v1.0.1
-                  cd ..
+                  make wca_package_in_docker
                 '''
             }
         }
         stage("Build pex files") {
             steps {
                 sh '''
-                  make venv dist OPTIONAL_FEATURES=kafka_storage
+                  make venv wrapper_package
                 '''
                 archiveArtifacts(artifacts: "dist/**")
             }
