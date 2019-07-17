@@ -53,11 +53,12 @@ wca_package_in_docker:
 	@echo Building wca pex file inside docker and copying to ./dist/wca.pex
 	@echo WCA image name is: $(WCA_IMAGE)
 	sudo docker build --target wca -f Dockerfile -t $(WCA_IMAGE) .
-	CID=$(shell docker create $(WCA_IMAGE)); \
+	rm -rf .cidfile && docker create --cidfile=.cidfile $(WCA_IMAGE)
+	CID=$(shell cat .cidfile); \
 	mkdir -p dist; \
 	docker cp $$CID:/wca/dist/wca.pex dist/ && \
 	docker rm $$CID && \
-	chown -R $$USER:$$USER dist/wca.pex
+	chown -R $$USER:$$USER dist/wca.pex && rm .cidfile
 
 wca_package:
 	@echo Building wca pex file.
