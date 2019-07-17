@@ -49,12 +49,17 @@ junit:
 	pipenv run env PYTHONPATH=.:workloads/wrapper pytest --cov-report term-missing --cov=wca tests --junitxml=unit_results.xml -vvv -s --ignore=tests/e2e/test_wca_metrics.py
 
 WCA_IMAGE := wca-$(shell git rev-parse HEAD)
+test:
+	CID=$$(cat .cidfile); \
+	echo $$CID > dupa
+
+WCA_IMAGE := wca-$(shell git rev-parse HEAD)
 wca_package_in_docker:
 	@echo Building wca pex file inside docker and copying to ./dist/wca.pex
 	@echo WCA image name is: $(WCA_IMAGE)
 	sudo docker build --target wca -f Dockerfile -t $(WCA_IMAGE) .
 	rm -rf .cidfile && docker create --cidfile=.cidfile $(WCA_IMAGE)
-	CID=$(shell cat .cidfile); \
+	CID=$$(cat .cidfile); \
 	mkdir -p dist; \
 	docker cp $$CID:/wca/dist/wca.pex dist/ && \
 	docker rm $$CID && \
