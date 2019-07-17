@@ -44,8 +44,8 @@ All commands which needs to be run to build WCA pex file with **KafkaStorage** c
     cd ..
     make wca_package OPTIONAL_FEATURES=kafka_storage
 
-On the machine on which the pex file will be run one needs librdkafka 1.0.x dynamic library.
-To install only it:
+One needs librdkafka 1.0.x on machine where pex file will be run.
+To install only librdkafka library:
 
 .. code:: shell
 
@@ -71,9 +71,10 @@ To install only it:
 
 Unsafe method
 -------------
-We strongly advise to build the confluent-kafka-python manually due to security reasons. Included in PyPi wheel manylinux package
-contains bundled binary libraries, where some of them are outdated (e.g. zlib1.2.3 is included in the package and contains security vulnerabilities).
-Hovewer, if You want to use the package from PyPi and skip all described here steps please run:
+We strongly advise to build the confluent-kafka-python manually due to security reasons. 
+Wheel manylinux package included in PyPi contains bundled binary libraries, where some of them 
+are outdated (e.g. zlib1.2.3 is included in the package and contains security vulnerabilities).
+Hovewer, if You want to use the package from PyPi and skip all steps described here please run:
 
 .. code:: shell
 
