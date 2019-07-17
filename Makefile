@@ -57,7 +57,7 @@ WCA_IMAGE := wca-$(shell git rev-parse HEAD)
 wca_package_in_docker:
 	@echo Building wca pex file inside docker and copying to ./dist/wca.pex
 	@echo WCA image name is: $(WCA_IMAGE)
-	sudo docker build --target wca -f Dockerfile -t $(WCA_IMAGE) .
+	sudo docker build --network host --target wca -f Dockerfile -t $(WCA_IMAGE) .
 	rm -rf .cidfile && sudo docker create --cidfile=.cidfile $(WCA_IMAGE)
 	CID=$$(cat .cidfile); \
 	mkdir -p dist; \
