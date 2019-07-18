@@ -1,4 +1,4 @@
-# Shell variables which can customize behaviour of this Makefiles:
+# Shell variables which may customize behaviour of this Makefiles:
 # * ADDITIONAL_PEX_OPTIONS
 # 	additional flags which can be passed to pex tool to be used while building distribution files
 # * OPTIONAL_FEATURES
