@@ -170,4 +170,11 @@ def test_task_label_regex_generator_error(log_mock):
     tasks = [task('/t1', labels={'source_key': 'source_val'})]
     task_label_regex_generator = TaskLabelRegexGenerator('__(.*)__', '\\1', 'non_existing_key')
     task_label_regex_generator.generate(tasks, 'target_key')
-    log_mock.error.assert_called_once()
+    log_mock.warning.assert_called_once()
+
+
+def test_task_label_regex_generator_overwriting_label():
+    tasks = [task('/t1', labels={'source_key': '__val__'})]
+    task_label_regex_generator = TaskLabelRegexGenerator('__(.*)__', '\\1', 'source_key')
+    task_label_regex_generator.generate(tasks, 'source_key')
+    assert tasks[0].labels['source_key'] == '__val__'

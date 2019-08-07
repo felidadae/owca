@@ -60,7 +60,12 @@ class TaskLabelRegexGenerator(TaskLabelGenerator):
             source_val = task.labels.get(self.source, None)
             if source_val is None:
                 err_msg = "Source label {} not found in task {}".format(self.source, task.name)
-                log.error(err_msg)
+                log.warning(err_msg)
+                continue
+            if target in task.labels:
+                err_msg = "Target label {} already existing in task {}. Skipping.".format(
+                    target, task.name)
+                log.debug(err_msg)
                 continue
             task.labels[target] = re.sub(self.pattern, self.repl, source_val)
             if task.labels[target] == "" or task.labels[target] is None:
