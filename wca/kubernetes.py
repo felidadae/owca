@@ -140,6 +140,8 @@ class KubernetesNode(Node):
             else:
                 labels = {}
             labels[_sanitize_label(QOS_LABELNAME)] = qos  # Add label with QOS class of the pod.
+            # Extend labels with 'task_name'.
+            labels['task_name'] = pod.get('metadata').get('namespace') + "/" + pod_name
 
             # Apart from obvious part of the loop it checks whether all
             # containers are in ready state -

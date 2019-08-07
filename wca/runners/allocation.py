@@ -34,7 +34,7 @@ from wca.resctrl_allocations import (RDTAllocationValue, RDTGroups,
                                      validate_mb_string,
                                      validate_l3_string)
 from wca.runners.detection import AnomalyStatistics
-from wca.runners.measurement import MeasurementRunner
+from wca.runners.measurement import MeasurementRunner, TaskLabelGenerator
 from wca.storage import MetricPackage, DEFAULT_STORAGE
 
 log = logging.getLogger(__name__)
@@ -206,13 +206,15 @@ class AllocationRunner(MeasurementRunner):
             remove_all_resctrl_groups: bool = False,
             event_names: Optional[List[str]] = None,
             enable_derived_metrics: bool = False,
+            tasks_label_generator: Dict[str, TaskLabelGenerator] = None,
     ):
 
         self._allocation_configuration = allocation_configuration or AllocationConfiguration()
 
         super().__init__(node, metrics_storage, action_delay, rdt_enabled,
                          extra_labels, _allocation_configuration=self._allocation_configuration,
-                         event_names=event_names, enable_derived_metrics=enable_derived_metrics)
+                         event_names=event_names, enable_derived_metrics=enable_derived_metrics,
+                         tasks_label_generator=tasks_label_generator)
 
         # Allocation specific.
         self._allocator = allocator

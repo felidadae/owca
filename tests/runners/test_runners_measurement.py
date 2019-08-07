@@ -22,7 +22,8 @@ from wca.metrics import MissingMeasurementException
 from wca.mesos import MesosNode
 from wca.platforms import RDTInformation
 from wca.resctrl import ResGroup
-from wca.runners.measurement import MeasurementRunner, _build_tasks_metrics, _prepare_tasks_data
+from wca.runners.measurement import MeasurementRunner, _build_tasks_metrics, _prepare_tasks_data, \
+    TaskLabelRegexGenerator
 from tests.testing import assert_metric, redis_task_with_default_labels, prepare_runner_patches, \
     TASK_CPU_USAGE, WCA_MEMORY_USAGE, metric, DEFAULT_METRIC_VALUE, task
 
@@ -63,6 +64,12 @@ def test_measurements_runner(subcgroups):
                   expected_metric_value=cpu_usage)
     assert_metric(got_metrics, 'cpu_usage', dict(task_id=t2.task_id),
                   expected_metric_value=cpu_usage)
+
+    # Test for labels generator.
+    cpu_metric = [metric for metric in got_metrics if metric.name == 'cpu_usage'][0]
+    assert 'task_name' in t1.labels
+    assert cpu_metric.labels['application'] == 'example/root/staging/redis-6792'
+    assert cpu_metric.labels['application_version_name'] == ''
 
 
 @prepare_runner_patches
@@ -145,3 +152,22 @@ def test_prepare_task_data_cgroup_not_found(*mocks):
     tasks_measurements, tasks_resources, tasks_labels = \
         _prepare_tasks_data(containers)
     assert tasks_measurements == {}
+
+
+@pytest.mark.parametrize('source_val, pattern, repl, expected_val', (
+    ('__val__', '__(.*)__', r'\1', 'val'),
+    ('example/devel/staging-13/redis.small', r'.*/.*/.*/(.*)\..*', r'\1', 'redis'),
+))
+def test_task_label_regex_generator(source_val, pattern, repl, expected_val):
+    tasks = [task('/t1', labels={'source_key': source_val})]
+    task_label_regex_generator = TaskLabelRegexGenerator(pattern, repl, 'source_key')
+    task_label_regex_generator.generate(tasks, 'target_key')
+    assert tasks[0].labels['target_key'] == expected_val
+
+
+@patch('wca.runners.measurement.log')
+def test_task_label_regex_generator_error(log_mock):
+    tasks = [task('/t1', labels={'source_key': 'source_val'})]
+    task_label_regex_generator = TaskLabelRegexGenerator('__(.*)__', '\\1', 'non_existing_key')
+    task_label_regex_generator.generate(tasks, 'target_key')
+    log_mock.error.assert_called_once()

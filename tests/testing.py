@@ -235,6 +235,7 @@ def redis_task_with_default_labels(task_id, subcgroups_paths=None):
     task_labels = {
         'org.apache.aurora.metadata.load_generator': 'rpc-perf-%s' % task_id,
         'org.apache.aurora.metadata.name': 'redis-6792-%s' % task_id,
+        'task_name': 'example/root/staging/redis-6792',
         LABEL_WORKLOAD_INSTANCE: 'redis_6792_%s' % task_id
     }
     return task('/%s' % task_id,

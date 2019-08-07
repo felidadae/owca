@@ -92,7 +92,7 @@ In example above ``ContentionAnomalyDetector`` implements all required methods o
             
 ``AnomalyDetector`` defines interface where ``Platform`` class represents capacity and utilization information 
 covering whole system and ``TasksMeasurements`` class represents individual measurements for specific Mesos tasks running on this node.
-``TasksResources``` class represents initial resource assigment as defined in orchestration software API (e.g. Mesos/Aurora).
+``TasksResources`` class represents initial resource assigment as defined in orchestration software API (e.g. Mesos/Aurora).
 
 Implementation of ``AnomalyDetector`` is responsible for returning new immutable instances of ``Anomaly`` and in 
 specific case of "resource contention" should return subclass called ``ContentionAnomaly`` with extended context.
@@ -364,3 +364,38 @@ Example message stored in Kafka using Prometheus exposition format:
 
 
 **Note** that not all labels comments where showed for readability.
+
+
+Generating additional labels for tasks
+--------------------------------------
+An additional helper functionality of WCA agent is to generate new labels for tasks based on other labels.
+That new labels will be attached to tasks metrics and stored.
+
+For that purpose a field **tasks_label_generator** can be defined in classes derived from ``MeasurementsRunner``.
+It is a dictionary, where each key defines a name of new label, and value for that key 
+consitutes an object of a class derived from ``TaskLabelGenerator``.
+
+In the example below the class used to generate label is ``TaskLabelRegexGenerator``.
+TaskLabelRegexGenerator uses re.sub function to extract needed information from another label value.
+
+In the example below if label ``task_name`` (``source`` parameter) has value ``root/staging/my_important_task`` new labels
+will be attached to the task metrics:
+
+- ``application`` with value `my_important_task`,
+- ``application_version_name`` with empty string.
+
+
+.. code-block:: yaml
+
+  runner: !DetectionRunner
+    ...
+    tasks_label_generator:
+      application: !TaskLabelRegexGenerator
+        pattern: '.*\/.*\/(.*)'
+        repl: '\1'  # first match group
+        source: 'task_name' #default
+      application_version_name: !TaskLabelRegexGenerator
+        pattern: '.*'
+        repl: '' # empty
+        source: 'task_name' #default
+    ...

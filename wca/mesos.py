@@ -141,7 +141,11 @@ class MesosNode(Node):
                                 f'Ignoring task (inconsistent state returned from Mesos).')
                 continue
 
+            task_name = launched_task['name']
+
             labels = {label['key']: label['value'] for label in launched_task['labels']['labels']}
+            # Extend labels with 'task_name'.
+            labels['task_name'] = task_name
 
             # Extract scalar resources.
             resources = dict()
@@ -151,7 +155,7 @@ class MesosNode(Node):
 
             tasks.append(
                 MesosTask(
-                    name=launched_task['name'],
+                    name=task_name,
                     executor_pid=executor_pid,
                     cgroup_path=cgroup_path,
                     subcgroups_paths=[],

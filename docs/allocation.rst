@@ -359,3 +359,8 @@ Returned ``TasksAllocations`` will be encoded in Prometheus exposition format:
 
     # TYPE allocations_ignored_count counter
     allocations_ignored_count{cores="28",cpus="56",host="igk-0107",wca_version="0.1.dev252+g7f83b7f",sockets="2"} 0 1547663933289
+
+
+Generating additional labels for tasks
+--------------------------------------
+Please refer to `Generating additional labels for tasks <detection.rst>`_.

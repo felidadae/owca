@@ -11,10 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from abc import abstractmethod
+from dataclasses import dataclass
 import logging
 import resource
 import time
 from typing import Dict, List, Tuple, Optional
+import re
 
 from wca import nodes, storage, platforms, profiling
 from wca import resctrl
@@ -39,6 +42,33 @@ DEFAULT_EVENTS = (MetricName.INSTRUCTIONS, MetricName.CYCLES,
                   MetricName.CACHE_MISSES, MetricName.CACHE_REFERENCES, MetricName.MEMSTALL)
 
 
+class TaskLabelGenerator:
+    @abstractmethod
+    def generate(self, tasks) -> None:
+        """add additional labels to each task based on already existing labels"""
+        ...
+
+
+@dataclass
+class TaskLabelRegexGenerator(TaskLabelGenerator):
+    pattern: str
+    repl: str
+    source: str = 'task_name'  # by default use `task_name`: specially created for that purpose
+
+    def generate(self, tasks, target) -> None:
+        for task in tasks:
+            source_val = task.labels.get(self.source, None)
+            if source_val is None:
+                err_msg = "Source label {} not found in task {}".format(self.source, task.name)
+                log.error(err_msg)
+                continue
+            task.labels[target] = re.sub(self.pattern, self.repl, source_val)
+            if task.labels[target] == "" or task.labels[target] is None:
+                log.debug('Label {} for task {} set to empty string.')
+            if task.labels[target] is None:
+                log.debug('Label {} for task {} set to None.')
+
+
 class MeasurementRunner(Runner):
     """MeasurementRunner run iterations to collect platform, resource, task measurements
     and store them in metrics_storage component.
@@ -57,6 +87,8 @@ class MeasurementRunner(Runner):
             (defaults to instructions, cycles, cache-misses, memstalls)
         enable_derived_metrics: enable derived metrics ips, ipc and cache_hit_ratio
             (based on enabled_event names), default to False
+        task_label_generator: component to add new labels based on sanitized labels read
+            from orchestrator
     """
 
     def __init__(
@@ -68,6 +100,7 @@ class MeasurementRunner(Runner):
             extra_labels: Dict[Str, Str] = None,
             event_names: List[str] = None,
             enable_derived_metrics: bool = False,
+            tasks_label_generator: Dict[str, TaskLabelGenerator] = None,
             _allocation_configuration: Optional[AllocationConfiguration] = None,
     ):
 
@@ -85,6 +118,15 @@ class MeasurementRunner(Runner):
         self._allocation_configuration = _allocation_configuration
         self._event_names = event_names or DEFAULT_EVENTS
         self._enable_derived_metrics = enable_derived_metrics
+        if tasks_label_generator is None:
+            self._tasks_label_generator = {
+                'application':
+                    TaskLabelRegexGenerator('$', '', 'task_name'),
+                'application_version_name':
+                    TaskLabelRegexGenerator('.*$', '', 'task_name'),
+            }
+        else:
+            self._tasks_label_generator = tasks_label_generator
 
     @profiler.profile_duration(name='sleep')
     def _wait(self):
@@ -160,6 +202,10 @@ class MeasurementRunner(Runner):
                 sanitized_labels.update({sanitize_label(label_key):
                                          label_value})
             task.labels = sanitized_labels
+
+        # Generate new labels.
+        for new_label, task_label_generator in self._tasks_label_generator.items():
+            task_label_generator.generate(tasks, new_label)
 
         # Keep sync of found tasks and internally managed containers.
         containers = self._containers_manager.sync_containers_state(tasks)
