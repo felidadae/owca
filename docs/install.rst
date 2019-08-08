@@ -44,6 +44,22 @@ Runtime requirements
 
 All other the software dependencies are bundled using `PEX <https://github.com/pantsbuild/pex>`_.
 
+RDT enabling on Skylake processor
+---------------------------------
+
+It is possible to use RDT features on Skylake family of processors.
+However, there are known issues mentioned in
+`errata <https://www.intel.com/content/dam/www/public/us/en/documents/specification-updates/6th-gen-x-series-spec-update.pdf>`_:
+
+- SKZ4  MBM does not accurately track write bandwidth,
+- SKZ17 CMT counters may not count accurately,
+- SKZ18 CAT may not restrict cacheline allocation under certain conditions,
+- SKZ19 MBM counters may undercount.
+
+To enable RDT please add kernel boot time parameters ``rdt=cmt,mbmtotal,mbmlocal,l3cat``
+(`kernel documenatation <https://github.com/torvalds/linux/blob/f4eb1423e43376bec578c5696635b074c8bd2035/Documentation/admin-guide/kernel-parameters.txt#L4093>`_).
+
+
 Python 3.6 Centos installation (recommended)
 --------------------------------------------
 
@@ -61,7 +77,7 @@ Should output::
     Python 3.6.3
 
 Alternative options for Python 3.6 installation 
-----------------------------------------------
+-----------------------------------------------
 
 To simplify python interpreter management (no need to use ``scl`` tool as prefix), 
 you can use Intel Distribution for Python according to `yum-based installation guide <https://software.intel.com/en-us/articles/installing-intel-free-libs-and-python-yum-repo>`_.
