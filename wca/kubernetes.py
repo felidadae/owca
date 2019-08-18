@@ -132,6 +132,7 @@ class KubernetesNode(Node):
             pod_id = pod.get('metadata').get('uid')
             pod_name = pod.get('metadata').get('name')
             qos = pod.get('status').get('qosClass').lower()
+            task_name = pod.get('metadata').get('namespace') + "/" + pod_name
             assert QosClass.has_value(qos)
             if pod.get('metadata').get('labels'):
                 labels = {_sanitize_label(key): value
@@ -140,8 +141,6 @@ class KubernetesNode(Node):
             else:
                 labels = {}
             labels[_sanitize_label(QOS_LABELNAME)] = qos  # Add label with QOS class of the pod.
-            # Extend labels with 'task_name'.
-            labels['task_name'] = pod.get('metadata').get('namespace') + "/" + pod_name
 
             # Apart from obvious part of the loop it checks whether all
             # containers are in ready state -
@@ -168,7 +167,7 @@ class KubernetesNode(Node):
 
             container_spec = pod.get('spec').get('containers')
             tasks.append(KubernetesTask(
-                name=pod_name, task_id=pod_id, qos=qos, labels=labels,
+                name=task_name, task_id=pod_id, qos=qos, labels=labels,
                 resources=_calculate_pod_resources(container_spec),
                 cgroup_path=_build_cgroup_path(self.cgroup_driver, qos, pod_id),
                 subcgroups_paths=containers_cgroups))

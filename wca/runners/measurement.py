@@ -201,13 +201,6 @@ class MeasurementRunner(Runner):
         tasks = self._node.get_tasks()
         log.debug('Tasks detected: %d', len(tasks))
 
-        for task in tasks:
-            sanitized_labels = dict()
-            for label_key, label_value in task.labels.items():
-                sanitized_labels.update({sanitize_label(label_key):
-                                         label_value})
-            task.labels = sanitized_labels
-
         # Generate new labels.
         for new_label, task_label_generator in self._tasks_label_generator.items():
             task_label_generator.generate(tasks, new_label)
@@ -295,11 +288,7 @@ def _prepare_tasks_data(containers: Dict[Task, Container]) -> \
             continue
 
         # Prepare tasks labels based on tasks metadata labels and task id.
-        task_labels = {
-            sanitize_label(label_key): label_value
-            for label_key, label_value
-            in task.labels.items()
-        }
+        tasks_labels = {**task.labels}  # shallow copy of task.labels
         task_labels['task_id'] = task.task_id
 
         # Add additional label with cpu initial assignment, to simplify
