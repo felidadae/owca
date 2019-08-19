@@ -37,7 +37,7 @@ corresponding storage classes.
 
 .. code-block:: python
 
-        class AllocationRunner(MeasurementRunner):
+    class AllocationRunner(MeasurementRunner):
         """Runner is responsible for getting information about tasks from node,
         calling allocate() callback on allocator, performing returning allocations
         and storing all allocation related metrics in allocations_storage.
