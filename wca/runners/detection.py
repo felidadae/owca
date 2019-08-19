@@ -76,7 +76,8 @@ class DetectionRunner(MeasurementRunner):
             (defaults to instructions, cycles, cache-misses, memstalls)
         enable_derived_metrics: enable derived metrics ips, ipc and cache_hit_ratio
             (based on enabled_event names), default to False
-        task_label_generators: component to add new labels to each task based on the task's other labels
+        task_label_generators: component to add new labels to each task based
+            on the task's other labels
     """
 
     def __init__(

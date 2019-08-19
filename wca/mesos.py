@@ -151,7 +151,8 @@ class MesosNode(Node):
                             'Ignoring this task. Reason: %s', task_name, e)
                 continue
 
-            labels = {sanitize_label(label['key']): label['value'] for label in launched_task['labels']['labels']}
+            labels = {sanitize_label(label['key']): label['value']
+                      for label in launched_task['labels']['labels']}
 
             # Extract scalar resources.
             resources = dict()

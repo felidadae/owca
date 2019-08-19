@@ -75,7 +75,6 @@ class TaskLabelRegexGenerator(TaskLabelGenerator):
             log.debug('Label {} for task {} set to None.'.format(target, task_name))
 
 
-
 class MeasurementRunner(Runner):
     """MeasurementRunner run iterations to collect platform, resource, task measurements
     and store them in metrics_storage component.
@@ -94,7 +93,8 @@ class MeasurementRunner(Runner):
             (defaults to instructions, cycles, cache-misses, memstalls)
         enable_derived_metrics: enable derived metrics ips, ipc and cache_hit_ratio
             (based on enabled_event names), default to False
-        task_label_generators: component to add new labels to each task based on the task's other labels
+        task_label_generators: component to add new labels to each task based
+            on the task's other labels
     """
 
     def __init__(
