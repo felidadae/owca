@@ -23,7 +23,7 @@ from wca.mesos import MesosNode
 from wca.platforms import RDTInformation
 from wca.resctrl import ResGroup
 from wca.runners.measurement import MeasurementRunner, _build_tasks_metrics, _prepare_tasks_data, \
-    TaskLabelRegexGenerator
+    TasksLabelRegexGenerator
 from tests.testing import assert_metric, redis_task_with_default_labels, prepare_runner_patches, \
     TASK_CPU_USAGE, WCA_MEMORY_USAGE, metric, DEFAULT_METRIC_VALUE, task
 
@@ -122,9 +122,7 @@ def test_prepare_tasks_data(*mocks):
 
     assert tasks_measurements == {'t1_task_id': {'cpu_usage': 13}}
     assert tasks_resources == {'t1_task_id': {'cpu': 3}}
-    assert tasks_labels == {'t1_task_id': {'initial_task_cpu_assignment': 'unknown',
-                                           'label_key': 'label_value',
-                                           'task_id': 't1_task_id'}}
+    assert tasks_labels == {'t1_task_id': {'label_key': 'label_value'}}
 
 
 @patch('wca.cgroups.Cgroup')
@@ -160,21 +158,21 @@ def test_prepare_task_data_cgroup_not_found(*mocks):
 ))
 def test_task_label_regex_generator(source_val, pattern, repl, expected_val):
     tasks = [task('/t1', labels={'source_key': source_val})]
-    task_label_regex_generator = TaskLabelRegexGenerator(pattern, repl, 'source_key')
-    task_label_regex_generator.generate(tasks, 'target_key')
+    task_label_regex_generator = TasksLabelRegexGenerator(pattern, repl, 'source_key')
+    task_label_regex_generator.generate(tasks[0], 'target_key')
     assert tasks[0].labels['target_key'] == expected_val
 
 
 @patch('wca.runners.measurement.log')
 def test_task_label_regex_generator_error(log_mock):
     tasks = [task('/t1', labels={'source_key': 'source_val'})]
-    task_label_regex_generator = TaskLabelRegexGenerator('__(.*)__', '\\1', 'non_existing_key')
-    task_label_regex_generator.generate(tasks, 'target_key')
+    task_label_regex_generator = TasksLabelRegexGenerator('__(.*)__', '\\1', 'non_existing_key')
+    task_label_regex_generator.generate(tasks[0], 'target_key')
     log_mock.warning.assert_called_once()
 
 
 def test_task_label_regex_generator_overwriting_label():
     tasks = [task('/t1', labels={'source_key': '__val__'})]
-    task_label_regex_generator = TaskLabelRegexGenerator('__(.*)__', '\\1', 'source_key')
-    task_label_regex_generator.generate(tasks, 'source_key')
+    task_label_regex_generator = TasksLabelRegexGenerator('__(.*)__', '\\1', 'source_key')
+    task_label_regex_generator.generate(tasks[0], 'source_key')
     assert tasks[0].labels['source_key'] == '__val__'

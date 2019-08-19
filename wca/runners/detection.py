@@ -76,6 +76,7 @@ class DetectionRunner(MeasurementRunner):
             (defaults to instructions, cycles, cache-misses, memstalls)
         enable_derived_metrics: enable derived metrics ips, ipc and cache_hit_ratio
             (based on enabled_event names), default to False
+        task_label_generators: component to add new labels to each task based on the task's other labels
     """
 
     def __init__(
@@ -89,12 +90,12 @@ class DetectionRunner(MeasurementRunner):
             extra_labels: Dict[Str, Str] = None,
             event_names: Optional[List[str]] = None,
             enable_derived_metrics: bool = False,
-            tasks_label_generator: Dict[str, TaskLabelGenerator] = None,
+            task_label_generators: Dict[str, TaskLabelGenerator] = None,
     ):
         super().__init__(node, metrics_storage,
                          action_delay, rdt_enabled,
                          extra_labels, event_names,
-                         enable_derived_metrics, tasks_label_generator)
+                         enable_derived_metrics, task_label_generators)
         self._detector = detector
 
         # Anomaly.

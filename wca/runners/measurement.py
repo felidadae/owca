@@ -44,8 +44,9 @@ DEFAULT_EVENTS = (MetricName.INSTRUCTIONS, MetricName.CYCLES,
 
 class TaskLabelGenerator:
     @abstractmethod
-    def generate(self, tasks) -> None:
-        """add additional labels to each task based on already existing labels"""
+    def generate(self, task_labels: TaskLabels, target: str) -> None:
+        """add additional label `target` to each task which value
+        is based on previously existing the task's labels"""
         ...
 
 
@@ -53,25 +54,25 @@ class TaskLabelGenerator:
 class TaskLabelRegexGenerator(TaskLabelGenerator):
     pattern: str
     repl: str
-    source: str = 'task_name'  # by default use `task_name`: specially created for that purpose
+    source: str = 'task_name'  # by default use `task_name`
 
-    def generate(self, tasks, target) -> None:
-        for task in tasks:
-            source_val = task.labels.get(self.source, None)
-            if source_val is None:
-                err_msg = "Source label {} not found in task {}".format(self.source, task.name)
-                log.warning(err_msg)
-                continue
-            if target in task.labels:
-                err_msg = "Target label {} already existing in task {}. Skipping.".format(
-                    target, task.name)
-                log.debug(err_msg)
-                continue
-            task.labels[target] = re.sub(self.pattern, self.repl, source_val)
-            if task.labels[target] == "" or task.labels[target] is None:
-                log.debug('Label {} for task {} set to empty string.')
-            if task.labels[target] is None:
-                log.debug('Label {} for task {} set to None.')
+    def generate(self, task_labels: TaskLabels, target: str) -> None:
+        source_val = task_labels.get(self.source, None)
+        if source_val is None:
+            err_msg = "Source label {} not found in task {}".format(self.source, task.name)
+            log.warning(err_msg)
+            continue
+        if target in task_labels:
+            err_msg = "Target label {} already existing in task {}. Skipping.".format(
+                target, task.name)
+            log.debug(err_msg)
+            continue
+        task_labels[target] = re.sub(self.pattern, self.repl, source_val)
+        if task_labels[target] == "" or task.labels[target] is None:
+            log.debug('Label {} for task {} set to empty string.')
+        if task_labels[target] is None:
+            log.debug('Label {} for task {} set to None.')
+
 
 
 class MeasurementRunner(Runner):
@@ -92,8 +93,7 @@ class MeasurementRunner(Runner):
             (defaults to instructions, cycles, cache-misses, memstalls)
         enable_derived_metrics: enable derived metrics ips, ipc and cache_hit_ratio
             (based on enabled_event names), default to False
-        task_label_generator: component to add new labels based on sanitized labels read
-            from orchestrator
+        task_label_generators: component to add new labels to each task based on the task's other labels
     """
 
     def __init__(
@@ -105,7 +105,7 @@ class MeasurementRunner(Runner):
             extra_labels: Dict[Str, Str] = None,
             event_names: List[str] = None,
             enable_derived_metrics: bool = False,
-            tasks_label_generator: Dict[str, TaskLabelGenerator] = None,
+            task_label_generators: Dict[str, TaskLabelGenerator] = None,
             _allocation_configuration: Optional[AllocationConfiguration] = None,
     ):
 
@@ -123,15 +123,15 @@ class MeasurementRunner(Runner):
         self._allocation_configuration = _allocation_configuration
         self._event_names = event_names or DEFAULT_EVENTS
         self._enable_derived_metrics = enable_derived_metrics
-        if tasks_label_generator is None:
-            self._tasks_label_generator = {
+        if task_label_generators is None:
+            self._task_label_generators = {
                 'application':
                     TaskLabelRegexGenerator('$', '', 'task_name'),
                 'application_version_name':
                     TaskLabelRegexGenerator('.*$', '', 'task_name'),
             }
         else:
-            self._tasks_label_generator = tasks_label_generator
+            self._task_labels_generators = task_label_generators
 
     @profiler.profile_duration(name='sleep')
     def _wait(self):
@@ -199,11 +199,8 @@ class MeasurementRunner(Runner):
 
         # Get information about tasks.
         tasks = self._node.get_tasks()
+        self.append_additional_labels_to_tasks()
         log.debug('Tasks detected: %d', len(tasks))
-
-        # Generate new labels.
-        for new_label, task_label_generator in self._tasks_label_generator.items():
-            task_label_generator.generate(tasks, new_label)
 
         # Keep sync of found tasks and internally managed containers.
         containers = self._containers_manager.sync_containers_state(tasks)
@@ -264,6 +261,22 @@ class MeasurementRunner(Runner):
         """
         return True
 
+    def append_additional_labels_to_tasks(self) -> None:
+        for task in self.tasks:
+            # Add labels uniquely identifing a task.
+            task.labels['task_id'] = task.task_id
+            task.labels['task_name'] = task.name
+
+            # Add additional label with cpu initial assignment, to simplify
+            # management of distributed model system for plugin:
+            # https://github.com/intel/platform-resource-manager/tree/master/prm
+            task.labels['initial_task_cpu_assignment'] = \
+                str(task.resources.get('cpus', task.resources.get('cpu_limits', "unknown")))
+
+            # Generate new labels based on formula inputed by a user (using TasksLabelGenerator).
+            for new_label, task_label_generator in self._task_label_generators.items():
+                task_label_generator.generate(task.labels, new_label)
+
 
 @profiler.profile_duration('prepare_tasks_data')
 @trace(log, verbose=False)
@@ -287,15 +300,7 @@ def _prepare_tasks_data(containers: Dict[Task, Container]) -> \
                         '(because {})'.format(container, e))
             continue
 
-        # Prepare tasks labels based on tasks metadata labels and task id.
-        tasks_labels = {**task.labels}  # shallow copy of task.labels
-        task_labels['task_id'] = task.task_id
-
-        # Add additional label with cpu initial assignment, to simplify
-        # management of distributed model system for plugin:
-        # https://github.com/intel/platform-resource-manager/tree/master/prm
-        task_labels['initial_task_cpu_assignment'] = \
-            str(task.resources.get('cpus', task.resources.get('cpu_limits', "unknown")))
+        task_labels = {**task.labels}  # shallow copy of task.labels
 
         # Aggregate over all tasks.
         tasks_labels[task.task_id] = task_labels

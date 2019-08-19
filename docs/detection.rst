@@ -368,15 +368,15 @@ Example message stored in Kafka using Prometheus exposition format:
 
 Generating additional labels for tasks
 --------------------------------------
-An additional helper functionality of WCA agent is to generate new labels for tasks based on other labels.
+An additional helper functionality of WCA agent is to generate new labels for a task based on other tasks's labels.
 That new labels will be attached to tasks metrics and stored.
 
-For that purpose a field **tasks_label_generator** can be defined in classes derived from ``MeasurementsRunner``.
+For that purpose a field **task_label_generators** can be defined in classes derived from ``MeasurementsRunner``.
 It is a dictionary, where each key defines a name of new label, and value for that key 
 consitutes an object of a class derived from ``TaskLabelGenerator``.
 
 In the example below the class used to generate label is ``TaskLabelRegexGenerator``.
-TaskLabelRegexGenerator uses re.sub function to extract needed information from another label value.
+``TaskLabelRegexGenerator`` uses re.sub function to extract needed information from another label value.
 
 In the example below if label ``task_name`` (``source`` parameter) has value ``root/staging/my_important_task`` new labels
 will be attached to the task metrics:
@@ -389,7 +389,7 @@ will be attached to the task metrics:
 
   runner: !DetectionRunner
     ...
-    tasks_label_generator:
+    task_label_generators:
       application: !TaskLabelRegexGenerator
         pattern: '.*\/.*\/(.*)'
         repl: '\1'  # first match group

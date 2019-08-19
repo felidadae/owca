@@ -37,7 +37,7 @@ corresponding storage classes.
 
 .. code-block:: python
 
-    class AllocationRunner(MeasurementRunner):
+        class AllocationRunner(MeasurementRunner):
         """Runner is responsible for getting information about tasks from node,
         calling allocate() callback on allocator, performing returning allocations
         and storing all allocation related metrics in allocations_storage.
@@ -72,6 +72,7 @@ corresponding storage classes.
                 (defaults to instructions, cycles, cache-misses, memstalls)
             enable_derived_metrics: enable derived metrics ips, ipc and cache_hit_ratio
                 (based on enabled_event names), default to False
+            task_label_generators: component to add new labels to each task based on the task's other labels
         """
 
         def __init__(
@@ -90,6 +91,7 @@ corresponding storage classes.
                 remove_all_resctrl_groups: bool = False,
                 event_names: Optional[List[str]] = None,
                 enable_derived_metrics: bool = False,
+                task_label_generators: Dict[str, TaskLabelGenerator] = None,
         ):
         ...
 
