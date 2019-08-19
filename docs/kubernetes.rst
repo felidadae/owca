@@ -1,6 +1,6 @@
-=================
+======================
 Kubernetes integration
-=================
+======================
 
 **This software is pre-production and should not be deployed to production servers.**
 
@@ -14,7 +14,7 @@ The diagram below puts Kubernetes integration in context of a cluster and monito
 .. image:: kubernetes_context.png
 
 Kubernetes supported features
-========================
+=============================
 
 - Monitoring
 - Allocation
@@ -23,13 +23,13 @@ Kubernetes supported features
 :Note: In allocation mode, because of Kubernetes internal reconcillation  loop for resource managment (`--sync-frequency <https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/>`_ defaults to 60s), it is required from Allocator class to repeat desired allocations in every iteration. This will be fixed in future versions.
 
 Kubernetes restrictions
-==================
+=======================
 
 - Kubernetes version >= 1.13.x,
 - cgroup driver: `systemd` or `cgroupfs`.
 
 Possible wca configuration options
-===================================
+==================================
 In wca configuration file one can set below listed parameters.
 Please refer to `example configuration file for kubernetes <../configs/kubernetes/kubernetes_example_allocator.yaml>`_.
 
@@ -108,3 +108,13 @@ Use command below to create DaemonSet:
 .. code-block:: bash
 
     kubectl apply -f manifest/daemonset.yaml
+
+
+
+Task's metrics labels for Kubernetes
+====================================
+Task metrics (e.g. cycles, cache_misses_per_kilo_instructions) have labels which are generated in the manner:
+
+- pod's label sanitized (replaced '.' with '_'),
+- additional label **task_name** which value is created by joining pod namespace and pod name (e.g. 'default/stress_ng'),
+- additional label **task_id** which value is equal to pod identifier.

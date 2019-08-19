@@ -151,22 +151,22 @@ def test_prepare_task_data_cgroup_not_found(*mocks):
     ('example/devel/staging-13/redis.small', r'.*/.*/.*/(.*)\..*', r'\1', 'redis'),
 ))
 def test_task_label_regex_generator(source_val, pattern, repl, expected_val):
-    tasks = [task('/t1', labels={'source_key': source_val})]
+    task1 = task('/t1', labels={'source_key': source_val})
     task_label_regex_generator = TaskLabelRegexGenerator(pattern, repl, 'source_key')
-    task_label_regex_generator.generate(tasks[0].labels, 'target_key')
-    assert tasks[0].labels['target_key'] == expected_val
+    task_label_regex_generator.generate(task1, 'target_key')
+    assert task1.labels['target_key'] == expected_val
 
 
 @patch('wca.runners.measurement.log')
 def test_task_label_regex_generator_error(log_mock):
-    tasks = [task('/t1', labels={'source_key': 'source_val'})]
+    task1 = task('/t1', labels={'source_key': 'source_val'})
     task_label_regex_generator = TaskLabelRegexGenerator('__(.*)__', '\\1', 'non_existing_key')
-    task_label_regex_generator.generate(tasks[0].labels, 'target_key')
+    task_label_regex_generator.generate(task1, 'target_key')
     log_mock.warning.assert_called_once()
 
 
 def test_task_label_regex_generator_overwriting_label():
-    tasks = [task('/t1', labels={'source_key': '__val__'})]
+    task1 = task('/t1', labels={'source_key': '__val__'})
     task_label_regex_generator = TaskLabelRegexGenerator('__(.*)__', '\\1', 'source_key')
-    task_label_regex_generator.generate(tasks[0].labels, 'source_key')
-    assert tasks[0].labels['source_key'] == '__val__'
+    task_label_regex_generator.generate(task1, 'source_key')
+    assert task1.labels['source_key'] == '__val__'
