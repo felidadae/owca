@@ -25,7 +25,7 @@ from wca import security
 from wca.allocators import AllocationConfiguration
 from wca.config import Numeric, Str
 from wca.containers import ContainerManager, Container
-from wca.detectors import TasksMeasurements, TasksResources, TasksLabels
+from wca.detectors import TasksMeasurements, TasksResources, TasksLabels, TaskLabel
 from wca.logger import trace, get_logging_metrics
 from wca.mesos import create_metrics
 from wca.metrics import Metric, MetricType, MetricName, MissingMeasurementException
@@ -44,7 +44,7 @@ DEFAULT_EVENTS = (MetricName.INSTRUCTIONS, MetricName.CYCLES,
 
 class TaskLabelGenerator:
     @abstractmethod
-    def generate(self, task_labels: TaskLabels, target: str) -> None:
+    def generate(self, task_labels: Dict[str, str], target: str) -> None:
         """add additional label `target` to each task which value
         is based on previously existing the task's labels"""
         ...
@@ -56,22 +56,23 @@ class TaskLabelRegexGenerator(TaskLabelGenerator):
     repl: str
     source: str = 'task_name'  # by default use `task_name`
 
-    def generate(self, task_labels: TaskLabels, target: str) -> None:
+    def generate(self, task_labels: TaskLabel, target: str) -> None:
+        task_name = task_labels.get('task_name', None)
         source_val = task_labels.get(self.source, None)
         if source_val is None:
-            err_msg = "Source label {} not found in task {}".format(self.source, task.name)
+            err_msg = "Source label {} not found in task {}".format(self.source, task_name)
             log.warning(err_msg)
-            continue
+            return
         if target in task_labels:
             err_msg = "Target label {} already existing in task {}. Skipping.".format(
-                target, task.name)
+                target, task_name)
             log.debug(err_msg)
-            continue
+            return
         task_labels[target] = re.sub(self.pattern, self.repl, source_val)
-        if task_labels[target] == "" or task.labels[target] is None:
-            log.debug('Label {} for task {} set to empty string.')
+        if task_labels[target] == "" or task_labels[target] is None:
+            log.debug('Label {} for task {} set to empty string.'.format(target, task_name))
         if task_labels[target] is None:
-            log.debug('Label {} for task {} set to None.')
+            log.debug('Label {} for task {} set to None.'.format(target, task_name))
 
 
 
@@ -199,7 +200,7 @@ class MeasurementRunner(Runner):
 
         # Get information about tasks.
         tasks = self._node.get_tasks()
-        self.append_additional_labels_to_tasks()
+        self.append_additional_labels_to_tasks(tasks)
         log.debug('Tasks detected: %d', len(tasks))
 
         # Keep sync of found tasks and internally managed containers.
@@ -261,9 +262,9 @@ class MeasurementRunner(Runner):
         """
         return True
 
-    def append_additional_labels_to_tasks(self) -> None:
-        for task in self.tasks:
-            # Add labels uniquely identifing a task.
+    def append_additional_labels_to_tasks(self, tasks) -> None:
+        for task in tasks:
+            # Add labels uniquely identifying a task.
             task.labels['task_id'] = task.task_id
             task.labels['task_name'] = task.name
 
@@ -273,7 +274,7 @@ class MeasurementRunner(Runner):
             task.labels['initial_task_cpu_assignment'] = \
                 str(task.resources.get('cpus', task.resources.get('cpu_limits', "unknown")))
 
-            # Generate new labels based on formula inputed by a user (using TasksLabelGenerator).
+            # Generate new labels based on formula inputted by a user (using TasksLabelGenerator).
             for new_label, task_label_generator in self._task_label_generators.items():
                 task_label_generator.generate(task.labels, new_label)
 
@@ -300,7 +301,7 @@ def _prepare_tasks_data(containers: Dict[Task, Container]) -> \
                         '(because {})'.format(container, e))
             continue
 
-        task_labels = {**task.labels}  # shallow copy of task.labels
+        task_labels = task.labels.copy()
 
         # Aggregate over all tasks.
         tasks_labels[task.task_id] = task_labels
@@ -339,21 +340,3 @@ def _get_internal_metrics(tasks: List[Task]) -> List[Metric]:
     ]
 
     return metrics
-
-
-MESOS_LABELS_PREFIXES_TO_DROP = ('org.apache.', 'aurora.metadata.')
-
-
-def sanitize_label(label_key):
-    """Removes unwanted prefixes from Aurora & Mesos e.g. 'org.apache.aurora'
-    and replaces invalid characters like "." with underscore.
-    """
-    # Drop unwanted prefixes
-    for unwanted_prefix in MESOS_LABELS_PREFIXES_TO_DROP:
-        if label_key.startswith(unwanted_prefix):
-            label_key = label_key.replace(unwanted_prefix, '')
-
-    # Prometheus labels cannot contain ".".
-    label_key = label_key.replace('.', '_')
-
-    return label_key

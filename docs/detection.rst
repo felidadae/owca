@@ -375,6 +375,13 @@ For that purpose a field **task_label_generators** can be defined in classes der
 It is a dictionary, where each key defines a name of new label, and value for that key 
 consitutes an object of a class derived from ``TaskLabelGenerator``.
 
+``TaskLabelGenerator`` class have access to (bash syntax is used for expressing label value; names of variable corresponds to
+original meaning of that expressions for a given orchestrator):
+
+- sanitized aurora/kubernetes labels
+- **task_name** special label; for kubernetes is equal to **"$pod_namespace/$pod_name"**, for mesos is equal to **"$task_name"**;
+- **task_id** special label; for kubernetes is equal to **"$pod_id"**, for mesos is equal to **"$task_id"**.
+
 In the example below the class used to generate label is ``TaskLabelRegexGenerator``.
 ``TaskLabelRegexGenerator`` uses re.sub function to extract needed information from another label value.
 

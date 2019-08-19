@@ -41,12 +41,11 @@ def ktask(name, qos):
 def test_get_tasks(get_mock):
 
     expected_tasks = [KubernetesTask(
-                          name='test',
+                          name='default/test',
                           task_id='4d6a81df-3448-11e9-8e1d-246e96663c22',
                           qos='burstable',
                           labels={'exampleKey': 'value',
-                                  QOS_LABELNAME: 'burstable',
-                                  'task_name': 'default/test'},
+                                  QOS_LABELNAME: 'burstable'},
                           resources={'requests_cpu': 0.25,
                                      'requests_memory': float(64*1024**2),
                                      'cpus': 0.25,
@@ -59,10 +58,10 @@ def test_get_tasks(get_mock):
                                             'fc034ea8898b19faa0e27c7b2'
                                             '0b8eb254fda361cceacf8e90']),
                       KubernetesTask(
-                          name='test2',
+                          name='default/test2',
                           task_id='567975a0-3448-11e9-8e1d-246e96663c22',
                           qos='besteffort',
-                          labels={QOS_LABELNAME: 'besteffort', 'task_name': 'default/test2'},
+                          labels={QOS_LABELNAME: 'besteffort'},
                           resources={},
                           cgroup_path='/kubepods/besteffort/pod567975a0-3448-'
                                       '11e9-8e1d-246e96663c22',

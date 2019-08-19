@@ -16,8 +16,7 @@
 import pytest
 from itertools import chain
 
-from wca.runners.measurement import sanitize_label
-from wca.mesos import create_metrics
+from wca.mesos import create_metrics, sanitize_label
 from wca.metrics import Metric, merge_measurements, MetricName, DerivedMetricName, METRICS_METADATA
 
 
