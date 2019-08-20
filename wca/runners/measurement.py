@@ -25,7 +25,7 @@ from wca import security
 from wca.allocators import AllocationConfiguration
 from wca.config import Numeric, Str
 from wca.containers import ContainerManager, Container
-from wca.detectors import TasksMeasurements, TasksResources, TasksLabels, TaskLabels
+from wca.detectors import TasksMeasurements, TasksResources, TasksLabels
 from wca.logger import trace, get_logging_metrics
 from wca.mesos import create_metrics
 from wca.metrics import Metric, MetricType, MetricName, MissingMeasurementException
@@ -74,15 +74,6 @@ class TaskLabelRegexGenerator(TaskLabelGenerator):
             log.debug('Label {} for task {} set to empty string.'.format(target, task_name))
         if task.labels[target] is None:
             log.debug('Label {} for task {} set to None.'.format(target, task_name))
-
-
-class TaskLabelInitialCPUResourceGenerator(TaskLabelGenerator):
-    """ Add additional label with cpu initial assignment, to simplify
-        management of distributed model system for plugin:
-        https://github.com/intel/platform-resource-manager/tree/master/prm"""
-    def generate(self, task: Task, target: str) -> None:
-        task.labels[target] = \
-            str(task.resources.get('cpus', task.resources.get('cpu_limits', "unknown")))
 
 
 class MeasurementRunner(Runner):
@@ -140,8 +131,6 @@ class MeasurementRunner(Runner):
                     TaskLabelRegexGenerator('$', '', 'task_name'),
                 'application_version_name':
                     TaskLabelRegexGenerator('.*$', '', 'task_name'),
-                'initial_task_cpu_assignment':
-                    TaskLabelInitialCPUResourceGenerator()
             }
         else:
             self._task_labels_generators = task_label_generators
@@ -279,6 +268,12 @@ class MeasurementRunner(Runner):
             # Add labels uniquely identifying a task.
             task.labels['task_id'] = task.task_id
             task.labels['task_name'] = task.name
+
+            # Add additional label with cpu initial assignment, to simplify
+            # management of distributed model system for plugin:
+            # https://github.com/intel/platform-resource-manager/tree/master/prm
+            task.labels['initial_task_cpu_assignment'] = \
+                str(task.resources.get('cpus', task.resources.get('cpu_limits', "unknown")))
 
             # Generate new labels based on formula inputted by a user (using TasksLabelGenerator).
             for new_label, task_label_generator in self._task_label_generators.items():
