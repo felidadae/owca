@@ -44,7 +44,7 @@ DEFAULT_EVENTS = (MetricName.INSTRUCTIONS, MetricName.CYCLES,
 
 class TaskLabelGenerator:
     @abstractmethod
-    def generate(self, task: Task) -> str:
+    def generate(self, task: Task) -> Optional[str]:
         """Generate new label value based on `task` object
         (e.g. based on other label value or one of task resource).
         `task` input parameter should not be modified."""
@@ -58,22 +58,28 @@ class TaskLabelRegexGenerator(TaskLabelGenerator):
     repl: str
     source: str = 'task_name'  # by default use `task_name`
 
-    def generate(self, task: Task) -> str:
-        task_name = task.name
+    def generate(self, task: Task) -> Optional[str]:
         source_val = task.labels.get(self.source, None)
         if source_val is None:
-            err_msg = "Source label {} not found in task {}".format(self.source, task_name)
+            err_msg = "Source label {} not found in task {}".format(self.source, task.name)
             log.warning(err_msg)
             return None
-        return re.sub(self.pattern, self.repl, source_val)
+        try:
+            return re.sub(self.pattern, self.repl, source_val)
+        except Exception as e:
+            log.warning('Could not match pattern for source label {} in task {}'
+                        .format(self.source, task.name))
+            log.debug('Exception was thrown while matching pattern: {}'.format(str(e)))
+            return None
 
 
-class TaskLabelInitialCPUResourceGenerator(TaskLabelGenerator):
-    """ Generate label value with cpu initial assignment, to simplify
-        management of distributed model system for plugin:
-        https://github.com/intel/platform-resource-manager/tree/master/prm"""
-    def generate(self, task: Task) -> str:
-        return str(task.resources.get('cpus', task.resources.get('cpu_limits', "unknown")))
+@dataclass
+class TaskLabelResourceGenerator(TaskLabelGenerator):
+    """Add label based on initial resource assignment of a task."""
+    resource_name: str
+
+    def generate(self, task: Task) -> Optional[str]:
+        return str(task.resources.get('cpus', "unknown"))
 
 
 class MeasurementRunner(Runner):
@@ -124,6 +130,7 @@ class MeasurementRunner(Runner):
         self._allocation_configuration = _allocation_configuration
         self._event_names = event_names or DEFAULT_EVENTS
         self._enable_derived_metrics = enable_derived_metrics
+
         # Default value for task_labels_generator.
         if task_label_generators is None:
             self._task_label_generators = {
@@ -134,6 +141,14 @@ class MeasurementRunner(Runner):
             }
         else:
             self._task_label_generators = task_label_generators
+        # Generate label value with cpu initial assignment, to simplify
+        #   management of distributed model system for plugin:
+        #   https://github.com/intel/platform-resource-manager/tree/master/prm"""
+        #
+        # To not risk subtle bugs in 1.0.x do not add it to _task_label_generators as default,
+        #   but make it hardcoded here and possible do be removed.
+        self._task_label_generators['initial_task_cpu_assignment'] = \
+            TaskLabelResourceGenerator('cpus')
 
     @profiler.profile_duration(name='sleep')
     def _wait(self):
@@ -271,11 +286,6 @@ def append_additional_labels_to_tasks(task_label_generators: Dict[str, TaskLabel
         task.labels['task_id'] = task.task_id
         task.labels['task_name'] = task.name
 
-        # To not risk subtle bugs in 1.0.x do not add it to _task_label_generators as default,
-        #   but make it hardcoded here. @TODO Should be removed with next major release.
-        task.labels['initial_task_cpu_assignment'] = \
-            TaskLabelInitialCPUResourceGenerator().generate(task)
-
         # Generate new labels based on formula inputted by a user (using TasksLabelGenerator).
         for target, task_label_generator in task_label_generators.items():
             if target in task.labels:
@@ -283,11 +293,14 @@ def append_additional_labels_to_tasks(task_label_generators: Dict[str, TaskLabel
                     target, task.name)
                 log.debug(err_msg)
                 continue
-            task.labels[target] = task_label_generator.generate(task)
-            if task.labels[target] == "":
-                log.debug('Label {} for task {} set to empty string.'.format(target, task.name))
-            if task.labels[target] is None:
-                log.debug('Label {} for task {} set to None.'.format(target, task.name))
+            val = task_label_generator.generate(task)
+            if val is None:
+                log.debug('Label {} for task {} not set, as its value is None.'
+                          .format(target, task.name))
+            else:
+                if val == "":
+                    log.debug('Label {} for task {} set to empty string.'.format(target, task.name))
+                task.labels[target] = val
 
 
 @profiler.profile_duration('prepare_tasks_data')

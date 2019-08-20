@@ -23,7 +23,7 @@ from wca.mesos import MesosNode
 from wca.platforms import RDTInformation
 from wca.resctrl import ResGroup
 from wca.runners.measurement import MeasurementRunner, _build_tasks_metrics, _prepare_tasks_data, \
-    TaskLabelRegexGenerator, append_additional_labels_to_tasks
+    TaskLabelRegexGenerator, TaskLabelGenerator, append_additional_labels_to_tasks
 from tests.testing import assert_metric, redis_task_with_default_labels, prepare_runner_patches, \
     TASK_CPU_USAGE, WCA_MEMORY_USAGE, metric, DEFAULT_METRIC_VALUE, task
 
@@ -157,6 +157,7 @@ def test_prepare_task_data_cgroup_not_found(*mocks):
 @pytest.mark.parametrize('source_val, pattern, repl, expected_val', (
     ('__val__', '__(.*)__', r'\1', 'val'),
     ('example/devel/staging-13/redis.small', r'.*/.*/.*/(.*)\..*', r'\1', 'redis'),
+    ('example/devel/staging-13/redis.small', r'abcdef', r'\1', None),
 ))
 def test_task_label_regex_generator(source_val, pattern, repl, expected_val):
     task1 = task('/t1', labels={'source_key': source_val})
@@ -165,13 +166,17 @@ def test_task_label_regex_generator(source_val, pattern, repl, expected_val):
 
 
 @patch('wca.runners.measurement.log')
-def test_append_additional_labels_to_tasks__non_existing_source(log_mock):
-    """TaskLabelRegexGenerator.source non existing in task.labels. Should log warning."""
+def test_append_additional_labels_to_tasks__generate_returns_None(log_mock):
+    """Generate method for generator returns None."""
+    class TestTaskLabelGenerator(TaskLabelGenerator):
+        def generate(self, task):
+            return None
+
     task1 = task('/t1', labels={'source_key': 'source_val'})
     append_additional_labels_to_tasks(
-        {'target_key': TaskLabelRegexGenerator('__(.*)__', '\\1', 'non_existing_key')},
+        {'target_key': TestTaskLabelGenerator()},
         [task1])
-    log_mock.warning.assert_called_once()
+    log_mock.debug.assert_called_once()
 
 
 @patch('wca.runners.measurement.log')
