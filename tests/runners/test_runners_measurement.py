@@ -157,7 +157,8 @@ def test_prepare_task_data_cgroup_not_found(*mocks):
 @pytest.mark.parametrize('source_val, pattern, repl, expected_val', (
     ('__val__', '__(.*)__', r'\1', 'val'),
     ('example/devel/staging-13/redis.small', r'.*/.*/.*/(.*)\..*', r'\1', 'redis'),
-    ('example/devel/staging-13/redis.small', r'abcdef', r'\1', None),
+    ('example/devel/staging-13/redis.small', r'non_matching_pattern', r'',
+     'example/devel/staging-13/redis.small'),
 ))
 def test_task_label_regex_generator(source_val, pattern, repl, expected_val):
     task1 = task('/t1', labels={'source_key': source_val})

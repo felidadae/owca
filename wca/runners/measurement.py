@@ -58,19 +58,17 @@ class TaskLabelRegexGenerator(TaskLabelGenerator):
     repl: str
     source: str = 'task_name'  # by default use `task_name`
 
+    def __post_init__(self):
+        # Verify whether syntax for pattern and repl is correct.
+        re.sub(self.pattern, self.repl, "")
+
     def generate(self, task: Task) -> Optional[str]:
         source_val = task.labels.get(self.source, None)
         if source_val is None:
             err_msg = "Source label {} not found in task {}".format(self.source, task.name)
             log.warning(err_msg)
             return None
-        try:
-            return re.sub(self.pattern, self.repl, source_val)
-        except Exception as e:
-            log.warning('Could not match pattern for source label {} in task {}'
-                        .format(self.source, task.name))
-            log.debug('Exception was thrown while matching pattern: {}'.format(str(e)))
-            return None
+        return re.sub(self.pattern, self.repl, source_val)
 
 
 @dataclass
