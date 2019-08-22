@@ -158,7 +158,15 @@ class ResGroup:
             os.makedirs(mongroup_fullpath, exist_ok=True)
         except OSError as e:
             if e.errno == errno.ENOSPC:  # "No space left on device"
-                raise Exception("Limit of workloads reached! (Oot of available CLoSes/RMIDs!)")
+                raise Exception("Limit of workloads reached! (Out of available CLoSes/RMIDs!)")
+            if e.errno == errno.EBUSY:  # "Device or resource busy"
+                raise Exception("Out of RMIDs! Too many RMIDs used or in "
+                                "limbo. If you encountered this problem it "
+                                "is probably related to one of known issues "
+                                "mentioned in Skylake processor's errata."
+                                "You could try to increase max "
+                                "threshold occupancy in /sys/fs/resctrl"
+                                "/info/L3_MON/max_threshold_occupancy file.")
             raise
         # ... and write the pids to the mongroup
         log.debug('add_pids: %d pids to %r', len(pids), os.path.join(mongroup_fullpath, 'tasks'))

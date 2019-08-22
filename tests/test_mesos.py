@@ -16,10 +16,12 @@
 from unittest.mock import patch
 
 import pytest
+import requests
 
-from tests.testing import create_json_fixture_mock, create_open_mock
 from wca.config import ValidationError
 from wca.mesos import MesosNode, MesosTask
+from wca.nodes import TaskSynchronizationException
+from tests.testing import create_json_fixture_mock, create_open_mock
 
 
 @patch('requests.post', return_value=create_json_fixture_mock('mesos_get_state', __file__))
@@ -80,3 +82,10 @@ def test_invalid_data_in_response(find_cgroup_mock, json_mock):
         node = MesosNode()
         with pytest.raises(ValidationError):
             node.get_tasks()
+
+
+@patch('requests.post', side_effect=requests.exceptions.ConnectionError())
+def test_get_tasks_synchronization_error(request):
+    node = MesosNode()
+    with pytest.raises(TaskSynchronizationException):
+        node.get_tasks()

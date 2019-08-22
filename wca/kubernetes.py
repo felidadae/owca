@@ -23,7 +23,7 @@ import requests
 from wca import logger
 from wca.config import assure_type, Numeric, Url, Str
 from wca.metrics import MetricName
-from wca.nodes import Node, Task, TaskId
+from wca.nodes import Node, Task, TaskId, TaskSynchronizationException
 from wca.security import SSL
 
 DEFAULT_EVENTS = (MetricName.INSTRUCTIONS, MetricName.CYCLES, MetricName.CACHE_MISSES)
@@ -115,7 +115,10 @@ class KubernetesNode(Node):
 
     def get_tasks(self) -> List[Task]:
         """Returns only running tasks."""
-        kubelet_json_response = self._request_kubelet()
+        try:
+            kubelet_json_response = self._request_kubelet()
+        except requests.exceptions.ConnectionError as e:
+            raise TaskSynchronizationException('%s' % e) from e
 
         tasks = []
         for pod in kubelet_json_response.get('items'):

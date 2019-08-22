@@ -22,7 +22,7 @@ from dataclasses import dataclass
 
 from wca.config import assure_type, Numeric, Url
 from wca.metrics import Measurements, Metric
-from wca.nodes import Node, Task, TaskId
+from wca.nodes import Node, Task, TaskId, TaskSynchronizationException
 from wca.security import SSL
 
 MESOS_TASK_STATE_RUNNING = 'TASK_RUNNING'
@@ -104,18 +104,21 @@ class MesosNode(Node):
         """ only return running tasks """
         full_url = urllib.parse.urljoin(self.mesos_agent_endpoint, self.api_path)
 
-        if self.ssl:
-            r = requests.post(
-                    full_url,
-                    json=dict(type=self.METHOD),
-                    timeout=self.timeout,
-                    verify=self.ssl.server_verify,
-                    cert=self.ssl.get_client_certs())
-        else:
-            r = requests.post(
-                    full_url,
-                    json=dict(type=self.METHOD),
-                    timeout=self.timeout)
+        try:
+            if self.ssl:
+                r = requests.post(
+                        full_url,
+                        json=dict(type=self.METHOD),
+                        timeout=self.timeout,
+                        verify=self.ssl.server_verify,
+                        cert=self.ssl.get_client_certs())
+            else:
+                r = requests.post(
+                        full_url,
+                        json=dict(type=self.METHOD),
+                        timeout=self.timeout)
+        except requests.exceptions.ConnectionError as e:
+            raise TaskSynchronizationException('%s' % e) from e
 
         r.raise_for_status()
         state = r.json()

@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import pytest
+import requests
 from unittest.mock import patch
 
 from wca.config import ValidationError
 from wca.kubernetes import KubernetesNode, KubernetesTask, _calculate_pod_resources, \
     _build_cgroup_path, are_all_tasks_of_single_qos, QOS_LABELNAME
+from wca.nodes import TaskSynchronizationException
 from tests.testing import create_json_fixture_mock
 
 
@@ -163,3 +165,10 @@ def test_find_cgroup_path_pod_cgroupfs(qos, expected_cgroup_path):
 ))
 def test_are_all_tasks_of_single_qos(tasks, expected_result):
     assert are_all_tasks_of_single_qos(tasks) == expected_result
+
+
+@patch('requests.post', side_effect=requests.exceptions.ConnectionError())
+def test_get_tasks_synchronization_error(request):
+    node = KubernetesNode()
+    with pytest.raises(TaskSynchronizationException):
+        node.get_tasks()

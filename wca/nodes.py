@@ -22,6 +22,10 @@ from wca.config import assure_type
 TaskId = str
 
 
+class TaskSynchronizationException(Exception):
+    pass
+
+
 @dataclass
 class Task:
     """Class used for abstracting information received from orchestration

@@ -28,8 +28,9 @@ from wca.containers import ContainerManager, Container
 from wca.detectors import TasksMeasurements, TasksResources, TasksLabels
 from wca.logger import trace, get_logging_metrics
 from wca.mesos import create_metrics
-from wca.metrics import Metric, MetricType, MetricName, MissingMeasurementException
-from wca.nodes import Task
+from wca.metrics import Metric, MetricType, MetricName, \
+    MissingMeasurementException
+from wca.nodes import Task, TaskSynchronizationException
 from wca.profiling import profiler
 from wca.runners import Runner
 from wca.storage import MetricPackage, DEFAULT_STORAGE
@@ -164,11 +165,13 @@ class MeasurementRunner(Runner):
         """Check privileges, RDT availability and prepare internal state.
         Can return error code that should stop Runner.
         """
-        if not security.are_privileges_sufficient(self._rdt_enabled):
-            log.error("Impossible to use perf_event_open/resctrl subsystems. "
-                      "You need to: adjust /proc/sys/kernel/perf_event_paranoid (set to -1); "
-                      "or has CAP_DAC_OVERRIDE and CAP_SETUID capabilities set."
-                      "You can run process as root too.")
+        if not security.are_privileges_sufficient():
+            log.error("Insufficient privileges! "
+                      "Impossible to use perf_event_open/resctrl subsystems. "
+                      "For unprivileged user it is needed to: "
+                      "adjust /proc/sys/kernel/perf_event_paranoid (set to -1), "
+                      "has CAP_DAC_OVERRIDE and CAP_SETUID capabilities and"
+                      "SECBIT_NO_SETUID_FIXUP secure bit set.")
             return 1
 
         # Initialization (auto discovery Intel RDT features).
@@ -213,7 +216,12 @@ class MeasurementRunner(Runner):
         iteration_start = time.time()
 
         # Get information about tasks.
-        tasks = self._node.get_tasks()
+        try:
+            tasks = self._node.get_tasks()
+        except TaskSynchronizationException as e:
+            log.error('Cannot synchronize tasks with node (error=%s) - skip this iteration!', e)
+            self._wait()
+            return
         append_additional_labels_to_tasks(self._task_label_generators, tasks)
         log.debug('Tasks detected: %d', len(tasks))
 
