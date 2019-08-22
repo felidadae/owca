@@ -78,7 +78,7 @@ class TaskLabelResourceGenerator(TaskLabelGenerator):
     resource_name: str
 
     def generate(self, task: Task) -> Optional[str]:
-        return str(task.resources.get('cpus', "unknown"))
+        return str(task.resources.get(self.resource_name, "unknown"))
 
 
 class MeasurementRunner(Runner):
