@@ -28,8 +28,8 @@ def test_privileges_failed_capget(capget, read_paranoid):
 
 
 def no_cap_dac_override_no_cap_setuid(header, data):
+    # For reference please read:
     # https://github.com/python/cpython/blob/v3.6.6/Modules/_ctypes/callproc.c#L521
-    # Do not even ask how I managed to find it ;)
     data._obj.effective = 20  # 20 & 128 = 0, 20 & 2 = 0
     return 0
 

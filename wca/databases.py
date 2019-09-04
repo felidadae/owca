@@ -253,8 +253,7 @@ class EtcdDatabase(Database):
             raise TimeoutOnAllHosts(
                     'EtcdDatabase: Cannot get key "{}": Timeout on all hosts!'.format(key))
 
-        if 'kvs' in response_data:
-            if 'value' in response_data['kvs'][0]:
-                return base64.b64decode(response_data['kvs'][0]['value'])
+        if 'kvs' in response_data and 'value' in response_data['kvs'][0]:
+            return base64.b64decode(response_data['kvs'][0]['value'])
 
         return None

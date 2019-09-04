@@ -357,6 +357,7 @@ def check_resctrl():
     resctrl_tasks = os.path.join(BASE_RESCTRL_PATH, TASKS_FILENAME)
     try:
         with open(resctrl_tasks):
+            # Just check if possible to open a file.
             pass
     except IOError as e:
         log.log(TRACE, 'Error: Failed to open %s: %s', resctrl_tasks, e)

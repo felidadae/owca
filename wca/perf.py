@@ -47,10 +47,6 @@ def _get_cpu_model() -> pc.CPUModel:
             model = (eax >> 4) & 0xF
             family = (eax >> 8) & 0xF
             extended_model = (eax >> 16) & 0xF
-            extended_family = (eax >> 20) & 0xFF
-            display_family = family
-            if family == 0xF:
-                display_family += extended_family
             display_model = model
             if family == 0x6 or family == 0xF:
                 display_model += (extended_model << 4)

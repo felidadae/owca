@@ -21,4 +21,3 @@ class HTTPStorage(Storage):
             )
         except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError):
             log.warning('timeout!')
-            pass

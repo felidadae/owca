@@ -49,8 +49,6 @@ slo = os.getenv('slo', 'inf')  # optional: default to inf
 # Docker image.
 image_tag = os.getenv('image_tag')
 image_name = os.getenv('image_name')
-# print('image_tag:', image_tag)
-# print('image_name:', image_name)
 
 # Resources:
 cpu_list = os.getenv('cpu_list', '0-999')
