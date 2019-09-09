@@ -19,7 +19,7 @@ from common import command, json, pod, \
     wrapper_labels, slo, cpu_list
 
 command.append(
-    "taskset -c {cpu_list} /tensorflow_benchmark_training_wrapper.pex --command '/usr/bin/python3.5"
+    "/usr/taskset -c {cpu_list} /tensorflow_benchmark_training_wrapper.pex --command '/usr/bin/python3.5"
     " -u /root/benchmarks/scripts/tf_cnn_benchmarks/tf_cnn_benchmarks.py "
     "--datasets_use_prefetch=True --batch_group_size=1 --device=cpu "
     "--data_format=NHWC --data_name=cifar10 --batch_size=64 --display_every=1 "

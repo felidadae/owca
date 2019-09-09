@@ -67,7 +67,7 @@ cmd = ("cp /prep_config/cassandra.yaml /etc/cassandra &&"
        "cp /prep_config/cassandra-env.sh /etc/cassandra && "
        "MAX_HEAP_SIZE=\"{}M\" HEAP_NEWSIZE=\"{}M\" "
        "CASSANDRA_CONFIG=\"/etc/cassandra\" "
-       "taskset -c {} /docker-entrypoint.sh".format(
+       "/usr/taskset -c {} /docker-entrypoint.sh".format(
         max_heap_size, heap_newsize, cpu_list))
 command.append(cmd)
 
