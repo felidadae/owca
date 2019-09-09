@@ -35,8 +35,7 @@ jobs = [
         Process(
           name='prep_configs',
           cmdline="""
-            set -x \
-            && sed -i 's/native_transport_port: 9042/native_transport_port: {cassandra_port}/' /etc/cassandra/cassandra.yaml \
+            sed -i 's/native_transport_port: 9042/native_transport_port: {cassandra_port}/' /etc/cassandra/cassandra.yaml \
             && sed -i 's/storage_port: 7000/storage_port: {storage_port}/' /etc/cassandra/cassandra.yaml \
             && sed -i 's/JMX_PORT=\"7199\"/JMX_PORT=\"{jmx_port}\"/' /etc/cassandra/cassandra-env.sh \
             """.format(cassandra_port=cassandra_port, storage_port=storage_port, jmx_port=jmx_port)

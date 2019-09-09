@@ -45,7 +45,6 @@ ycsb_operation_count = os.environ.get('ycsb_operation_count', '2147483647')
 # --------------------------------------------------------------------------------------------------
 
 wait_for_cassandra_cmd = ["sh", "-c", """
-          set -x
           until nc -vz {cassandra_address} {communication_port}; do
             echo "$(date) Waiting for cassandra to initialize itself."
             sleep 3
@@ -61,7 +60,6 @@ wait_for_cassandra_container = {
 initContainers.append(wait_for_cassandra_container)
 
 create_structure_cmd = ["sh", "-c", """
-            set -x
             cqlsh --cqlversion 3.4.4 -e \
                 "create keyspace ycsb WITH REPLICATION = {{
                 'class' : 'SimpleStrategy', 'replication_factor': 1
@@ -85,7 +83,6 @@ create_structure_container = {
 initContainers.append(create_structure_container)
 
 ycsb_cassandra_load_cmd = ["sh", "-c", """
-            set -x
             cd /opt/ycsb
             ./bin/ycsb load cassandra2-cql -s \
                 -P workloads/workloada \
@@ -104,7 +101,6 @@ ycsb_cassandra_load_container = {
 initContainers.append(ycsb_cassandra_load_container)
 
 ycsb_cassandra_run_cmd = """
-            set -x
             cd /opt/ycsb
             ycsb_wrapper.pex \
                 --command \

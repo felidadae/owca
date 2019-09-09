@@ -29,7 +29,6 @@ threads = int(os.environ.get('threads') or 8)
 number_of_rows = 100000
 
 wait_for_cassandra_cmd = ["sh", "-c", """
-          set -x
           until nc -vz {cassandra_address} {communication_port}; do
             echo "$(date) Waiting for cassandra to initialize itself."
             sleep 3

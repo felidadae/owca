@@ -28,8 +28,7 @@ communication_port = os.environ.get('communication_port', 11211)
 
 # Preparing config file.
 cmdline_config = ["sh", "-c",
-                  ("set -x && "
-                   "cd /prep_config && "
+                  ("cd /prep_config && "
                    "cp /etc/redis.conf . && "
                    "sed -i 's/logfile.*/logfile \"\"/' \
                    redis.conf && "

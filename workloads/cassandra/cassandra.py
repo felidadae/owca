@@ -31,7 +31,6 @@ volume = {"name": "shared-data"}
 
 prep_cmd = ["sh", "-c",
             """
-set -x && \
 cd /prep_config && \
 cp /etc/cassandra/cassandra.yaml . && \
 cp /etc/cassandra/cassandra-env.sh .  \

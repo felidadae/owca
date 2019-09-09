@@ -42,7 +42,6 @@ jobs = [
         Process(
           name='wait_for_cassandra',
           cmdline="""
-          set -x
           until nc -vz {cassandra_address} {communication_port}; do
             echo "$(date) Waiting for cassandra to initialize itself."
             sleep 3

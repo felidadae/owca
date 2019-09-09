@@ -57,7 +57,6 @@ jobs = [
         Process(
           name='ycsb_cassandra_wait_for_cassandra',
           cmdline="""
-          set -x
           until nc -vz {cassandra_address} {communication_port}; do
             echo "$(date) Waiting for cassandra to initialize itself."
             sleep 3
@@ -67,7 +66,6 @@ jobs = [
         Process(
           name='ycsb_cassandra_create_structure',
           cmdline="""
-            set -x
             cqlsh --cqlversion 3.4.4 -e \
                 "create keyspace ycsb WITH REPLICATION = {{'class' : 'SimpleStrategy', 'replication_factor': 1 }};" \
                 {cassandra_address} {communication_port} || true
@@ -82,7 +80,6 @@ jobs = [
         Process(
           name='ycsb_cassandra_load',
           cmdline="""
-            set -x
             cd /opt/ycsb
             ./bin/ycsb load cassandra2-cql -s \
                 -P workloads/workloada \
@@ -95,7 +92,6 @@ jobs = [
         Process(
           name='ycsb_cassandra_run',
           cmdline="""
-            set -x
             cd /opt/ycsb
             ycsb_wrapper.pex \
                 --command \
