@@ -31,7 +31,7 @@ max_memory = int(os.environ.get('max_memory') or 1024)
 # ----------------------------------------------------------------------------------------------------
 
 
-cmd = """/usr/taskset -c {cpu_list} twemcache --prealloc --hash-power=20 --max-memory={max_memory} \
+cmd = """/bin/taskset -c {cpu_list} twemcache --prealloc --hash-power=20 --max-memory={max_memory} \
 --port={communication_port} --eviction-strategy=2 --verbosity=4 \
 --threads={worker_threads} --backlog=128 -u twemcache \
 --maximize-core-limit --slab-size=1048576 """.format(

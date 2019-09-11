@@ -58,7 +58,7 @@ initContainers.append(initContainer)
 
 volumeMounts.append(volume_prep_config)
 
-command.append("/usr/taskset -c {} redis-server /prep_config/redis.conf".format(cpu_list))
+command.append("/bin/taskset -c {} redis-server /prep_config/redis.conf".format(cpu_list))
 
 json_format = json.dumps(pod)
 print(json_format)
