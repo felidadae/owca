@@ -94,7 +94,7 @@ injector_cmd = """java -jar {jar} -m txinjector -p {config} -G GRP1 -J JVM_B"""\
     .format(jar=specjbb_jar, config=config_path)
 
 backend_cmd = """
-    /bin/taskset -c {cpu_list} \
+    /usr/bin/taskset -c {cpu_list} \
     java -Xms4g -Xmx4g -Xmn2g -XX:-UseBiasedLocking -XX:+UseParallelOldGC \
     -jar {jar} -m backend -p {config} -G GRP1 -J JVM_A"""\
     .format(cpu_list=cpu_list, jar=specjbb_jar, config=config_path)

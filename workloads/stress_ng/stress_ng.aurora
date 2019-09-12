@@ -27,7 +27,7 @@ stressor = os.environ.get('stressor') or 'stream'
 number_workers = int(os.environ.get('number_workers') or 1)
 #----------------------------------------------------------------------------------------------------
 
-stress_ng_cmd='"while true; do /bin/taskset -c %s stress-ng --%s=%d --timeout=%d --metrics --metrics-brief -Y /dev/stdout; done"'%(
+stress_ng_cmd='"while true; do /usr/bin/taskset -c %s stress-ng --%s=%d --timeout=%d --metrics --metrics-brief -Y /dev/stdout; done"'%(
     cpu_list, stressor, number_workers, timeout
 )
 
