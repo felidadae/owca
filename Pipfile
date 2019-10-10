@@ -4,7 +4,6 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-urllib3 = "==1.25.6"                  # 2019.10.02
 requests = "==2.22.0"                 # 2019.05.16
 "ruamel.yaml" = "==0.16.5"            # 2019.09.18
 colorlog = "==4.0.2"                  # 2018.12.14
