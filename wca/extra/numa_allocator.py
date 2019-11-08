@@ -1,7 +1,7 @@
 import logging
-from typing import List, Dict
-# from pprint import pprint
+import math
 
+from typing import List, Dict
 from dataclasses import dataclass
 
 from wca.allocators import Allocator, TasksAllocations, AllocationType
@@ -70,7 +70,7 @@ class NUMAAllocator(Allocator):
 
         # Current state of the system
         balanced_memory = {x: [] for x in range(platform.numa_nodes)}
-        if migrate_pages:
+        if self.migrate_pages:
             tasks_to_balance = []
             tasks_current_nodes = {}
         for task, memory, preferences in tasks_memory:
@@ -82,9 +82,8 @@ class NUMAAllocator(Allocator):
             tasks_current_nodes[task] = current_node
 
             if self.migrate_pages:
-                if current_node >= 0 and 
-                    preferences[current_node] < self.migrate_pages_min_task_balance):
-                tasks_to_balance.append(task)
+                if current_node >= 0 and preferences[current_node] < self.migrate_pages_min_task_balance:
+                    tasks_to_balance.append(task)
 
         log.log(TRACE, "Current state of the system: %s" % balanced_memory)
         log.log(TRACE, "Current state of the system per node: %s" % {
@@ -109,7 +108,7 @@ class NUMAAllocator(Allocator):
         balance_task_candidate = None
         balance_task_node_candidate = None
 
-        #----------------- begin the loop to find >>balance_task<< -------------------------------
+        # ----------------- begin the loop to find >>balance_task<< -------------------------------
         for task, memory, preferences in tasks_memory:
             log.log(TRACE, "Task %r: Memory: %d Preferences: %s" % (task, memory, preferences))
             current_node = _get_current_node(
@@ -191,11 +190,11 @@ class NUMAAllocator(Allocator):
                 # Validate if we have enough memory to migrate to desired node:
                 if balance_task is not None:
                     if memory >= platform.measurements[MetricName.MEM_NUMA_FREE].get(balance_task_node, 0):
-                        log.debug(" We can't migrate task '%s' to node '%d', because not enough memory on the target. Looking for another candidate" % 
-                                    (balence_task, balance_task_node))
+                        log.debug(" We can't migrate task '%s' to node '%d', because not enough memory on the target. Looking for another candidate" %
+                                  (balance_task, balance_task_node))
                         balance_task, balance_task_node = None, None
 
-        #----------------- end of the loop -------------------------------------------------------
+        # ----------------- end of the loop -------------------------------------------------------
 
         # 3. Perform CPU pinning with optional memory binding and forced migration on >>balance_task<<
 
@@ -243,8 +242,8 @@ class NUMAAllocator(Allocator):
                         v for n, v
                         in tasks_measurements[task][MetricName.MEM_NUMA_STAT_PER_TASK].items()
                         if n != current_node)
-                    log.debug('Task: %s Moving %s MB to node %s task balance = %r', task,
-                              (memory_to_move * 4096) / 1024**2, current_node, task_balance)
+                    log.debug('Task: %s Moving %s MB to node %s', task,
+                              (memory_to_move * 4096) / 1024**2, current_node)
                     allocations[task][AllocationType.MIGRATE_PAGES] = current_node
             else:
                 log.log(TRACE, 'no more tasks to move memory!')
@@ -328,29 +327,32 @@ def _get_most_free_memory_node(memory, node_memory_free):
 def _get_best_memory_node_v2(memory, balanced_memory):
     d = {}
     for node in balanced_memory:
-        d[node] = round(math.log1p((memory / (sum([k[1] for k in balanced_memory[node]]) + memory))*100),0)
+        d[node] = round(math.log1p((memory / (sum([k[1] for k in balanced_memory[node]]) + memory))*100), 0)
     best = sorted(d.items(), reverse=True, key=lambda x: x[1])
     z = best[0][1]
     best_nodes = [x[0] for x in best if x[1] == z]
     return best_nodes
 
+
 def _get_most_free_memory_node_v2(memory, node_memory_free):
     d = {}
     for node in node_memory_free:
-        d[node] = round(math.log1p((memory / node_memory_free[node]) * 100),0)
+        d[node] = round(math.log1p((memory / node_memory_free[node]) * 100), 0)
     free_nodes = sorted(d.items(), key=lambda x: x[1])
     z = free_nodes[0][1]
     best_free_nodes = [x[0] for x in free_nodes if x[1] == z]
     return best_free_nodes
 
+
 def _get_best_memory_node_v3(memory, balanced_memory):
     d = {}
     for node in balanced_memory:
-        d[node] = round(math.log10((sum([k[1] for k in balanced_memory[node]]) + memory)),1)
+        d[node] = round(math.log10((sum([k[1] for k in balanced_memory[node]]) + memory)), 1)
     best = sorted(d.items(), key=lambda x: x[1])
     z = best[0][1]
     best_nodes = {x[0] for x in best if x[1] == z}
     return best_nodes
+
 
 def _get_most_free_memory_node_v3(memory, node_memory_free):
     d = {}
@@ -358,13 +360,14 @@ def _get_most_free_memory_node_v3(memory, node_memory_free):
         if memory >= node_memory_free[node]:
             # if we can't fit into free memory, don't consider that node at all
             continue
-        d[node] = round(math.log10(node_memory_free[node] - memory),1)
+        d[node] = round(math.log10(node_memory_free[node] - memory), 1)
     free_nodes = sorted(d.items(), reverse=True, key=lambda x: x[1])
     best_free_nodes = set()
     if len(free_nodes) > 0:
         z = free_nodes[0][1]
         best_free_nodes = {x[0] for x in free_nodes if x[1] == z}
     return best_free_nodes
+
 
 def _get_most_used_node_v2(preferences):
     d = {}
