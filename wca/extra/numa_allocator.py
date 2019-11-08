@@ -16,8 +16,8 @@ log = logging.getLogger(__name__)
 @dataclass
 class NUMAAllocator(Allocator):
 
-    # preferences_threshold: float = 0.66
-    preferences_threshold: float = 0.0  # always migrate
+    # minimal value of task_balance so the task is not skipped during rebalancing analysis
+    loop_min_task_balance: float = 0.0  # by default turn off, none of tasks are skipped due to this reason
 
     # syscall "migrate pages" per process memory migration
     migrate_pages: bool = True
@@ -157,33 +157,49 @@ class NUMAAllocator(Allocator):
 
             # If not yet task found for balancing.
             if balance_task is None:
-
-                # Give a chance for AutoNUMA to re-balance memory
-                # @TODO without autoname enabled: does it has a meaning?
-                # check whether autonuma is enabled ??
-                if preferences[most_used_node] < self.preferences_threshold:
-                    log.log(TRACE, "   THRESHOLD: not most of the memory balanced, continue")
+                if preferences[most_used_node] < self.loop_min_task_balance:
+                    log.log(TRACE, "   THRESHOLD: skipping due to loop_min_task_balance")
                     continue
 
-                if most_used_node == best_memory_node or most_used_node == most_free_memory_node:
-                    log.log(TRACE, "   OK: found task for balancing: %s", task)
+                if len(most_used_nodes.intersection(best_memory_nodes)) == 1:
+                    log.debug("   OK: found task for best memory node")
+                    balance_task = task
+                    balance_task_node = list(most_used_nodes.intersection(best_memory_nodes))[0]
+                elif len(most_used_nodes.intersection(most_free_memory_nodes)) == 1:
+                    log.debug("   OK: found task for most free memory node")
+                    balance_task = task
+                    balance_task_node = list(most_used_nodes.intersection(most_free_memory_nodes))[0]
+                elif most_used_node in best_memory_nodes or most_used_node in most_free_memory_nodes:
+                    log.debug("   OK: minimized migrations case")
                     balance_task = task
                     balance_task_node = most_used_node
                     # break # commented to give a chance to generate other metrics
-
+                elif len(best_memory_nodes.intersection(most_free_memory_nodes)) == 1:
+                    log.debug("   OK: task not local, but both best available has only one alternative")
+                    balance_task = task
+                    balance_task_node = list(best_memory_nodes.intersection(most_free_memory_nodes))[0]
+                # --- candidate functionality ---
                 elif self.candidate and balance_task_candidate is None:
                     log.log(TRACE, '   CANDIT: not perfect match'
                                    ', but remember as candidate, continue')
                     balance_task_candidate = task
                     balance_task_node_candidate = best_memory_node
+                # --- end of candidate functionality ---
                 else:
-                    log.log(TRACE, "   IGNORE: not perfect match"
-                                   "and candidate set(disabled), continue")
+                    log.debug("   IGNORE: no good decisions can be made now for this task, continue")
+
+                # Validate if we have enough memory to migrate to desired node:
+                if balance_task is not None:
+                    if memory >= platform.measurements[MetricName.MEM_NUMA_FREE].get(balance_task_node, 0):
+                        log.debug(" We can't migrate task '%s' to node '%d', because not enough memory on the target. Looking for another candidate" % 
+                                    (balence_task, balance_task_node))
+                        balance_task, balance_task_node = None, None
+
         #----------------- end of the loop -------------------------------------------------------
 
         # 3. Perform CPU pinning with optional memory binding and forced migration on >>balance_task<<
 
-        # if no balance_task but candidate is set
+        # --- candidate functionality ---
         if balance_task is None and balance_task_candidate is not None:
             log.debug('Task %r: Using candidate rule', balance_task_candidate)
             balance_task = balance_task_candidate
@@ -191,6 +207,7 @@ class NUMAAllocator(Allocator):
 
             balance_task_candidate, balance_task_node_candidate = None, None
             self._candidates_moves += 1
+        # --- end of candidate functionality ---
 
         if balance_task is not None:
             log.debug("Task %r: assiging to node %s." % (balance_task, balance_task_node))
@@ -306,3 +323,54 @@ def _get_most_free_memory_node(memory, node_memory_free):
     # print('free:')
     # pprint(free_nodes)
     return free_nodes[0][0]
+
+
+def _get_best_memory_node_v2(memory, balanced_memory):
+    d = {}
+    for node in balanced_memory:
+        d[node] = round(math.log1p((memory / (sum([k[1] for k in balanced_memory[node]]) + memory))*100),0)
+    best = sorted(d.items(), reverse=True, key=lambda x: x[1])
+    z = best[0][1]
+    best_nodes = [x[0] for x in best if x[1] == z]
+    return best_nodes
+
+def _get_most_free_memory_node_v2(memory, node_memory_free):
+    d = {}
+    for node in node_memory_free:
+        d[node] = round(math.log1p((memory / node_memory_free[node]) * 100),0)
+    free_nodes = sorted(d.items(), key=lambda x: x[1])
+    z = free_nodes[0][1]
+    best_free_nodes = [x[0] for x in free_nodes if x[1] == z]
+    return best_free_nodes
+
+def _get_best_memory_node_v3(memory, balanced_memory):
+    d = {}
+    for node in balanced_memory:
+        d[node] = round(math.log10((sum([k[1] for k in balanced_memory[node]]) + memory)),1)
+    best = sorted(d.items(), key=lambda x: x[1])
+    z = best[0][1]
+    best_nodes = {x[0] for x in best if x[1] == z}
+    return best_nodes
+
+def _get_most_free_memory_node_v3(memory, node_memory_free):
+    d = {}
+    for node in node_memory_free:
+        if memory >= node_memory_free[node]:
+            # if we can't fit into free memory, don't consider that node at all
+            continue
+        d[node] = round(math.log10(node_memory_free[node] - memory),1)
+    free_nodes = sorted(d.items(), reverse=True, key=lambda x: x[1])
+    best_free_nodes = set()
+    if len(free_nodes) > 0:
+        z = free_nodes[0][1]
+        best_free_nodes = {x[0] for x in free_nodes if x[1] == z}
+    return best_free_nodes
+
+def _get_most_used_node_v2(preferences):
+    d = {}
+    for node in preferences:
+        d[node] = round(math.log1p(preferences[node]*1000))
+    nodes = sorted(d.items(), reverse=True, key=lambda x: x[1])
+    z = nodes[0][1]
+    best_nodes = {x[0] for x in nodes if x[1] == z}
+    return best_nodes
