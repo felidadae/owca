@@ -109,16 +109,21 @@ class NUMAAllocator(Allocator):
         balance_task_candidate = None
         balance_task_node_candidate = None
 
+        #----------------- begin the loop to find >>balance_task<< -------------------------------
         for task, memory, preferences in tasks_memory:
             log.log(TRACE, "Task %r: Memory: %d Preferences: %s" % (task, memory, preferences))
             current_node = _get_current_node(
                 decode_listformat(tasks_allocations[task][AllocationType.CPUSET_CPUS]),
                 platform.node_cpus)
+            numa_free_measurements = platform.measurements[MetricName.MEM_NUMA_FREE]
+
             most_used_node = _get_most_used_node(preferences)
+            most_used_nodes = _get_most_used_node_v2(preferences)
             best_memory_node = _get_best_memory_node(memory, balanced_memory)
-            most_free_memory_node = \
-                _get_most_free_memory_node(memory,
-                                           platform.measurements[MetricName.MEM_NUMA_FREE])
+            best_memory_nodes = _get_best_memory_node_v3(memory, balanced_memory)
+            most_free_memory_node = _get_most_free_memory_node(memory, numa_free_measurements)
+            most_free_memory_nodes = _get_most_free_memory_node_v3(memory, numa_free_measurements)
+
             extra_metrics.extend([
                 Metric('numa__task_current_node', value=current_node,
                        labels=tasks_labels[task]),
@@ -133,7 +138,7 @@ class NUMAAllocator(Allocator):
             ])
 
             if current_node >= 0:
-                log.debug("Task %r: already placed on the node %d, taking next",
+                log.debug("Task CPUSET_CPUS %r already pinned to the node %d",
                           task, current_node)
                 continue
 
@@ -150,10 +155,12 @@ class NUMAAllocator(Allocator):
                            " Best free node: %d, Best memory node: %d" %
                            (task, most_used_node, most_free_memory_node, best_memory_node))
 
-            # if not yet task found for balancing
+            # If not yet task found for balancing.
             if balance_task is None:
 
                 # Give a chance for AutoNUMA to re-balance memory
+                # @TODO without autoname enabled: does it has a meaning?
+                # check whether autonuma is enabled ??
                 if preferences[most_used_node] < self.preferences_threshold:
                     log.log(TRACE, "   THRESHOLD: not most of the memory balanced, continue")
                     continue
@@ -172,8 +179,11 @@ class NUMAAllocator(Allocator):
                 else:
                     log.log(TRACE, "   IGNORE: not perfect match"
                                    "and candidate set(disabled), continue")
+        #----------------- end of the loop -------------------------------------------------------
 
-        # 3. Perform CPU pinning with optional memory bindind and forced migration.
+        # 3. Perform CPU pinning with optional memory binding and forced migration on >>balance_task<<
+
+        # if no balance_task but candidate is set
         if balance_task is None and balance_task_candidate is not None:
             log.debug('Task %r: Using candidate rule', balance_task_candidate)
             balance_task = balance_task_candidate
@@ -201,14 +211,15 @@ class NUMAAllocator(Allocator):
             if self.migrate_pages:
                 allocations[balance_task][AllocationType.MIGRATE_PAGES] = balance_task_node
 
-        # 4. Memory migration
-        # If nessesary migrate pages to least used node, for task that are still not there.
-        least_used_node = _get_least_used_node(platform)
-        log.log(TRACE, 'Least used node: %s', least_used_node)
-        log.log(TRACE, 'Tasks to balance: %s', tasks_to_balance)
+        # 4. Memory migration of tasks already pinned.
 
         if self.migrate_pages:
-            for task in tasks_to_balance:
+            # If nessesary migrate pages to least used node, for task that are still not there.
+            least_used_node = _get_least_used_node(platform)
+            log.log(TRACE, 'Least used node: %s', least_used_node)
+            log.log(TRACE, 'Tasks to balance: %s', tasks_to_balance)
+
+            for task in tasks_to_balance:  # already pinned tasks
                 if tasks_current_nodes[task] == least_used_node:
                     current_node = tasks_current_nodes[task]
                     memory_to_move = sum(
