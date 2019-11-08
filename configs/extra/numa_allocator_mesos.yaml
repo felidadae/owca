@@ -1,13 +1,19 @@
 loggers:
   "wca.extra.numa_allocator": "debug"
   "wca.cgroups_allocation": "trace"
-  "wca": "info"
+  "wca": "debug"
 runner: !AllocationRunner
   action_delay: 5
   node: !MesosNode
     mesos_agent_endpoint: 'http://127.0.0.1:5051'
     timeout: 5
   allocator: !NUMAAllocator
+    loop_min_task_balance: 0.0
+    migrate_pages: true
+    cgroups_memory_binding: false
+    cgroups_memory_migrate: false
+    candidate: true
+    dryrun: false
 
   # Disable all measurements based on perf system and resctrl
   enable_perf_uncore: false

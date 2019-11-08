@@ -16,6 +16,12 @@ runner: !AllocationRunner
     - specjbb2015/Group7
     - specjbb2015/Group8
   allocator: !NUMAAllocator
+    dryrun: false
+    migrate_pages: true
+    candidate: true
+    loop_min_task_balance: 0.0
+    cgroups_memory_binding: false
+    cgroups_memory_migrate: false
 
   # Disable all measurements based on perf system and resctrl
   enable_perf_uncore: false

@@ -28,7 +28,10 @@ class NUMAAllocator(Allocator):
     cgroups_memory_migrate: bool = False  # can be used only when cgroups_memory_binding is set to True
 
     # use candidate
-    candidate = True
+    candidate: bool = True
+
+    # dry-run (for comparinson only)
+    dryrun: bool = False
 
     def __post_init__(self):
         self._candidates_moves = 0
@@ -42,7 +45,10 @@ class NUMAAllocator(Allocator):
             tasks_labels: TasksLabels,
             tasks_allocations: TasksAllocations,
     ) -> (TasksAllocations, List[Anomaly], List[Metric]):
-        log.debug('NUMA allocator Pv6 policy here for %s tasks...', len(tasks_measurements))
+        log.debug('NUMAAllocator v7: dryrun=%s cgroups_memory_binding/migrate=%s/%s'
+                  ' migrate_pages=%s candidate=%s tasks=%s', self.dryrun, 
+                  self.cgroups_memory_binding, self.cgroups_memory_migrate, 
+                  self.migrate_pages, self.candidate, len(tasks_labels))
         log.log(TRACE, 'Moves match=%s candidates=%s', self._match_moves, self._candidates_moves)
         log.log(TRACE, 'Tasks resources %r', tasks_resources)
         allocations = {}
@@ -99,6 +105,9 @@ class NUMAAllocator(Allocator):
                        labels=dict(numa_node=str(node)))
             ])
 
+        if self.dryrun:
+            return allocations, [], extra_metrics
+
         # 2. Re-balancing analysis
 
         log.log(TRACE, 'Starting re-balancing analysis')
@@ -107,6 +116,9 @@ class NUMAAllocator(Allocator):
         balance_task_node = None
         balance_task_candidate = None
         balance_task_node_candidate = None
+
+
+
 
         # ----------------- begin the loop to find >>balance_task<< -------------------------------
         for task, memory, preferences in tasks_memory:
