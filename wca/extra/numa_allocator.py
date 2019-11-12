@@ -28,7 +28,7 @@ class NUMAAllocator(Allocator):
     cgroups_memory_migrate: bool = False  # can be used only when cgroups_memory_binding is set to True
 
     # use candidate
-    candidate: bool = True
+    candidate: bool = False
 
     # dry-run (for comparinson only)
     dryrun: bool = False
