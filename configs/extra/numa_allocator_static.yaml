@@ -1,11 +1,12 @@
 loggers:
-  "wca.extra.numa_allocator": "debug"
-  "wca.cgroups_allocation": "trace"
+  "wca.extra.numa_allocator": "trace"
   "wca": "info"
 runner: !AllocationRunner
   action_delay: 5
   node: !StaticNode
     require_pids: true  # This will ignore cgroups without tasks - no more empty measurements.
+    default_resources:
+      mem: 23000000000
     tasks:
     - specjbb2015/Group1
     - specjbb2015/Group2

@@ -215,6 +215,4 @@ def _migrate_pages(task_pids, to_node, number_of_nodes):
             duration = time.time() - start
             log.debug('Moving duration %0.2fs', duration)
         except subprocess.CalledProcessError as e:
-            log.error('cannot migrate pages for pid=%s: %s', pid, e)
-            raise InvalidAllocations(
-                'cannot migrate pages, propably not enough memory on target node')
+            log.warn('cannot migrate pages for pid=%s: %s (ignored)', pid, e)

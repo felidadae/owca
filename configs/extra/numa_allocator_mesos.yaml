@@ -1,7 +1,6 @@
 loggers:
-  "wca.extra.numa_allocator": "debug"
-  "wca.cgroups_allocation": "trace"
-  "wca": "debug"
+  "wca.extra.numa_allocator": "trace"
+  "wca": "info"
 runner: !AllocationRunner
   action_delay: 5
   node: !MesosNode
