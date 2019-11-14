@@ -8,10 +8,16 @@ runner: !AllocationRunner
     timeout: 5
   allocator: !NUMAAllocator
     loop_min_task_balance: 0.0
+    #---
     migrate_pages: true
+    migrate_pages_min_task_balance: 0.95
+    #---
     cgroups_memory_binding: false
     cgroups_memory_migrate: false
+    #---
+    double_match: false
     candidate: true
+    #---
     dryrun: false
 
   # Disable all measurements based on perf system and resctrl
@@ -34,7 +40,7 @@ runner: !AllocationRunner
     aurora_instance: !TaskLabelRegexGenerator
       pattern: '.*-(\d+)-.{36}'
       repl: '\1'  # first match group
-      source: 'task_id' #default
+      source: 'task_id' # default
 
   # Metrics to files
   metrics_storage: !LogStorage

@@ -17,17 +17,23 @@ runner: !AllocationRunner
     - specjbb2015/Group7
     - specjbb2015/Group8
   allocator: !NUMAAllocator
-    dryrun: false
-    migrate_pages: true
-    candidate: true
     loop_min_task_balance: 0.0
+    #---
+    migrate_pages: true
+    migrate_pages_min_task_balance: 0.95
+    #---
     cgroups_memory_binding: false
     cgroups_memory_migrate: false
+    #---
+    double_match: false
+    candidate: true
+    #---
+    dryrun: false
 
   # Disable all measurements based on perf system and resctrl
   enable_perf_uncore: false
   gather_hw_mm_topology: false
-  rdt_enabled: false  
+  rdt_enabled: false
   enable_derived_metrics: false
   wss_reset_interval: 0
   event_names: []  # if uncommented disables metrics from perf event subsystem
