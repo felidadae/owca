@@ -203,15 +203,18 @@ class NUMAAllocator(Allocator):
                         log.debug("   IGNORE: no good decisions can be made now for this task, continue")
                 # --- candidate functionality ---
                 if self.candidate and balance_task_candidate is None:
-                    log.log(TRACE, '   CANDIT: not perfect match'
-                                   ', but remember as candidate, continue')
-                    balance_task_candidate = task
-                    balance_task_node_candidate = best_memory_node
+                    if is_enough_memory_on_target(task, best_memory_node, platform, tasks_measurements, memory):
+                        log.log(TRACE, '   CANDIT: not perfect match'
+                                       ', but remember as candidate, continue')
+                        balance_task_candidate = task
+                        balance_task_node_candidate = best_memory_node
+                    else:
+                        log.log(TRACE, '    CANDIT: ignoring task %s, as not enough memory on the target.' % task)
                 # --- end of candidate functionality ---
 
                 # Validate if we have enough memory to migrate to desired node:
                 if balance_task is not None:
-                    if memory >= platform.measurements[MetricName.MEM_NUMA_FREE].get(balance_task_node, 0):
+                    if is_enough_memory_on_target(task, balance_task_node, platform, tasks_measurements, memory):
                         log.debug(" We can't migrate task '%s' to node '%d', because not enough memory on the target. Looking for another candidate" %
                                   (balance_task, balance_task_node))
                         balance_task, balance_task_node = None, None
@@ -224,6 +227,9 @@ class NUMAAllocator(Allocator):
                 del self._pages_to_move[old_task]
 
         # 3. Perform CPU pinning with optional memory binding and forced migration on >>balance_task<<
+
+        if balance_task is not None:
+            self._match_moves += 1
 
         # --- candidate functionality ---
         if balance_task is None and balance_task_candidate is not None:
@@ -241,8 +247,6 @@ class NUMAAllocator(Allocator):
                 AllocationType.CPUSET_CPUS: encode_listformat(
                     platform.node_cpus[balance_task_node]),
             }
-            self._match_moves += 1
-
             if self.cgroups_memory_binding:
                 allocations[balance_task][AllocationType.CPUSET_MEMS] = encode_listformat({balance_task_node})
 
@@ -274,6 +278,8 @@ class NUMAAllocator(Allocator):
                     allocations[task][AllocationType.MIGRATE_PAGES] = current_node
             else:
                 log.log(TRACE, 'no more tasks to move memory!')
+
+        # 5. Just add metrics for pages migrated 
 
         for task, page_to_move in self._pages_to_move.items():
             extra_metrics.append(
@@ -432,3 +438,10 @@ def _get_most_used_node_v2(preferences):
     z = nodes[0][1]
     best_nodes = {x[0] for x in nodes if x[1] == z}
     return best_nodes
+
+
+def is_enough_memory_on_target(task, target_node, platform, tasks_measurements, task_max_memory):
+    """assuming that task_max_memory is a real limit"""
+    max_memory_to_move = task_max_memory - tasks_measurements[task][MetricName.MEM_NUMA_STAT_PER_TASK][target_node]
+    return max_memory_to_move < platform.measurements[MetricName.MEM_NUMA_FREE].get(target_node, 0)
+

@@ -20,17 +20,17 @@ def prepare_input(tasks, numa_nodes):
 
     cp_memory_per_node_percentage = 0.04  #proportional t
 
-    pprint(tasks)
+    #pprint(tasks)
 
     MetricName.MEM_NUMA_STAT_PER_TASK
 
     tasks_measurements = {task_name: {MetricName.MEM_NUMA_STAT_PER_TASK: {numa_id: int(v*node_size_pages) for numa_id,v in numa_memory.items()}} 
                           for task_name, numa_memory in tasks.items()}
-    pprint(tasks_measurements)
+    #pprint(tasks_measurements)
     tasks_resources = {task_name: {'mem': int(sum(numa_memory.values())* node_size) } for task_name, numa_memory in tasks.items()}
-    pprint(tasks_resources)
+    #pprint(tasks_resources)
     tasks_labels = {task_name: {'uid': task_name} for task_name in tasks}
-    pprint(tasks_labels)
+    # pprint(tasks_labels)
 
     def node_cpus(numa_nodes):
         r = {}
@@ -47,7 +47,7 @@ def prepare_input(tasks, numa_nodes):
         numa_nodes=numa_nodes,
         cpu_codename=None,
     )
-    pprint(platform_mock.topology)
+    #pprint(platform_mock.topology)
 
     def empty_measurements():
         return {v: {} for v in range(numa_nodes)}
@@ -56,7 +56,7 @@ def prepare_input(tasks, numa_nodes):
     for numa_node in range(numa_nodes):
         platform_mock.measurements[MetricName.MEM_NUMA_FREE][numa_node] = \
             (1.0-cp_memory_per_node_percentage-sum( [memory.get(numa_node, 0) for memory in tasks.values()] ))
-    pprint(platform_mock.measurements)
+    #pprint(platform_mock.measurements)
 
     for numa_node in range(numa_nodes):
         platform_mock.measurements[MetricName.MEM_NUMA_FREE][numa_node] = \
@@ -64,14 +64,14 @@ def prepare_input(tasks, numa_nodes):
         platform_mock.measurements[MetricName.MEM_NUMA_USED][numa_node] = \
             node_size - platform_mock.measurements[MetricName.MEM_NUMA_FREE][numa_node]
 
-    pprint(platform_mock.measurements)
+    #pprint(platform_mock.measurements)
 
     tasks_allocations = {task_name: {AllocationType.CPUSET_CPUS: ','.join(map(str,platform_mock.node_cpus[list(memory.keys())[0]]))} for task_name, memory in tasks.items() if len(memory.keys()) == 1 }
-    pprint(tasks_allocations)
+    #pprint(tasks_allocations)
 
     tasks_allocations = {task_name: {AllocationType.CPUSET_CPUS: ','.join(map(str, range(numa_nodes*node_cpu)))} 
                          if task_name not in tasks_allocations else tasks_allocations[task_name] for task_name in tasks}
-    pprint(tasks_allocations)
+    #pprint(tasks_allocations)
 
     return platform_mock, tasks_measurements, tasks_resources, tasks_labels, tasks_allocations
 
