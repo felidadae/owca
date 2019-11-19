@@ -76,19 +76,19 @@ def prepare_input(tasks, numa_nodes):
     return platform_mock, tasks_measurements, tasks_resources, tasks_labels, tasks_allocations
 
 @pytest.mark.parametrize('tasks, moves', [
-    # # empty
+    # empty
     (
         {},
         {}
     ),
 
-    # # t1 pinned to 0, t2 should be pinned to 1
+    # t1 pinned to 0, t2 should be pinned to 1
     (
         {'t1': {0:0.3}, 't2': {0:0.1, 1:0.1}},
         {'t2': 1}
     ),
 
-    # # t3 pinned to 1, t2 (as a bigger task) should be pinned to 0
+    # t3 pinned to 1, t2 (as a bigger task) should be pinned to 0
     (
         {'t1': {0: 0.1, 1: 0.2}, 
          't2': {0: 0.4, 1: 0.0},
