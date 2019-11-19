@@ -95,6 +95,9 @@ class NUMAAllocator(Allocator):
                 task, memory, preferences, current_node))
             tasks_current_nodes[task] = current_node
 
+            if current_node >= 0:
+                balanced_memory[current_node].append((task, memory))
+
             if self.migrate_pages:
                 if current_node >= 0 and preferences[current_node] < self.migrate_pages_min_task_balance:
                     tasks_to_balance.append(task)
