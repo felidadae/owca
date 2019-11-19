@@ -42,6 +42,7 @@ class NUMAAllocator(Allocator):
     def __post_init__(self):
         self._candidates_moves = 0
         self._match_moves = 0
+        self._pages_to_move = {}
 
     def allocate(
             self,
@@ -152,6 +153,7 @@ class NUMAAllocator(Allocator):
                        labels=tasks_labels[task])
             ])
 
+            self._pages_to_move.setdefault(task, 0)
             if current_node >= 0:
                 log.debug("Task CPUSET_CPUS %r already pinned to the node %d",
                           task, current_node)
@@ -210,8 +212,13 @@ class NUMAAllocator(Allocator):
                         log.debug(" We can't migrate task '%s' to node '%d', because not enough memory on the target. Looking for another candidate" %
                                   (balance_task, balance_task_node))
                         balance_task, balance_task_node = None, None
-
         # ----------------- end of the loop -------------------------------------------------------
+
+        # Do not send metrics of not existing tasks.
+        old_tasks = [task for task in self._pages_to_move if task not in tasks_measurements]
+        for old_task in old_tasks:
+            if old_task in self._pages_to_move:
+                del self._pages_to_move[old_task]
 
         # 3. Perform CPU pinning with optional memory binding and forced migration on >>balance_task<<
 
@@ -242,6 +249,9 @@ class NUMAAllocator(Allocator):
                     allocations[balance_task][AllocationType.CPUSET_MEM_MIGRATE] = 1
 
             if self.migrate_pages:
+                self._pages_to_move[balance_task] += get_pages_to_move(
+                    balance_task, tasks_measurements, balance_task_node, 'assignment')
+                allocations.setdefault(balance_task, {})
                 allocations[balance_task][AllocationType.MIGRATE_PAGES] = balance_task_node
 
         # 4. Memory migration of tasks already pinned.
@@ -255,17 +265,36 @@ class NUMAAllocator(Allocator):
             for task in tasks_to_balance:  # already pinned tasks
                 if tasks_current_nodes[task] == least_used_node:
                     current_node = tasks_current_nodes[task]
-                    memory_to_move = sum(
-                        v for n, v
-                        in tasks_measurements[task][MetricName.MEM_NUMA_STAT_PER_TASK].items()
-                        if n != current_node)
-                    log.debug('Task: %s Moving %s MB to node %s', task,
-                              (memory_to_move * 4096) / 1024**2, current_node)
+                    self._pages_to_move[task] += get_pages_to_move(task, tasks_measurements,
+                                                                   current_node, 'unbalanced')
+                    allocations.setdefault(task, {})
                     allocations[task][AllocationType.MIGRATE_PAGES] = current_node
             else:
                 log.log(TRACE, 'no more tasks to move memory!')
 
+        for task, page_to_move in self._pages_to_move.items():
+            extra_metrics.append(
+                Metric('numa__task_pages_to_move', value=page_to_move,
+                       labels=tasks_labels[task])
+            )
+        total_pages_to_move = sum(p for p in self._pages_to_move.values())
+        extra_metrics.append(
+            Metric('numa__total_pages_to_move', value=total_pages_to_move)
+        )
+        log.log(TRACE, 'Pages to move: %r', self._pages_to_move)
+
+        log.log(TRACE, 'Allocations: %r', allocations)
         return allocations, [], extra_metrics
+
+
+def get_pages_to_move(task, tasks_measurements, target_node, reason):
+    pages_to_move = sum(
+        v for node, v
+        in tasks_measurements[task][MetricName.MEM_NUMA_STAT_PER_TASK].items()
+        if node != target_node)
+    log.debug('Task: %s Moving %s MB to node %s reason %s', task,
+              (pages_to_move * 4096) / 1024**2, target_node, reason)
+    return pages_to_move
 
 
 def _platform_total_memory(platform):
