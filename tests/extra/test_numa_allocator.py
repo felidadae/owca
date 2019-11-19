@@ -77,24 +77,24 @@ def prepare_input(tasks, numa_nodes):
 
 @pytest.mark.parametrize('tasks, moves', [
     # # empty
-    # (
-    #     {},
-    #     {}
-    # ),
+    (
+        {},
+        {}
+    ),
 
     # # t1 pinned to 0, t2 should be pinned to 1
-    # (
-    #     {'t1': {0:0.3}, 't2': {0:0.1, 1:0.1}},
-    #     {'t2': 1}
-    # ),
+    (
+        {'t1': {0:0.3}, 't2': {0:0.1, 1:0.1}},
+        {'t2': 1}
+    ),
 
     # # t3 pinned to 1, t2 (as a bigger task) should be pinned to 0
-    # (
-    #     {'t1': {0: 0.1, 1: 0.2}, 
-    #      't2': {0: 0.4, 1: 0.0},
-    #      't3': {1: 0.5}},
-    #     {'t2': 0}
-    # ),
+    (
+        {'t1': {0: 0.1, 1: 0.2}, 
+         't2': {0: 0.4, 1: 0.0},
+         't3': {1: 0.5}},
+        {'t2': 0}
+    ),
 
     # not enough space for t3, t1 and t2 pinned
     (
