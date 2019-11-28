@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import logging
 import math
 import re
-from typing import List, Dict
+from typing import List, Dict, Set
 
 from wca.allocators import Allocator, TasksAllocations, AllocationType
 from wca.detectors import TasksMeasurements, TasksResources, TasksLabels, Anomaly
@@ -15,6 +15,9 @@ GB = 1024 ** 3
 MB = 1024 ** 2
 PAGE_SIZE=4096
 TASK_NAME_REGEX = r'.*specjbb2-(...-\d+)-'
+
+NumaNodeId = int
+Preferences = Dict[NumaNodeId, float]
 
 
 def parse_task_name(task_name):
@@ -100,7 +103,7 @@ class NUMAAllocator(Allocator):
                 (task,
                  _get_task_memory_limit(tasks_measurements[task], total_memory,
                                         task, tasks_resources[task]),
-                 _get_numa_node_preferences(tasks_measurements[task], platform)))
+                 _get_numa_node_preferences(tasks_measurements[task], platform.numa_nodes)))
         tasks_memory = sorted(tasks_memory, reverse=True, key=lambda x: x[1])
 
         # Current state of the system
@@ -230,7 +233,7 @@ class NUMAAllocator(Allocator):
                         log.debug("\tIGNORE: no good decisions can be made now for this task, continue")
                 # --- candidate functionality ---
                 if self.candidate and balance_task_candidate is None:
-                    if self.free_space_check and not is_enough_memory_on_target(task, best_memory_node, platform,
+                    if self.free_space_check and not _is_enough_memory_on_target(task, best_memory_node, platform,
                                                                                 tasks_measurements, memory):
                         log.log(TRACE, '\tCANDIT - IGNORE CHOOSEN: not enough free space on target node %s.', balance_task_node_candidate)
                     else:
@@ -241,7 +244,7 @@ class NUMAAllocator(Allocator):
 
                 # Validate if we have enough memory to migrate to desired node.
                 if balance_task is not None:
-                    if self.free_space_check and not is_enough_memory_on_target(task, balance_task_node,
+                    if self.free_space_check and not _is_enough_memory_on_target(task, balance_task_node,
                                                                                    platform, tasks_measurements,
                                                                                    memory):
                         log.debug("\tIGNORE CHOOSEN: not enough free space on target node %s", balance_task_node)
@@ -341,7 +344,7 @@ def _platform_total_memory(platform):
            sum(platform.measurements[MetricName.MEM_NUMA_USED].values())
 
 
-def _get_task_memory_limit(task_measurements, total, task, task_resources):
+def _get_task_memory_limit(task_measurements, total_memory, task, task_resources):
     """Returns detected maximum memory for the task."""
     if 'mem' in task_resources:
         mems = task_resources['mem']
@@ -356,7 +359,7 @@ def _get_task_memory_limit(task_measurements, total, task, task_resources):
     for limit in limits_order:
         if limit not in task_measurements:
             continue
-        if task_measurements[limit] > total:
+        if task_measurements[limit] > total_memory:
             continue
         log.log(TRACE, 'Taken memory limit for task %s from cgroups limit metric %s %d[bytes]', task, limit,
                 task_measurements[limit])
@@ -364,99 +367,19 @@ def _get_task_memory_limit(task_measurements, total, task, task_resources):
     return 0
 
 
-def _get_numa_node_preferences(task_measurements, platform: Platform) -> Dict[int, float]:
-    ret = {node_id: 0 for node_id in range(0, platform.numa_nodes)}
+def _get_numa_node_preferences(task_measurements, numa_nodes: int) -> Dict[int, float]:
+    ret = {node_id: 0 for node_id in range(0, numa_nodes)}
     if MetricName.MEM_NUMA_STAT_PER_TASK in task_measurements:
         metrics_val_sum = sum(task_measurements[MetricName.MEM_NUMA_STAT_PER_TASK].values())
         for node_id, metric_val in task_measurements[MetricName.MEM_NUMA_STAT_PER_TASK].items():
             ret[int(node_id)] = round(metric_val / max(1, metrics_val_sum), 4)
     else:
-        log.warning('{} metric not available'.format(MetricName.MEM_NUMA_STAT_PER_TASK))
+        log.warning('{} metric not available, crucial for numa_allocator!'.format(MetricName.MEM_NUMA_STAT_PER_TASK))
     return ret
 
 
-def _get_most_used_node(preferences):
+def _get_most_used_node(preferences: Preferences):
     return sorted(preferences.items(), reverse=True, key=lambda x: x[1])[0][0]
-
-
-def _get_least_used_node(platform):
-    return sorted(platform.measurements[MetricName.MEM_NUMA_FREE].items(),
-                  reverse=True,
-                  key=lambda x: x[1])[0][0]
-
-
-def _get_current_node(cpus, nodes):
-    for node in nodes:
-        if nodes[node] == cpus:
-            return node
-    return -1
-
-
-def _get_best_memory_node(memory, balanced_memory):
-    """for equal task memory, choose node with less allocated memory by WCA"""
-    d = {}
-    for node in balanced_memory:
-        d[node] = round(memory / (sum([k[1] for k in balanced_memory[node]]) + memory), 4)
-    best = sorted(d.items(), reverse=True, key=lambda x: x[1])
-    # print('best:')
-    # pprint(best)
-    return best[0][0]
-
-
-def _get_most_free_memory_node(memory, node_memory_free):
-    d = {}
-    for node in node_memory_free:
-        d[node] = round(memory / node_memory_free[node], 4)
-    # pprint(d)
-    free_nodes = sorted(d.items(), key=lambda x: x[1])
-    # print('free:')
-    # pprint(free_nodes)
-    return free_nodes[0][0]
-
-
-def _get_best_memory_node_v2(memory, balanced_memory):
-    d = {}
-    for node in balanced_memory:
-        d[node] = round(math.log1p((memory / (sum([k[1] for k in balanced_memory[node]]) + memory))*100), 0)
-    best = sorted(d.items(), reverse=True, key=lambda x: x[1])
-    z = best[0][1]
-    best_nodes = [x[0] for x in best if x[1] == z]
-    return best_nodes
-
-
-def _get_most_free_memory_node_v2(memory, node_memory_free):
-    d = {}
-    for node in node_memory_free:
-        d[node] = round(math.log1p((memory / node_memory_free[node]) * 100), 0)
-    free_nodes = sorted(d.items(), key=lambda x: x[1])
-    z = free_nodes[0][1]
-    best_free_nodes = [x[0] for x in free_nodes if x[1] == z]
-    return best_free_nodes
-
-
-def _get_best_memory_node_v3(memory, balanced_memory):
-    d = {}
-    for node in balanced_memory:
-        d[node] = round(math.log10((sum([k[1] for k in balanced_memory[node]]) + memory)), 1)
-    best = sorted(d.items(), key=lambda x: x[1])
-    z = best[0][1]
-    best_nodes = {x[0] for x in best if x[1] == z}
-    return best_nodes
-
-
-def _get_most_free_memory_node_v3(memory, node_memory_free):
-    d = {}
-    for node in node_memory_free:
-        if memory >= node_memory_free[node]:
-            # if we can't fit into free memory, don't consider that node at all
-            continue
-        d[node] = round(math.log10(node_memory_free[node] - memory), 1)
-    free_nodes = sorted(d.items(), reverse=True, key=lambda x: x[1])
-    best_free_nodes = set()
-    if len(free_nodes) > 0:
-        z = free_nodes[0][1]
-        best_free_nodes = {x[0] for x in free_nodes if x[1] == z}
-    return best_free_nodes
 
 
 def _get_most_used_node_v2(preferences):
@@ -469,7 +392,84 @@ def _get_most_used_node_v2(preferences):
     return best_nodes
 
 
-def is_enough_memory_on_target(task, target_node, platform, tasks_measurements, task_max_memory):
+def _get_least_used_node(platform):
+    return sorted(platform.measurements[MetricName.MEM_NUMA_FREE].items(),
+                  reverse=True,
+                  key=lambda x: x[1])[0][0]
+
+
+def _get_current_node(cpus_assigned: Set[int], node_cpus: Dict[int, Set[int]]):
+    for node in node_cpus:
+        if node_cpus[node] == cpus_assigned:
+            return node
+    return -1
+
+
+def _get_best_memory_node(memory, balanced_memory):
+    """memory -- memory limit"""
+    log.debug("Started _get_best_memory_node")
+    log.debug("memory=%s", memory)
+    log.debug("balanced_memory=%s", balanced_memory)
+    nodes_scores = {}
+    for node in balanced_memory:
+        nodes_scores[node] = round(memory / (sum([k[1] for k in balanced_memory[node]]) + memory), 4)
+    return sorted(nodes_scores.items(), reverse=True, key=lambda x: x[1])[0][0]
+
+
+def _get_best_memory_node_v2(memory, balanced_memory):
+    d = {}
+    for node in balanced_memory:
+        d[node] = round(math.log1p((memory / (sum([k[1] for k in balanced_memory[node]]) + memory))*100), 0)
+    best = sorted(d.items(), reverse=True, key=lambda x: x[1])
+    z = best[0][1]
+    best_nodes = [x[0] for x in best if x[1] == z]
+    return best_nodes
+
+
+def _get_best_memory_node_v3(memory, balanced_memory):
+    d = {}
+    for node in balanced_memory:
+        d[node] = round(math.log10((sum([k[1] for k in balanced_memory[node]]) + memory)), 1)
+    best = sorted(d.items(), key=lambda x: x[1])
+    z = best[0][1]
+    best_nodes = {x[0] for x in best if x[1] == z}
+    return best_nodes
+
+
+def _get_most_free_memory_node(memory, node_memory_free):
+    d = {}
+    for node in node_memory_free:
+        d[node] = round(memory / node_memory_free[node], 4)
+    return sorted(d.items(), key=lambda x: x[1])[0][0]
+
+
+def _get_most_free_memory_node_v2(memory, node_memory_free):
+    d = {}
+    for node in node_memory_free:
+        d[node] = round(math.log1p((memory / node_memory_free[node]) * 100), 0)
+    free_nodes = sorted(d.items(), key=lambda x: x[1])
+    z = free_nodes[0][1]
+    best_free_nodes = [x[0] for x in free_nodes if x[1] == z]
+    return best_free_nodes
+
+
+def _get_most_free_memory_node_v3(memory, node_memory_free):
+    d = {}
+    for node in node_memory_free:
+        if memory >= node_memory_free[node]:
+            # if we can't fit into free memory, don't consider that node at all
+            continue
+        d[node] = round(math.log10(node_memory_free[node] - memory), 1)
+    print(d)
+    free_nodes = sorted(d.items(), reverse=True, key=lambda x: x[1])
+    best_free_nodes = set()
+    if len(free_nodes) > 0:
+        z = free_nodes[0][1]
+        best_free_nodes = {x[0] for x in free_nodes if x[1] == z}
+    return best_free_nodes
+
+
+def _is_enough_memory_on_target(task, target_node, platform, tasks_measurements, task_max_memory):
     """assuming that task_max_memory is a real limit"""
     max_memory_to_move = task_max_memory - pages_to_bytes(tasks_measurements[task][MetricName.MEM_NUMA_STAT_PER_TASK][str(target_node)])
     platform_free_memory = platform.measurements[MetricName.MEM_NUMA_FREE][target_node]
