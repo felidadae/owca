@@ -416,16 +416,6 @@ def _get_best_memory_node(memory, balanced_memory):
     return sorted(nodes_scores.items(), reverse=True, key=lambda x: x[1])[0][0]
 
 
-def _get_best_memory_node_v2(memory, balanced_memory):
-    d = {}
-    for node in balanced_memory:
-        d[node] = round(math.log1p((memory / (sum([k[1] for k in balanced_memory[node]]) + memory))*100), 0)
-    best = sorted(d.items(), reverse=True, key=lambda x: x[1])
-    z = best[0][1]
-    best_nodes = [x[0] for x in best if x[1] == z]
-    return best_nodes
-
-
 def _get_best_memory_node_v3(memory, balanced_memory):
     d = {}
     for node in balanced_memory:
@@ -441,16 +431,6 @@ def _get_most_free_memory_node(memory, node_memory_free):
     for node in node_memory_free:
         d[node] = round(memory / node_memory_free[node], 4)
     return sorted(d.items(), key=lambda x: x[1])[0][0]
-
-
-def _get_most_free_memory_node_v2(memory, node_memory_free):
-    d = {}
-    for node in node_memory_free:
-        d[node] = round(math.log1p((memory / node_memory_free[node]) * 100), 0)
-    free_nodes = sorted(d.items(), key=lambda x: x[1])
-    z = free_nodes[0][1]
-    best_free_nodes = [x[0] for x in free_nodes if x[1] == z]
-    return best_free_nodes
 
 
 def _get_most_free_memory_node_v3(memory, node_memory_free):
