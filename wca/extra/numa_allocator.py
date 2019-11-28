@@ -1,8 +1,8 @@
+from dataclasses import dataclass
 import logging
 import math
-
+import re
 from typing import List, Dict
-from dataclasses import dataclass
 
 from wca.allocators import Allocator, TasksAllocations, AllocationType
 from wca.detectors import TasksMeasurements, TasksResources, TasksLabels, Anomaly
@@ -11,6 +11,23 @@ from wca.logger import TRACE
 from wca.platforms import Platform, encode_listformat, decode_listformat
 
 log = logging.getLogger(__name__)
+GB = 1024 ** 3
+MB = 1024 ** 2
+PAGE_SIZE=4096
+TASK_NAME_REGEX = r'.*specjbb2-(...-\d+)-'
+
+
+def parse_task_name(task_name):
+    """Useful for debugging to shorten name of tasks."""
+    s = re.search(TASK_NAME_REGEX, task_name)
+    if s:
+        return s.group(1)
+    # could not match regex
+    return task_name
+
+
+def pages_to_bytes(pages):
+    return PAGE_SIZE * pages
 
 
 @dataclass
@@ -39,6 +56,9 @@ class NUMAAllocator(Allocator):
     # dry-run (for comparinson only)
     dryrun: bool = False
 
+    # If True, then do not migrate if not enough space on target numa node.
+    free_space_check: bool = False
+
     def __post_init__(self):
         self._candidates_moves = 0
         self._match_moves = 0
@@ -52,6 +72,7 @@ class NUMAAllocator(Allocator):
             tasks_labels: TasksLabels,
             tasks_allocations: TasksAllocations,
     ) -> (TasksAllocations, List[Anomaly], List[Metric]):
+        log.debug('')
         log.debug('NUMAAllocator v7: dryrun=%s cgroups_memory_binding/migrate=%s/%s'
                   ' migrate_pages=%s double_match/candidate=%s/%s tasks=%s', self.dryrun,
                   self.cgroups_memory_binding, self.cgroups_memory_migrate,
@@ -87,12 +108,14 @@ class NUMAAllocator(Allocator):
         if self.migrate_pages:
             tasks_to_balance = []
             tasks_current_nodes = {}
+
+        log.log(TRACE, "Printing tasks memory_limit, preferences, current_node_assignment")
         for task, memory, preferences in tasks_memory:
             current_node = _get_current_node(
                 decode_listformat(tasks_allocations[task][AllocationType.CPUSET_CPUS]),
                 platform.node_cpus)
-            log.log(TRACE, "Task: %s Memory: %d Preferences: %s, Current node: %d" % (
-                task, memory, preferences, current_node))
+            log.log(TRACE, "\ttask %s; memory_limit=%d[bytes] preferences=%s current_node_assignemnt=%d",
+                task, memory, preferences, current_node)
             tasks_current_nodes[task] = current_node
 
             if current_node >= 0:
@@ -102,11 +125,13 @@ class NUMAAllocator(Allocator):
                 if current_node >= 0 and preferences[current_node] < self.migrate_pages_min_task_balance:
                     tasks_to_balance.append(task)
 
-        log.log(TRACE, "Current state of the system: %s" % balanced_memory)
-        log.log(TRACE, "Current state of the system per node: %s" % {
+        log.log(TRACE, "Current state of the system, balanced_memory=%s[bytes]" % balanced_memory)
+        log.log(TRACE, "Current task assigments to nodes, expressed in sum of memory limits of pinned tasks: %s[bytes]" % {
             node: sum(t[1] for t in tasks)/2**10 for node, tasks in balanced_memory.items()})
         log.debug("Current task assigments: %s" % {
             node: len(tasks) for node, tasks in balanced_memory.items()})
+        log.debug("Current task assigments: %s" % {
+            node: [parse_task_name(task[0]) for task in tasks] for node, tasks in balanced_memory.items()})
 
         for node, tasks_with_memory in balanced_memory.items():
             extra_metrics.extend([
@@ -130,7 +155,9 @@ class NUMAAllocator(Allocator):
 
         # ----------------- begin the loop to find >>balance_task<< -------------------------------
         for task, memory, preferences in tasks_memory:
-            log.log(TRACE, "Task %r: Memory: %d Preferences: %s" % (task, memory, preferences))
+            # var memory is not a real memory usage, but value calculated in function _get_task_memory_limit
+            log.log(TRACE, "Running for task %r; memory_limit=%d[bytes] preferences=%s memory_usage_per_numa_node=%s[bytes]",
+                    task, memory, preferences, {k:pages_to_bytes(v) for k,v in tasks_measurements[task][MetricName.MEM_NUMA_STAT_PER_TASK].items()})
             current_node = _get_current_node(
                 decode_listformat(tasks_allocations[task][AllocationType.CPUSET_CPUS]),
                 platform.node_cpus)
@@ -158,7 +185,7 @@ class NUMAAllocator(Allocator):
 
             self._pages_to_move.setdefault(task, 0)
             if current_node >= 0:
-                log.debug("Task CPUSET_CPUS %r already pinned to the node %d",
+                log.debug("Task %r CPUSET_CPUS already pinned to the node %d",
                           task, current_node)
                 continue
 
@@ -183,40 +210,41 @@ class NUMAAllocator(Allocator):
 
                 if self.double_match:
                     if len(most_used_nodes.intersection(best_memory_nodes)) == 1:
-                        log.debug("   OK: found task for best memory node")
+                        log.debug("\tOK: found task for best memory node")
                         balance_task = task
                         balance_task_node = list(most_used_nodes.intersection(best_memory_nodes))[0]
                     elif len(most_used_nodes.intersection(most_free_memory_nodes)) == 1:
-                        log.debug("   OK: found task for most free memory node")
+                        log.debug("\tOK: found task for most free memory node")
                         balance_task = task
                         balance_task_node = list(most_used_nodes.intersection(most_free_memory_nodes))[0]
                     elif most_used_node in best_memory_nodes or most_used_node in most_free_memory_nodes:
-                        log.debug("   OK: minimized migrations case")
+                        log.debug("\tOK: minimized migrations case")
                         balance_task = task
                         balance_task_node = most_used_node
                         # break # commented to give a chance to generate other metrics
                     elif len(best_memory_nodes.intersection(most_free_memory_nodes)) == 1:
-                        log.debug("   OK: task not local, but both best available has only one alternative")
+                        log.debug("\tOK: task not local, but both best available has only one alternative")
                         balance_task = task
                         balance_task_node = list(best_memory_nodes.intersection(most_free_memory_nodes))[0]
                     else:
-                        log.debug("   IGNORE: no good decisions can be made now for this task, continue")
+                        log.debug("\tIGNORE: no good decisions can be made now for this task, continue")
                 # --- candidate functionality ---
                 if self.candidate and balance_task_candidate is None:
-                    if is_enough_memory_on_target(task, best_memory_node, platform, tasks_measurements, memory):
-                        log.log(TRACE, '   CANDIT: not perfect match'
-                                       ', but remember as candidate, continue')
+                    if self.free_space_check and not is_enough_memory_on_target(task, best_memory_node, platform,
+                                                                                tasks_measurements, memory):
+                        log.log(TRACE, '\tCANDIT - IGNORE CHOOSEN: not enough free space on target node %s.', balance_task_node_candidate)
+                    else:
+                        log.log(TRACE, '\tCANDIT OK: not perfect match, but remember as candidate, continue')
                         balance_task_candidate = task
                         balance_task_node_candidate = best_memory_node
-                    else:
-                        log.log(TRACE, '    CANDIT: ignoring task %s, as not enough memory on the target.' % task)
                 # --- end of candidate functionality ---
 
-                # Validate if we have enough memory to migrate to desired node:
+                # Validate if we have enough memory to migrate to desired node.
                 if balance_task is not None:
-                    if is_enough_memory_on_target(task, balance_task_node, platform, tasks_measurements, memory):
-                        log.debug(" We can't migrate task '%s' to node '%d', because not enough memory on the target. Looking for another candidate" %
-                                  (balance_task, balance_task_node))
+                    if self.free_space_check and not is_enough_memory_on_target(task, balance_task_node,
+                                                                                   platform, tasks_measurements,
+                                                                                   memory):
+                        log.debug("\tIGNORE CHOOSEN: not enough free space on target node %s", balance_task_node)
                         balance_task, balance_task_node = None, None
         # ----------------- end of the loop -------------------------------------------------------
 
@@ -257,13 +285,16 @@ class NUMAAllocator(Allocator):
 
             if self.migrate_pages:
                 self._pages_to_move[balance_task] += get_pages_to_move(
-                    balance_task, tasks_measurements, balance_task_node, 'assignment')
+                    balance_task, tasks_measurements, balance_task_node, 'initial assignment')
                 allocations.setdefault(balance_task, {})
                 allocations[balance_task][AllocationType.MIGRATE_PAGES] = balance_task_node
 
-        # 4. Memory migration of tasks already pinned.
+        # 4. Memory migration of tasks already pinned. In that step we do not check if there is enough space
+        #   on target node (self.free_space_check).
 
         if self.migrate_pages:
+            log.log(TRACE, 'Migrating pages of tasks to balance memory between nodes')
+
             # If nessesary migrate pages to least used node, for task that are still not there.
             least_used_node = _get_least_used_node(platform)
             log.log(TRACE, 'Least used node: %s', least_used_node)
@@ -273,13 +304,12 @@ class NUMAAllocator(Allocator):
                 if tasks_current_nodes[task] == least_used_node:
                     current_node = tasks_current_nodes[task]
                     self._pages_to_move[task] += get_pages_to_move(task, tasks_measurements,
-                                                                   current_node, 'unbalanced')
+                                                                   current_node, 'numa nodes balance disturbed')
                     allocations.setdefault(task, {})
                     allocations[task][AllocationType.MIGRATE_PAGES] = current_node
-            else:
-                log.log(TRACE, 'no more tasks to move memory!')
+            log.log(TRACE, 'Finished migrating pages of tasks')
 
-        # 5. Just add metrics for pages migrated 
+        # 5. Add metrics for pages migrated
 
         for task, page_to_move in self._pages_to_move.items():
             extra_metrics.append(
@@ -302,7 +332,7 @@ def get_pages_to_move(task, tasks_measurements, target_node, reason):
         in tasks_measurements[task][MetricName.MEM_NUMA_STAT_PER_TASK].items()
         if node != target_node)
     log.debug('Task: %s Moving %s MB to node %s reason %s', task,
-              (pages_to_move * 4096) / 1024**2, target_node, reason)
+              (pages_to_bytes(pages_to_move)) / MB, target_node, reason)
     return pages_to_move
 
 
@@ -315,8 +345,7 @@ def _get_task_memory_limit(task_measurements, total, task, task_resources):
     """Returns detected maximum memory for the task."""
     if 'mem' in task_resources:
         mems = task_resources['mem']
-        log.log(TRACE, 'Task: %s from resources %s %s %s', task, 'is',
-                mems, 'bytes')
+        log.log(TRACE, 'Taken memory limit for task %s from: task_resources[task][\'mem\']=%d[bytes]', task, mems)
         return mems
 
     limits_order = [
@@ -329,8 +358,8 @@ def _get_task_memory_limit(task_measurements, total, task, task_resources):
             continue
         if task_measurements[limit] > total:
             continue
-        log.log(TRACE, 'Task: %s from cgroups limit %s %s %s %s', task, limit, 'is',
-                task_measurements[limit], 'bytes')
+        log.log(TRACE, 'Taken memory limit for task %s from cgroups limit metric %s %d[bytes]', task, limit,
+                task_measurements[limit])
         return task_measurements[limit]
     return 0
 
@@ -442,6 +471,8 @@ def _get_most_used_node_v2(preferences):
 
 def is_enough_memory_on_target(task, target_node, platform, tasks_measurements, task_max_memory):
     """assuming that task_max_memory is a real limit"""
-    max_memory_to_move = task_max_memory - tasks_measurements[task][MetricName.MEM_NUMA_STAT_PER_TASK][target_node]
-    return max_memory_to_move < platform.measurements[MetricName.MEM_NUMA_FREE].get(target_node, 0)
-
+    max_memory_to_move = task_max_memory - pages_to_bytes(tasks_measurements[task][MetricName.MEM_NUMA_STAT_PER_TASK][str(target_node)])
+    platform_free_memory = platform.measurements[MetricName.MEM_NUMA_FREE][target_node]
+    log.log(TRACE, "platform_free_memory=%d[GB]", platform_free_memory/GB)
+    log.log(TRACE, "max_memory_to_move=%d[GB]", max_memory_to_move/GB)
+    return max_memory_to_move < platform_free_memory

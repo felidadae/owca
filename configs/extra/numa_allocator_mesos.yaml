@@ -9,6 +9,7 @@ runner: !AllocationRunner
     timeout: 5
   allocator: !NUMAAllocator
     loop_min_task_balance: 0.0
+    free_space_check: false
     #---
     migrate_pages: true
     migrate_pages_min_task_balance: 0.95

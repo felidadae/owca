@@ -367,7 +367,7 @@ def get_numa_nodes_count() -> int:
 
 
 def parse_node_meminfo() -> (Dict[NodeId, int], Dict[NodeId, int]):
-    """Parses /sys/devices/system/node/node*/meminfo and returns free/used"""
+    """Parses /sys/devices/system/node/node*/meminfo and returns free/used; returns memory in bytes"""
     node_free = {}
     node_used = {}
     for nodedir in os.listdir(BASE_SYSFS_NODES_PATH):
