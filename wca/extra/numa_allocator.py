@@ -212,11 +212,11 @@ class NUMAAllocator(Allocator):
                     continue
 
                 if self.double_match:
-                    if len(most_used_nodes.intersection(best_memory_nodes)) == 1:
+                    if len(most_used_nodes.intersection(best_memory_nodes)) >= 1:
                         log.debug("\tOK: found task for best memory node")
                         balance_task = task
                         balance_task_node = list(most_used_nodes.intersection(best_memory_nodes))[0]
-                    elif len(most_used_nodes.intersection(most_free_memory_nodes)) == 1:
+                    elif len(most_used_nodes.intersection(most_free_memory_nodes)) >= 1:
                         log.debug("\tOK: found task for most free memory node")
                         balance_task = task
                         balance_task_node = list(most_used_nodes.intersection(most_free_memory_nodes))[0]
@@ -224,8 +224,7 @@ class NUMAAllocator(Allocator):
                         log.debug("\tOK: minimized migrations case")
                         balance_task = task
                         balance_task_node = most_used_node
-                        # break # commented to give a chance to generate other metrics
-                    elif len(best_memory_nodes.intersection(most_free_memory_nodes)) == 1:
+                    elif len(best_memory_nodes.intersection(most_free_memory_nodes)) >= 1:
                         log.debug("\tOK: task not local, but both best available has only one alternative")
                         balance_task = task
                         balance_task_node = list(best_memory_nodes.intersection(most_free_memory_nodes))[0]

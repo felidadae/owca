@@ -1,8 +1,10 @@
 import pytest
 from pprint import pprint
 from unittest.mock import Mock, patch
-from wca.metrics import MetricName
-from tests.testing import platform_mock
+from typing import Dict, List
+
+from wca.detectors import TaskData, TasksData
+from wca.metrics import MetricName, MetricValue
 from wca.platforms import Platform
 from wca.allocators import AllocationType
 
@@ -12,86 +14,105 @@ from wca.extra.numa_allocator import NUMAAllocator, _platform_total_memory, GB, 
 
 
 def prepare_input(tasks, numa_nodes):
-    GB = 1024 * 1024 * 1024
     assert numa_nodes > 1, 'numa nodes must be greater than 1'
 
+    print_structures: bool = False
     node_size = 96 * GB
     page_size = 4096
     node_cpu = 10
     node_size_pages = node_size / page_size
+    cp_memory_per_node_percentage = 0.04
 
-    cp_memory_per_node_percentage = 0.04  #proportional t
-
-    tasks_measurements = {task_name: {MetricName.MEM_NUMA_STAT_PER_TASK: {str(numa_id): int(v*node_size_pages) for numa_id,v in numa_memory.items()}} 
-                          for task_name, numa_memory in tasks.items()}
-    #pprint(tasks_measurements)
-    tasks_resources = {task_name: {'mem': int(sum(numa_memory.values())* node_size) } for task_name, numa_memory in tasks.items()}
-    #pprint(tasks_resources)
-    tasks_labels = {task_name: {'uid': task_name} for task_name in tasks}
-    # pprint(tasks_labels)
+    tasks_data: TasksData = dict()
+    for task_name, numa_memory in tasks.items():
+        measurements = dict()
+        measurements[MetricName.MEM_NUMA_STAT_PER_TASK] = \
+            {str(numa_id): int(v * node_size_pages) for numa_id, v in numa_memory.items()}
+        data = TaskData(
+            name=task_name, task_id=task_name, cgroup_path='', subcgroups_paths=[''], labels={'uid': task_name},
+            resources={'mem': int(sum(numa_memory.values()) * node_size)}, measurements=measurements)
+        tasks_data[task_name] = data
+    if print_structures:
+        pprint(tasks_data)
 
     def node_cpus(numa_nodes):
-        r = {}
-        for i in range(numa_nodes):
-            r[i] = set(range(i*node_cpu, (i+1)*node_cpu))
-        return r
+        return {i: set(range(i*node_cpu, (i+1)*node_cpu)) for i in range(numa_nodes)}
 
-    platform_mock = Mock(
-        spec=Platform,
-        cpus=2*node_cpu,
-        sockets=numa_nodes,
-        node_cpus=node_cpus(numa_nodes),
-        topology={},
-        numa_nodes=numa_nodes,
-        cpu_codename=None,
-    )
-    #pprint(platform_mock.topology)
+    platform_mock = Mock(spec=Platform, cpus=2*node_cpu, sockets=numa_nodes,
+                         node_cpus=node_cpus(numa_nodes), topology={},
+                         numa_nodes=numa_nodes, cpu_codename=None)
+    if print_structures:
+        pprint(platform_mock.topology)
 
     def empty_measurements():
         return {v: {} for v in range(numa_nodes)}
     platform_mock.measurements = {MetricName.MEM_NUMA_FREE: empty_measurements(), MetricName.MEM_NUMA_USED: empty_measurements()}
 
+    # Only percentage first
     for numa_node in range(numa_nodes):
         platform_mock.measurements[MetricName.MEM_NUMA_FREE][numa_node] = \
             (1.0-cp_memory_per_node_percentage-sum( [memory.get(numa_node, 0) for memory in tasks.values()] ))
-    #pprint(platform_mock.measurements)
+    if print_structures:
+        pprint(platform_mock.measurements)
 
+    # Multiply by node_size
     for numa_node in range(numa_nodes):
         platform_mock.measurements[MetricName.MEM_NUMA_FREE][numa_node] = \
             int(platform_mock.measurements[MetricName.MEM_NUMA_FREE][numa_node] * node_size)
         platform_mock.measurements[MetricName.MEM_NUMA_USED][numa_node] = \
             node_size - platform_mock.measurements[MetricName.MEM_NUMA_FREE][numa_node]
+    if print_structures:
+        pprint(platform_mock.measurements)
 
-    #pprint(platform_mock.measurements)
+    # Add allocations to tasks_data[task]
+    for task_name, numa_memory in tasks.items():
+        # if len(..) == 1, then pinned, just to shorten notation
+        if len(numa_memory.keys()) == 1:
+            tasks_data[task_name].allocations = \
+                {AllocationType.CPUSET_CPUS: ','.join(map(str,platform_mock.node_cpus[list(numa_memory.keys())[0]]))}
+        # cpuset_cpus no pinned, means pinned to all available cpus
+        else:
+            tasks_data[task_name].allocations = \
+                {AllocationType.CPUSET_CPUS: ','.join(map(str, range(numa_nodes * node_cpu)))}
+    if print_structures:
+        pprint(tasks_data.allocations)
 
-    tasks_allocations = {task_name: {AllocationType.CPUSET_CPUS: ','.join(map(str,platform_mock.node_cpus[list(memory.keys())[0]]))} for task_name, memory in tasks.items() if len(memory.keys()) == 1 }
-    #pprint(tasks_allocations)
+    return platform_mock, tasks_data
 
-    tasks_allocations = {task_name: {AllocationType.CPUSET_CPUS: ','.join(map(str, range(numa_nodes*node_cpu)))} 
-                         if task_name not in tasks_allocations else tasks_allocations[task_name] for task_name in tasks}
-    #pprint(tasks_allocations)
-
-    return platform_mock, tasks_measurements, tasks_resources, tasks_labels, tasks_allocations
+results_params = {
+    'double_match': False,
+    'candidate': True,
+    'migrate_pages': True
+}
+alexander_params = {
+    'double_match': True,
+    'candidate': False,
+    'migrate_pages': True
+}
+def merge_dicts(a,b):
+    c = a.copy()
+    c.update(b)
+    return c
 
 @pytest.mark.parametrize('constructor_params, tasks, moves', [
     # empty
     (
-        {},
+        [results_params, alexander_params],
         {},
         {}
     ),
 
     # t1 pinned to 0, t2 should be pinned to 1
     (
-        {},
+        [results_params, alexander_params],
         {'t1': {0:0.3}, 't2': {0:0.1, 1:0.1}},
         {'t2': 1}
     ),
 
     # t3 pinned to 1, t2 (as a bigger task) should be pinned to 0
     (
-        {},
-        {'t1': {0: 0.1, 1: 0.2}, 
+        [results_params, alexander_params],
+        {'t1': {0: 0.1, 1: 0.2},
          't2': {0: 0.4, 1: 0.0},
          't3': {1: 0.5}},
         {'t2': 0}
@@ -99,31 +120,37 @@ def prepare_input(tasks, numa_nodes):
 
     # not enough space for t3, t1 and t2 pinned
     (
-        {'free_space_check': True},
-        {'t1': {0: 0.8}, 
+        [merge_dicts(results_params, {'free_space_check': True}), merge_dicts(alexander_params, {'free_space_check': True})],
+        {'t1': {0: 0.8},
          't2': {1: 0.8},
          't3': {0: 0.1, 1: 0.15}},
         {}
     ),
 ])
-def test_candidate(constructor_params, tasks, moves):
+def test_algorithm(constructor_params: List[Dict],
+                   tasks: Dict[str, Dict[int, MetricValue]],
+                   moves: List[Dict[str, int]]):
     input_ = prepare_input(tasks=tasks, numa_nodes=2)
     platform_mock = input_[0]
 
-    allocator = NUMAAllocator(double_match=False, candidate=True, **constructor_params)
-    got_allocations, _, _ = allocator.allocate(*input_)
-    pprint(got_allocations)
-    expected_allocations = {task_name: {AllocationType.CPUSET_CPUS: ','.join(map(str,platform_mock.node_cpus[numa_node]))} for task_name, numa_node in moves.items()}
-    for task_name in expected_allocations:
-        if allocator.migrate_pages:
-            expected_allocations[task_name]['migrate_pages'] = moves[task_name]
- 
-    assert got_allocations == expected_allocations
+    for i, constructor_param in enumerate(constructor_params):
+        allocator = NUMAAllocator(**constructor_param)
+        got_allocations, _, _ = allocator.allocate(*input_)
+
+        expected_allocations = dict()
+        moves = moves if type(moves) is not List else moves[i]
+        for task_name, numa_node in moves.items():
+            expected_allocations[task_name] = \
+                {AllocationType.CPUSET_CPUS: ','.join(map(str, platform_mock.node_cpus[numa_node]))}
+            if 'migrate_pages' in constructor_param:
+                expected_allocations[task_name]['migrate_pages'] = moves[task_name]
+
+        assert got_allocations == expected_allocations
 
 
 def test_platform_total_memory():
     platform = Mock()
-    platform.measurements = {}
+    platform.measurements = dict()
     platform.measurements[MetricName.MEM_NUMA_FREE] = {0: 200, 1: 300}
     platform.measurements[MetricName.MEM_NUMA_USED] = {0: 100, 1: 100}
     assert _platform_total_memory(platform) == (200+300+100+100)
@@ -157,7 +184,8 @@ def test_get_task_memory_limit():
     (4, [3 * GB, 2 * GB, 3 * GB, 2 * GB], {0: 0.3, 1: 0.2, 2: 0.3, 3: 0.2}),
 ))
 def test_get_numa_node_preferences(numa_nodes, task_measurements_vals, expected):
-    task_measurements = {MetricName.MEM_NUMA_STAT_PER_TASK: {inode: val for inode, val in enumerate(task_measurements_vals)}}
+    task_measurements = {MetricName.MEM_NUMA_STAT_PER_TASK: {inode: val for inode, val in
+                                                                        enumerate(task_measurements_vals)}}
     assert _get_numa_node_preferences(task_measurements, numa_nodes) == expected
 
 
@@ -198,6 +226,7 @@ def test_get_best_memory_node(memory, balanced_memory, expected):
     (10 * GB, {0: [('task1', 20 * GB),], 1: [('task3', 19 * GB ),]}, {0,1}),
     (10 * GB, {0: [('task1', 20 * GB),], 1: [('task3', 17 * GB ),]}, {0,1}),
     (10 * GB, {0: [('task1', 20 * GB),], 1: [('task3', 13 * GB ),]}, {1}),
+    (50 * GB, {0: [('task1', 80 * GB), ], 1: [('task3', 60 * GB), ]}, {1}),
 ))
 def test_get_best_memory_node_v3(memory, balanced_memory, expected):
     assert _get_best_memory_node_v3(memory, balanced_memory) == expected
