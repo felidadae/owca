@@ -22,7 +22,7 @@ def prepare_input(tasks, numa_nodes):
 
     cp_memory_per_node_percentage = 0.04  #proportional t
 
-    tasks_measurements = {task_name: {MetricName.MEM_NUMA_STAT_PER_TASK: {numa_id: int(v*node_size_pages) for numa_id,v in numa_memory.items()}} 
+    tasks_measurements = {task_name: {MetricName.MEM_NUMA_STAT_PER_TASK: {str(numa_id): int(v*node_size_pages) for numa_id,v in numa_memory.items()}} 
                           for task_name, numa_memory in tasks.items()}
     #pprint(tasks_measurements)
     tasks_resources = {task_name: {'mem': int(sum(numa_memory.values())* node_size) } for task_name, numa_memory in tasks.items()}
@@ -73,21 +73,24 @@ def prepare_input(tasks, numa_nodes):
 
     return platform_mock, tasks_measurements, tasks_resources, tasks_labels, tasks_allocations
 
-@pytest.mark.parametrize('tasks, moves', [
+@pytest.mark.parametrize('constructor_params, tasks, moves', [
     # empty
     (
+        {},
         {},
         {}
     ),
 
     # t1 pinned to 0, t2 should be pinned to 1
     (
+        {},
         {'t1': {0:0.3}, 't2': {0:0.1, 1:0.1}},
         {'t2': 1}
     ),
 
     # t3 pinned to 1, t2 (as a bigger task) should be pinned to 0
     (
+        {},
         {'t1': {0: 0.1, 1: 0.2}, 
          't2': {0: 0.4, 1: 0.0},
          't3': {1: 0.5}},
@@ -96,16 +99,18 @@ def prepare_input(tasks, numa_nodes):
 
     # not enough space for t3, t1 and t2 pinned
     (
+        {'free_space_check': True},
         {'t1': {0: 0.8}, 
          't2': {1: 0.8},
          't3': {0: 0.1, 1: 0.15}},
         {}
     ),
 ])
-def test_candidate(tasks, moves):
+def test_candidate(constructor_params, tasks, moves):
     input_ = prepare_input(tasks=tasks, numa_nodes=2)
     platform_mock = input_[0]
-    allocator = NUMAAllocator(double_match=False, candidate=True)
+
+    allocator = NUMAAllocator(double_match=False, candidate=True, **constructor_params)
     got_allocations, _, _ = allocator.allocate(*input_)
     pprint(got_allocations)
     expected_allocations = {task_name: {AllocationType.CPUSET_CPUS: ','.join(map(str,platform_mock.node_cpus[numa_node]))} for task_name, numa_node in moves.items()}
