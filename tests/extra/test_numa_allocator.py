@@ -22,10 +22,6 @@ def prepare_input(tasks, numa_nodes):
 
     cp_memory_per_node_percentage = 0.04  #proportional t
 
-    #pprint(tasks)
-
-    MetricName.MEM_NUMA_STAT_PER_TASK
-
     tasks_measurements = {task_name: {MetricName.MEM_NUMA_STAT_PER_TASK: {numa_id: int(v*node_size_pages) for numa_id,v in numa_memory.items()}} 
                           for task_name, numa_memory in tasks.items()}
     #pprint(tasks_measurements)
