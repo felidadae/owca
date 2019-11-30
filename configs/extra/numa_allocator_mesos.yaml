@@ -3,54 +3,57 @@ loggers:
   "wca.cgroups_allocations": "trace"
   "wca": "info"
 runner: !AllocationRunner
-  measurement_runner: !MeasurementRunner
-    action_delay: 5
-    node: !MesosNode
-      mesos_agent_endpoint: 'http://127.0.0.1:5051'
-      timeout: 5
-
-    # Disable all measurements based on perf system and resctrl
-    enable_perf_uncore: false
-    gather_hw_mm_topology: false
-    rdt_enabled: false  
-    enable_derived_metrics: false
-    event_names: []  # if uncommented disables metrics from perf event subsystem
-    wss_reset_interval: 0
-    #event_names:  # if uncommented disables metrics from perf event subsystem
-    #- instructions
-    #- cycles
-    #- cache_misses
-  # # - cache_references
-    ## - stalls_mem_load
-    #- mem_inst_retired_all_loads__rd081
-    #- mem_inst_retired_all_stores__rd082
-    
-    # Metrics to files
-    metrics_storage: !LogStorage
-      output_filename: metrics.prom
-      overwrite: true
-
-    task_label_generators:
-      aurora_instance: !TaskLabelRegexGenerator
-        pattern: '.*-(\d+)-.{36}'
-        repl: '\1'  # first match group
-        source: 'task_id' #default
-
-    extra_labels:
-      node: !Env HOSTNAME
-
+  action_delay: 5
+  node: !MesosNode
+    mesos_agent_endpoint: 'http://127.0.0.1:5051'
+    timeout: 5
   allocator: !NUMAAllocator
     loop_min_task_balance: 0.0
+    free_space_check: false
+    #---
     migrate_pages: true
+    migrate_pages_min_task_balance: 0.95
+    #---
     cgroups_memory_binding: false
     cgroups_memory_migrate: false
+    #---
     double_match: false
     candidate: true
+    #---
     dryrun: false
 
+  # Disable all measurements based on perf system and resctrl
+  enable_perf_uncore: false
+  gather_hw_mm_topology: false
+  rdt_enabled: false  
+  enable_derived_metrics: false
+  event_names: []  # if uncommented disables metrics from perf event subsystem
+  wss_reset_interval: 0
+  #event_names:  # if uncommented disables metrics from perf event subsystem
+  #- instructions
+  #- cycles
+  #- cache_misses
+# # - cache_references
+  ## - stalls_mem_load
+  #- mem_inst_retired_all_loads__rd081
+  #- mem_inst_retired_all_stores__rd082
+
+  task_label_generators:
+    aurora_instance: !TaskLabelRegexGenerator
+      pattern: '.*-(\d+)-.{36}'
+      repl: '\1'  # first match group
+      source: 'task_id' # default
+
+  # Metrics to files
+  metrics_storage: !LogStorage
+    output_filename: metrics.prom
+    overwrite: true
   allocations_storage: !LogStorage
     output_filename: allocations.prom
     overwrite: true
   anomalies_storage: !LogStorage
     output_filename: anomalies.prom
     overwrite: true
+
+  extra_labels:
+    node: !Env HOSTNAME
