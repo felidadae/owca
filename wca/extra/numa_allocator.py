@@ -11,10 +11,9 @@ from wca.logger import TRACE
 from wca.platforms import Platform, encode_listformat, decode_listformat
 
 log = logging.getLogger(__name__)
-GB = 1024 ** 3
-MB = 1024 ** 2
+GB = 2 ** 30
+MB = 2 ** 20
 PAGE_SIZE=4096
-TASK_NAME_REGEX = r'.*specjbb2-(...-\d+)-'
 
 NumaNodeId = int
 Preferences = Dict[NumaNodeId, float]
@@ -22,6 +21,7 @@ Preferences = Dict[NumaNodeId, float]
 
 def parse_task_name(task_name):
     """Useful for debugging to shorten name of tasks."""
+    TASK_NAME_REGEX = r'.*specjbb2-(...-\d+)-'
     s = re.search(TASK_NAME_REGEX, task_name)
     if s:
         return s.group(1)
@@ -452,7 +452,7 @@ def _get_most_free_memory_node_v3(memory, node_memory_free):
     return best_free_nodes
 
 
-def _is_enough_memory_on_target(task, target_node, platform, tasks_measurements, task_max_memory):
+def _is_enough_memory_on_target(task:str, target_node:int, platform:Platform, tasks_measurements:Dict[MetricName, MetricValue], task_max_memory):
     """assuming that task_max_memory is a real limit"""
     max_memory_to_move = task_max_memory - pages_to_bytes(tasks_measurements[MetricName.MEM_NUMA_STAT_PER_TASK][str(target_node)])
     platform_free_memory = platform.measurements[MetricName.MEM_NUMA_FREE][target_node]
