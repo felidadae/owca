@@ -225,8 +225,9 @@ def test_get_best_memory_node(memory, balanced_memory, expected):
 @pytest.mark.parametrize('memory, balanced_memory, expected', (
     (10 * GB, {0: [('task1', 20 * GB),], 1: [('task3', 19 * GB ),]}, {0,1}),
     (10 * GB, {0: [('task1', 20 * GB),], 1: [('task3', 17 * GB ),]}, {0,1}),
+    (50 * GB, {0: [('task1', 80 * GB), ], 1: [('task3', 60 * GB), ]}, {0,1}),
     (10 * GB, {0: [('task1', 20 * GB),], 1: [('task3', 13 * GB ),]}, {1}),
-    (50 * GB, {0: [('task1', 80 * GB), ], 1: [('task3', 60 * GB), ]}, {1}),
+    (10 * GB, {0: [('task1', 20 * GB),], 1: [('task3', 5 * GB ),]}, {1}),
 ))
 def test_get_best_memory_node_v3(memory, balanced_memory, expected):
     assert _get_best_memory_node_v3(memory, balanced_memory) == expected
@@ -254,6 +255,6 @@ def test_get_free_memory_node_v3(memory, node_memory_free, expected):
 def test_is_enough_memory_on_target(target_node, task_max_memory, numa_free, numa_task, expected):
     platform = Mock()
     platform.measurements[MetricName.MEM_NUMA_FREE] = numa_free
-    tasks_measurements = {'t1': {MetricName.MEM_NUMA_STAT_PER_TASK: numa_task}}
+    tasks_measurements = {MetricName.MEM_NUMA_STAT_PER_TASK: numa_task}
     assert _is_enough_memory_on_target(
         't1', target_node, platform, tasks_measurements, task_max_memory) == expected
