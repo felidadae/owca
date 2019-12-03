@@ -38,7 +38,7 @@ def prepare_input(tasks: Dict[TaskId, Dict[NumaNodeId, PercentageMemUsage]],
     tasks_data: TasksData = dict()
     for task_name, numa_memory in tasks.items():
         measurements = dict()
-        measurements[MetricName.MEM_NUMA_STAT_PER_TASK] = \
+        measurements[MetricName.TASK_MEM_NUMA_PAGES] = \
             {str(numa_id): int(v * node_size_pages) for numa_id, v in numa_memory.items()}
         data = TaskData(
             name=task_name, task_id=task_name, cgroup_path='', subcgroups_paths=[''], labels={'uid': task_name},
@@ -59,22 +59,22 @@ def prepare_input(tasks: Dict[TaskId, Dict[NumaNodeId, PercentageMemUsage]],
     def empty_measurements():
         return {v: {} for v in range(numa_nodes)}
 
-    platform_mock.measurements = {MetricName.MEM_NUMA_FREE: empty_measurements(),
-                                  MetricName.MEM_NUMA_USED: empty_measurements()}
+    platform_mock.measurements = {MetricName.PLATFORM_MEM_NUMA_FREE_BYTES: empty_measurements(),
+                                  MetricName.PLATFORM_MEM_NUMA_USED_BYTES: empty_measurements()}
 
     # Only percentage first
     for numa_node in range(numa_nodes):
-        platform_mock.measurements[MetricName.MEM_NUMA_FREE][numa_node] = \
+        platform_mock.measurements[MetricName.PLATFORM_MEM_NUMA_FREE_BYTES][numa_node] = \
             (1.0 - cp_memory_per_node_percentage - sum([memory.get(numa_node, 0) for memory in tasks.values()]))
     if print_structures:
         pprint(platform_mock.measurements)
 
     # Multiply by node_size
     for numa_node in range(numa_nodes):
-        platform_mock.measurements[MetricName.MEM_NUMA_FREE][numa_node] = \
-            int(platform_mock.measurements[MetricName.MEM_NUMA_FREE][numa_node] * node_size)
-        platform_mock.measurements[MetricName.MEM_NUMA_USED][numa_node] = \
-            node_size - platform_mock.measurements[MetricName.MEM_NUMA_FREE][numa_node]
+        platform_mock.measurements[MetricName.PLATFORM_MEM_NUMA_FREE_BYTES][numa_node] = \
+            int(platform_mock.measurements[MetricName.PLATFORM_MEM_NUMA_FREE_BYTES][numa_node] * node_size)
+        platform_mock.measurements[MetricName.PLATFORM_MEM_NUMA_USED_BYTES][numa_node] = \
+            node_size - platform_mock.measurements[MetricName.PLATFORM_MEM_NUMA_FREE_BYTES][numa_node]
     if print_structures:
         pprint(platform_mock.measurements)
 
@@ -204,14 +204,14 @@ def test_get_pages_to_move():
     mem_usage_on_node = 0.3
     platform, tasks_data = prepare_input({'t1': {0: mem_usage_on_node}}, 2)
     assert _get_pages_to_move('t1', tasks_data, 1, 'for fun') == \
-    tasks_data['t1'].measurements[MetricName.MEM_NUMA_STAT_PER_TASK]['0']
+    tasks_data['t1'].measurements[MetricName.TASK_MEM_NUMA_PAGES]['0']
 
 
 def test_platform_total_memory():
     platform = Mock()
     platform.measurements = dict()
-    platform.measurements[MetricName.MEM_NUMA_FREE] = {0: 200, 1: 300}
-    platform.measurements[MetricName.MEM_NUMA_USED] = {0: 100, 1: 100}
+    platform.measurements[MetricName.PLATFORM_MEM_NUMA_FREE_BYTES] = {0: 200, 1: 300}
+    platform.measurements[MetricName.PLATFORM_MEM_NUMA_USED_BYTES] = {0: 100, 1: 100}
     assert _get_platform_total_memory(platform) == (200 + 300 + 100 + 100)
 
 
@@ -228,12 +228,12 @@ def test_get_task_memory_limit():
     task_resources = {}
     assert _get_task_memory_limit(tasks_measurements, total_memory, task, task_resources) == 0
 
-    # no 'mem' in task_resources and task_measurement contains MetricName.MEM_LIMIT_PER_TASK
-    tasks_measurements = {MetricName.MEM_LIMIT_PER_TASK: 30 * GB}
+    # no 'mem' in task_resources and task_measurement contains MetricName.TASK_MEM_LIMIT_BYTES
+    tasks_measurements = {MetricName.TASK_MEM_LIMIT_BYTES: 30 * GB}
     assert _get_task_memory_limit(tasks_measurements, total_memory, task, task_resources) == 30 * GB
 
     # no 'mem' in task_resources and task_measurement
-    # contains MetricName.MEM_LIMIT_PER_TASK, but total_memory smaller than that value
+    # contains MetricName.TASK_MEM_LIMIT_BYTES, but total_memory smaller than that value
     total_memory = 20 * GB
     assert _get_task_memory_limit(tasks_measurements, total_memory, task, task_resources) == 0
 
@@ -244,7 +244,7 @@ def test_get_task_memory_limit():
         (4, [3 * GB, 2 * GB, 3 * GB, 2 * GB], {0: 0.3, 1: 0.2, 2: 0.3, 3: 0.2}),
 ))
 def test_get_numa_node_preferences(numa_nodes, task_measurements_vals, expected):
-    task_measurements = {MetricName.MEM_NUMA_STAT_PER_TASK: {inode: val for inode, val in
+    task_measurements = {MetricName.TASK_MEM_NUMA_PAGES: {inode: val for inode, val in
                                                              enumerate(task_measurements_vals)}}
     assert _get_numa_node_preferences(task_measurements, numa_nodes) == expected
 
@@ -263,7 +263,7 @@ def test_get_most_used_node(preferences, expected):
 ))
 def test_get_least_used_node(numa_free, expected):
     platform = Mock
-    platform.measurements = {MetricName.MEM_NUMA_FREE: numa_free}
+    platform.measurements = {MetricName.PLATFORM_MEM_NUMA_FREE_BYTES: numa_free}
     assert _get_least_used_node(platform) == expected
 
 
@@ -317,8 +317,8 @@ def test_get_free_memory_node_v3(memory, node_memory_free, expected):
 ))
 def test_is_enough_memory_on_target(target_node, task_max_memory, numa_free, numa_task, expected):
     platform = Mock()
-    platform.measurements[MetricName.MEM_NUMA_FREE] = numa_free
-    tasks_measurements = {MetricName.MEM_NUMA_STAT_PER_TASK: numa_task}
+    platform.measurements[MetricName.PLATFORM_MEM_NUMA_FREE_BYTES] = numa_free
+    tasks_measurements = {MetricName.TASK_MEM_NUMA_PAGES: numa_task}
     assert _is_enough_memory_on_target(
         task_max_memory, target_node, platform, tasks_measurements) == expected
 

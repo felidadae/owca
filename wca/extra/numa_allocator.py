@@ -131,7 +131,7 @@ class NUMAAllocator(Allocator):
         balance_task, balance_task_node = None, None
         task, memory, preferences = task_memory
 
-        numa_free_measurements = platform.measurements[MetricName.MEM_NUMA_FREE]
+        numa_free_measurements = platform.measurements[MetricName.PLATFORM_MEM_NUMA_FREE_BYTES]
 
         most_used_nodes = _get_most_used_nodes(preferences)
         best_memory_nodes = _get_best_memory_nodes(memory, balanced_memory)
@@ -283,7 +283,7 @@ def _get_pages_to_move(task: TaskId, tasks_data: TaskData, target_node: NumaNode
     data: TaskData = tasks_data[task]
     pages_to_move = sum(
         v for node, v
-        in data.measurements[MetricName.MEM_NUMA_STAT_PER_TASK].items()
+        in data.measurements[MetricName.TASK_MEM_NUMA_PAGES].items()
         if node != target_node)
     log.debug('Task: %s Moving %s MB to node %s reason %s', task,
               (pages_to_bytes(pages_to_move)) / MB, target_node, reason)
@@ -291,8 +291,8 @@ def _get_pages_to_move(task: TaskId, tasks_data: TaskData, target_node: NumaNode
 
 
 def _get_platform_total_memory(platform: Platform) -> int:
-    return sum(platform.measurements[MetricName.MEM_NUMA_FREE].values()) + \
-           sum(platform.measurements[MetricName.MEM_NUMA_USED].values())
+    return sum(platform.measurements[MetricName.PLATFORM_MEM_NUMA_FREE_BYTES].values()) + \
+           sum(platform.measurements[MetricName.PLATFORM_MEM_NUMA_USED_BYTES].values())
 
 
 def _get_task_memory_limit(task_measurements: Measurements, total_memory: int, task: TaskId,
@@ -326,7 +326,7 @@ def _get_numa_node_preferences(task_measurements: Measurements, numa_nodes: int)
         for node_id, metric_val in task_measurements[MetricName.TASK_MEM_NUMA_PAGES].items():
             ret[int(node_id)] = round(metric_val / max(1, metrics_val_sum), 4)
     else:
-        log.warning('{} metric not available, crucial for numa_allocator!'.format(MetricName.MEM_NUMA_STAT_PER_TASK))
+        log.warning('{} metric not available, crucial for numa_allocator!'.format(MetricName.TASK_MEM_NUMA_PAGES))
     return ret
 
 
@@ -345,7 +345,7 @@ def _get_most_used_nodes(preferences: Preferences) -> Set[int]:
 
 
 def _get_least_used_node(platform: Platform) -> int:
-    return sorted(platform.measurements[MetricName.MEM_NUMA_FREE].items(),
+    return sorted(platform.measurements[MetricName.PLATFORM_MEM_NUMA_FREE_BYTES].items(),
                   reverse=True,
                   key=lambda x: x[1])[0][0]
 
@@ -406,10 +406,10 @@ def _is_enough_memory_on_target(memory_limit: MemoryLimit, target_node: NumaNode
                                 platform: Platform,
                                 tasks_measurements: Measurements):
     """assuming that task_max_memory is a real limit"""
-    task_numa_stat = tasks_measurements[MetricName.MEM_NUMA_STAT_PER_TASK]
+    task_numa_stat = tasks_measurements[MetricName.TASK_MEM_NUMA_PAGES]
     max_memory_to_move = memory_limit - \
                          pages_to_bytes(task_numa_stat[str(target_node)])
-    platform_free_memory = platform.measurements[MetricName.MEM_NUMA_FREE][target_node]
+    platform_free_memory = platform.measurements[MetricName.PLATFORM_MEM_NUMA_FREE_BYTES][target_node]
     log.log(TRACE, "platform_free_memory=%d[GB] on node %d max_memory_to_move=%d[GB]",
             platform_free_memory / GB, target_node, max_memory_to_move / GB)
     return max_memory_to_move < platform_free_memory
@@ -441,7 +441,7 @@ def _is_ghost_task(memory):
 
 def _log_task_basic_info(extra_metrics, tasks_data, task_memory, current_node):
     task, memory, preferences = task_memory
-    task_numastat = tasks_data[task].measurements[MetricName.MEM_NUMA_STAT_PER_TASK]
+    task_numastat = tasks_data[task].measurements[MetricName.TASK_MEM_NUMA_PAGES]
     log.log(TRACE, "Running for task %r; memory_limit=%d[bytes] preferences=%s memory_usage_per_numa_node=%s[bytes]",
             task, memory, preferences, {k: pages_to_bytes(v) for k, v in task_numastat.items()})
     extra_metrics.extend([Metric('numa__task_current_node', value=current_node, labels=tasks_data[task].labels)])
