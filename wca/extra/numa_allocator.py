@@ -50,7 +50,8 @@ class NUMAAllocator(Allocator):
     # if None re-migration of pages for tasks disabled
     migrate_pages_min_task_balance: Optional[float] = 0.95
 
-    # cgroups based memory migration and pinning
+    # cgroups based memory migration, cpu and memory pinning
+    cgroups_cpus_binding: bool = True
     cgroups_memory_binding: bool = False
     # can be used only when cgroups_memory_binding is set to True
     cgroups_memory_migrate: bool = False
@@ -303,10 +304,10 @@ def _get_task_memory_limit(task_measurements: Measurements, total_memory: int, t
         return mem
 
     limits_order = [
-        MetricName.MEM_LIMIT_PER_TASK,
-        MetricName.MEM_SOFT_LIMIT_PER_TASK,
-        MetricName.MEM_MAX_USAGE_PER_TASK,
-        MetricName.MEM_USAGE_PER_TASK, ]
+        MetricName.TASK_MEM_LIMIT_BYTES,
+        MetricName.TASK_MEM_SOFT_LIMIT_BYTES,
+        MetricName.TASK_MEM_MAX_USAGE_BYTES,
+        MetricName.TASK_MEM_USAGE_BYTES, ]
     for limit in limits_order:
         if limit not in task_measurements:
             continue
@@ -320,9 +321,9 @@ def _get_task_memory_limit(task_measurements: Measurements, total_memory: int, t
 
 def _get_numa_node_preferences(task_measurements: Measurements, numa_nodes: int) -> Preferences:
     ret = {node_id: 0 for node_id in range(0, numa_nodes)}
-    if MetricName.MEM_NUMA_STAT_PER_TASK in task_measurements:
-        metrics_val_sum = sum(task_measurements[MetricName.MEM_NUMA_STAT_PER_TASK].values())
-        for node_id, metric_val in task_measurements[MetricName.MEM_NUMA_STAT_PER_TASK].items():
+    if MetricName.TASK_MEM_NUMA_PAGES in task_measurements:
+        metrics_val_sum = sum(task_measurements[MetricName.TASK_MEM_NUMA_PAGES].values())
+        for node_id, metric_val in task_measurements[MetricName.TASK_MEM_NUMA_PAGES].items():
             ret[int(node_id)] = round(metric_val / max(1, metrics_val_sum), 4)
     else:
         log.warning('{} metric not available, crucial for numa_allocator!'.format(MetricName.MEM_NUMA_STAT_PER_TASK))

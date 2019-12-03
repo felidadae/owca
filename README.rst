@@ -207,6 +207,7 @@ Further reading
 ===============
 
 - `Installation guide <docs/install.rst>`_  
+- `Measurement API <docs/measurement.rst>`_
 - `Detection API <docs/detection.rst>`_
 - `Allocation API <docs/allocation.rst>`_
 - `Metrics list <docs/metrics.rst>`_

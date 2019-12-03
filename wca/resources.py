@@ -42,7 +42,7 @@ def calculate_scalar_resources(task_resources: List[Dict[str, str]]) -> TaskReso
     # https://github.com/apache/mesos/blob/776b31c6658be234497218a9a33e3961075c83e6/include/mesos/mesos.proto#L1236
     # This resources should be converted to bytes to match k8s.
     for res in ['disk', 'mem']:
-        resources[res] = resources[res] * _MEMORY_UNITS['Mi']
+        resources[res] = resources[res] * _MEMORY_UNITS['M']
 
     return resources
 

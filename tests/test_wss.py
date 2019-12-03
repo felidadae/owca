@@ -1,3 +1,4 @@
+from wca.metrics import MetricName
 from wca.wss import WSS
 from tests.testing import create_open_mock
 from unittest.mock import Mock, patch, call
@@ -20,7 +21,7 @@ def test_get_measurements(*mocks):
         wss = WSS(get_pids=mock_get_pids, reset_interval=1)
 
         # In megabytes: ( 1 + 2 + 3 + 4 + 5 ) * 1024 / 1024
-        assert wss.get_measurements() == {'wss_referenced_mb': 15}
+        assert wss.get_measurements() == {MetricName.TASK_WSS_REFERENCED_BYTES: 15360000}
 
         # Check if gets info from smaps
         for smap in smaps:

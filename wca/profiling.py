@@ -18,7 +18,7 @@ import time
 from collections import defaultdict
 from typing import List, Callable
 
-from wca.metrics import Metric, MetricType
+from wca.metrics import Metric, MetricType, MetricName
 
 
 class Profiler:
@@ -76,11 +76,11 @@ class Profiler:
         for function_name, last_duration_value in sorted(self._durations.items()):
             avg_time = self._totals[function_name] / self._call_counts[function_name]
             metrics.extend([
-                Metric(name='wca_duration_seconds',
+                Metric(name=MetricName.WCA_DURATION_SECONDS,
                        type=MetricType.GAUGE, value=last_duration_value,
                        labels=dict(function=function_name),
                        ),
-                Metric(name='wca_duration_seconds_avg',
+                Metric(name=MetricName.WCA_DURATION_SECONDS_AVG,
                        type=MetricType.GAUGE, value=avg_time,
                        labels=dict(function=function_name),
                        ),

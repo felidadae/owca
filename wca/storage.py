@@ -249,8 +249,10 @@ def convert_to_prometheus_exposition_format(metrics: List[Metric],
             group_separator = ''
 
         # Assert that all metrics with the same name have the same metadata.
-        assert {metric.type for metric in metrics} == {first_metric.type}
-        assert {metric.help for metric in metrics} == {first_metric.help}
+        assert {metric.type for metric in metrics} == {first_metric.type}, \
+            'improper type for %s' % metric_name
+        assert {metric.help for metric in metrics} == {first_metric.help}, \
+            'improper help for %s' % metric_name
 
         for metric in metrics:
 

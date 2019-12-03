@@ -14,15 +14,15 @@
 
 
 from itertools import chain
-from operator import truediv, add, sub
 
 import pytest
+from operator import truediv, add, sub
 
 from wca.mesos import create_metrics, sanitize_label
 from wca.metrics import (Metric, merge_measurements, MetricName,
                          METRICS_METADATA, MetricGranurality,
                          export_metrics_from_measurements, MetricMetadata,
-                         MetricType, METRICS_LEVELS, MetricUnit, MetricSource,
+                         MetricType, MetricUnit, MetricSource,
                          _list_leveled_metrics,
                          _operation_on_leveled_metric,
                          _operation_on_leveled_dicts)
@@ -60,9 +60,10 @@ def test_create_metrics(task_measurements, expected_metrics):
         ([{'m1': 8, 'm2': 3}, {'m1': 3, 'm2': 7}, {'m1': 3}], {'m1': 14, 'm2': 10}),
         ([{'ipc': 2}, {'ipc': 4}], {'ipc': 6}),
         ([{'ipc': 2}, {'ipc': 4}, {'m1': 2}, {'m1': 3}], {'ipc': 6, 'm1': 5}),
-        ([{'cycles': {0: 2, 1: 5}}, {'cycles': {0: 4, 1: 7}}], {'cycles': {0: 6, 1: 12}}),
-        ([{'cycles': {0: 2, 1: 5}}, {'cycles': {0: 4, 1: 7}}, {'m1': 8}],
-         {'cycles': {0: 6, 1: 12}, 'm1': 8})
+        ([{'task_cycles': {0: 2, 1: 5}}, {'task_cycles': {0: 4, 1: 7}}],
+         {'task_cycles': {0: 6, 1: 12}}),
+        ([{'task_cycles': {0: 2, 1: 5}}, {'task_cycles': {0: 4, 1: 7}}, {'m1': 8}],
+         {'task_cycles': {0: 6, 1: 12}, 'm1': 8})
 ))
 def test_merge_measurements(measurements_list, expected_merge):
     assert merge_measurements(measurements_list) == expected_merge
@@ -75,12 +76,12 @@ def test_metric_meta_exists():
 
 @pytest.mark.parametrize(
     'measurements, expected', [
-        ({MetricName.MEM_NUMA_STAT_PER_TASK: {'1': 10, '2': 20}, }, 2),
-        ({MetricName.CYCLES: {0: 1123}}, 1),
+        ({MetricName.TASK_MEM_NUMA_PAGES: {'1': 10, '2': 20}, }, 2),
+        ({MetricName.TASK_CYCLES: {0: 1123}}, 1),
         ({}, 0)
     ])
 def test_export_metrics_from_measurements(measurements, expected):
-    result = export_metrics_from_measurements('PLATFORM__', measurements)
+    result = export_metrics_from_measurements(measurements)
     assert len(result) == expected
 
 
@@ -90,27 +91,29 @@ class TestMetric(object):
     def __enter__(self):
         MetricName.TEST_METRIC = 'test_metric'
         METRICS_METADATA['test_metric'] = MetricMetadata('Non existing metric for unit test.',
-                                                         MetricType.COUNTER, MetricUnit.NUMERIC,
+                                                         MetricType.COUNTER,
+                                                         MetricUnit.NUMERIC,
                                                          MetricSource.GENERIC,
-                                                         MetricGranurality.PLATFORM)
-        METRICS_LEVELS['test_metric'] = ['numa_node', 'container']  # two levels
+                                                         MetricGranurality.PLATFORM,
+                                                         levels=['numa_node', 'container'],
+                                                         enabled='no'
+                                                         )
 
     def __exit__(self, type, value, traceback):
         """if exception was raised the metrics structeres will be cleaned up."""
         del METRICS_METADATA['test_metric']
-        del METRICS_LEVELS['test_metric']
         del MetricName.TEST_METRIC
 
 
 def test_export_metrics_from_measurements_artifical_metric():
-    """We currently do not have a metric which len(METRICS_LEVELS[X]) > 1,
+    """We currently do not have a metric which len(METRICS_METADATA[X].levels) > 1,
         so the need to add such metric in metrics structures for the test."""
     with TestMetric():
         measurements = {'test_metric': {'id0': {'stress': 0, 'dbmango': 1},
                                         'id1': {'stress': 10, 'dbmango': 20}}}
-        result = export_metrics_from_measurements('PLATFORM__', measurements)
+        result = export_metrics_from_measurements(measurements)
         assert len(result) == 4
-        assert result[0].name == 'PLATFORM__test_metric'
+        assert result[0].name == 'test_metric'
         assert 'numa_node' in result[0].labels and 'container' in result[0].labels
         assert sorted([item.value for item in result]) == [0, 1, 10, 20]  # values for metrics
 

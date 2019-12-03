@@ -100,7 +100,7 @@ class TasksAllocationsValues(AllocationsDict):
             AllocationType.SHARES: SharesAllocationValue,
             AllocationType.CPUSET_CPUS: CPUSetCPUSAllocationValue,
             AllocationType.CPUSET_MEMS: CPUSetMEMSAllocationValue,
-            AllocationType.CPUSET_MEM_MIGRATE: CPUSetMemoryMigrateAllocationValue,
+            AllocationType.CPUSET_MEMORY_MIGRATE: CPUSetMemoryMigrateAllocationValue,
             AllocationType.MIGRATE_PAGES: MigratePagesAllocationValue,
         }
 

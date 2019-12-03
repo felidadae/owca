@@ -2,16 +2,16 @@ runner: !AllocationRunner
   measurement_runner: !MeasurementRunner
     node: &tester !IntegrationTester
      config: 'tests/tester/configs/tester_config.yaml'
-     command: 'sleep 300'
+     command: 'sleep 300' # if task has long time to exit, they are race with delete cgruop and pid
     action_delay: 5.
     metrics_storage: *tester
     rdt_enabled: True
     event_names:
-      - 'cycles'
-      - 'instructions'
-      - 'cache_misses'
-      - 'cache_references'
-      - 'offcore_requests_l3_miss_demand_data_rd'
+      - 'task_cycles'
+      - 'task_instructions'
+      - 'task_cache_misses'
+      - 'task_cache_references'
+      - 'task_offcore_requests_l3_miss_demand_data_rd'
     wss_reset_interval: 1
   anomalies_storage: *tester
   allocations_storage: *tester

@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-import os
-from enum import Enum
 from typing import Optional, List, Union, Dict, Set
 
+import os
 from dataclasses import dataclass
+from enum import Enum
 
 from wca import logger
 from wca import platforms
@@ -100,18 +100,19 @@ class Cgroup:
         try:
             with open(os.path.join(self.cgroup_cpu_fullpath, CgroupResource.CPU_USAGE)) as \
                     cpu_usage_file:
-                cpu_usage = int(cpu_usage_file.read())
+                # scale to seconds
+                cpu_usage = float(cpu_usage_file.read()) / 1e9
         except FileNotFoundError as e:
             raise MissingMeasurementException(
                 'File {} is missing. Cpu usage unavailable.'.format(e.filename))
 
-        measurements = {MetricName.CPU_USAGE_PER_TASK: cpu_usage}
+        measurements = {MetricName.TASK_CPU_USAGE_SECONDS: cpu_usage}
 
         for cgroup_resource, metric_name in [
-            [CgroupResource.MEMORY_USAGE, MetricName.MEM_USAGE_PER_TASK],
-            [CgroupResource.MEMORY_MAX_USAGE, MetricName.MEM_MAX_USAGE_PER_TASK],
-            [CgroupResource.MEMORY_LIMIT, MetricName.MEM_LIMIT_PER_TASK],
-            [CgroupResource.MEMORY_SOFT_LIMIT, MetricName.MEM_SOFT_LIMIT_PER_TASK],
+            [CgroupResource.MEMORY_USAGE, MetricName.TASK_MEM_USAGE_BYTES],
+            [CgroupResource.MEMORY_MAX_USAGE, MetricName.TASK_MEM_MAX_USAGE_BYTES],
+            [CgroupResource.MEMORY_LIMIT, MetricName.TASK_MEM_LIMIT_BYTES],
+            [CgroupResource.MEMORY_SOFT_LIMIT, MetricName.TASK_MEM_SOFT_LIMIT_BYTES],
         ]:
             try:
                 with open(os.path.join(self.cgroup_memory_fullpath,
@@ -129,33 +130,45 @@ class Cgroup:
                 for line in resource_file.readlines():
                     if line.startswith('pgfault'):
                         _, value = line.split()
-                        measurements[MetricName.MEM_PAGE_FAULTS] = int(value)
+                        measurements[MetricName.TASK_MEM_PAGE_FAULTS] = int(value)
                         break
         except FileNotFoundError as e:
             raise MissingMeasurementException(
                 'File {} is missing. Metric unavailable.'.format(e.filename))
 
-        try:
+        def get_metric(metric):
             with open(os.path.join(
                     self.cgroup_memory_fullpath, CgroupResource.NUMA_STAT)) as resource_file:
                 for line in resource_file.readlines():
                     # Requires mem.use_hierarchy = 1
-                    if line.startswith("hierarchical_total="):
+                    if line.startswith(metric):
                         for stat in line.split()[1:]:
                             k, v = stat.split("=")
                             k, v = k[1:], int(v)
-                            if MetricName.MEM_NUMA_STAT_PER_TASK not in measurements:
-                                measurements[MetricName.MEM_NUMA_STAT_PER_TASK] = {k: v}
+                            if MetricName.TASK_MEM_NUMA_PAGES not in measurements:
+                                measurements[MetricName.TASK_MEM_NUMA_PAGES] = {k: v}
                             else:
-                                measurements[MetricName.MEM_NUMA_STAT_PER_TASK][k] = v
+                                measurements[MetricName.TASK_MEM_NUMA_PAGES][k] = v
                         break
+
+        try:
+            has_hierarchical_metrics = False
+            get_metric("hierarchical_total=")
+            if not has_hierarchical_metrics:
+                import warnings
+                warnings.warn(
+                    "No hierarchical_total in NUMA memory stat for tasks in cgroup. Using total=."
+                )
+                get_metric("total=")
+
         except FileNotFoundError as e:
             raise MissingMeasurementException(
                 'File {} is missing. Metric unavailable.'.format(e.filename))
+
         # Check whether consecutive keys.
-        assert MetricName.MEM_NUMA_STAT_PER_TASK not in measurements or \
-            list(measurements[MetricName.MEM_NUMA_STAT_PER_TASK].keys()) == \
-            [str(el) for el in range(0, self.platform.numa_nodes)]
+        assert (MetricName.TASK_MEM_NUMA_PAGES not in measurements or
+                list(measurements[MetricName.TASK_MEM_NUMA_PAGES].keys()) ==
+                [str(el) for el in range(0, self.platform.numa_nodes)])
 
         return measurements
 
@@ -229,7 +242,7 @@ class Cgroup:
             AllocationType.SHARES: self._get_normalized_shares(),
             AllocationType.CPUSET_CPUS: self._get_cpuset_cpus(),
             AllocationType.CPUSET_MEMS: self._get_cpuset_mems(),
-            AllocationType.CPUSET_MEM_MIGRATE: self._get_memory_migrate(),
+            AllocationType.CPUSET_MEMORY_MIGRATE: self._get_memory_migrate(),
         }
 
     def get_pids(self, include_threads=True) -> List[str]:

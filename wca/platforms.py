@@ -26,10 +26,8 @@ import os
 from dataclasses import dataclass
 from enum import Enum
 
-from wca.metrics import Metric, MetricName, Measurements, MetricType, \
-    export_metrics_from_measurements
+from wca.metrics import Metric, MetricName, Measurements, export_metrics_from_measurements
 from wca.profiling import profiler
-
 
 try:
     from pkg_resources import get_distribution, DistributionNotFound
@@ -159,16 +157,13 @@ class Platform:
     # mapping from numa node id to CPU (to support SNC), based on /sys/devices/system/numa
     node_cpus: Dict[int, Set[int]]
     # Distance based on /sys/devices/system/node/node*/distance
-    node_distances: Dict[int, List[int]]
-
+    node_distances: Dict[int, Dict[int, int]]
     # [unix timestamp] Recorded timestamp of finishing data gathering (as returned from time.time)
     timestamp: float
 
     rdt_information: Optional[RDTInformation]
 
     measurements: Measurements
-
-    static_information: Optional[Dict]
 
     swap_enabled: bool
 
@@ -177,16 +172,23 @@ class MissingPlatformStaticInformation(Exception):
     pass
 
 
+_platform_static_information_initialized = False
 _platform_static_information = {}
 
 
-def get_platform_static_information(strict_mode: bool):
-    """"""
+def get_platform_static_information(strict_mode: bool) -> Measurements:
+    """Time-consuming gathering information function that calles external binaries e.g.
+    lshw and ipmctl. Assumption is that this information is not changing over life of WCA
+    application and should be called only once upon WCA starting.
+    :param strict_mode: raise expection if collection
+                        is not possible e.g. required binaries is missing
+    :return: cached platform information
+    """
     # RETURN MEMORY DIMM DETAILS based on lshw
     global _platform_static_information
+    global _platform_static_information_initialized
     # TODO: PoC to be replaced with ACPI/HMAT table parsing if possible
-    if 'initialized' in _platform_static_information and \
-       _platform_static_information['initialized']:
+    if not _platform_static_information_initialized:
 
         try:
             # nosec: B603. We deliberately use 'subprocess'. There is a permanent input.
@@ -196,7 +198,8 @@ def get_platform_static_information(strict_mode: bool):
             for line in ipmctl_output.splitlines():
                 if 'MemoryCapacity' in line:
                     memorymode_size = line.split('=')[1].split(' ')[0]
-            _platform_static_information['memorymode_size'] = int(memorymode_size)
+            _platform_static_information[MetricName.PLATFORM_MEM_MODE_SIZE_BYTES] = int(
+                memorymode_size)
         except FileNotFoundError:
             log.warning('ipmctl unavailable, cannot read memory mode size')
             if strict_mode:
@@ -228,10 +231,16 @@ def get_platform_static_information(strict_mode: bool):
                             nvm_dimm_count += 1
                             nvm_dimm_size += bank['size']
 
-            _platform_static_information['ram_dimm_count'] = int(ram_dimm_count)
-            _platform_static_information['nvm_dimm_count'] = int(nvm_dimm_count)
-            _platform_static_information['ram_dimm_size'] = int(ram_dimm_size)
-            _platform_static_information['nvm_dimm_size'] = int(nvm_dimm_size)
+            _platform_static_information[MetricName.PLATFORM_DIMM_COUNT] = {}
+            _platform_static_information[MetricName.PLATFORM_DIMM_COUNT]['ram'] = int(
+                ram_dimm_count)
+            _platform_static_information[MetricName.PLATFORM_DIMM_COUNT]['nvm'] = int(
+                nvm_dimm_count)
+            _platform_static_information[MetricName.PLATFORM_DIMM_TOTAL_SIZE_BYTES] = {}
+            _platform_static_information[MetricName.PLATFORM_DIMM_TOTAL_SIZE_BYTES]['ram'] = int(
+                ram_dimm_size)
+            _platform_static_information[MetricName.PLATFORM_DIMM_TOTAL_SIZE_BYTES]['nvm'] = int(
+                nvm_dimm_size)
         except FileNotFoundError:
             log.warning('lshw unavailable, cannot read memory topology size!')
             if strict_mode:
@@ -243,76 +252,65 @@ def get_platform_static_information(strict_mode: bool):
             if strict_mode:
                 raise MissingPlatformStaticInformation
 
-        _platform_static_information['initialized'] = True
+        _platform_static_information_initialized = True
+        log.debug('platform static information: %r', _platform_static_information)
 
     return _platform_static_information
 
 
 def create_metrics(platform: Platform) -> List[Metric]:
     """Creates a list of Metric objects from data in Platform object"""
-    PLATFORM_PREFIX = 'platform__'
     platform_metrics = []
 
     platform_metrics.extend([
-        Metric(name=PLATFORM_PREFIX + 'topology_cores',
-               value=platform.cores, type=MetricType.GAUGE, help=""),
-        Metric(name=PLATFORM_PREFIX + 'topology_cpus',
-               value=platform.cpus, type=MetricType.GAUGE, help=""),
-        Metric(name=PLATFORM_PREFIX + 'topology_sockets',
-               value=platform.sockets, type=MetricType.GAUGE, help=""),
-        Metric(name=PLATFORM_PREFIX + 'last_seen', value=time.time(),
-               type=MetricType.GAUGE, help=""),
+        Metric.create_metric_with_metadata(MetricName.PLATFORM_TOPOLOGY_CORES,
+                                           value=platform.cores),
+        Metric.create_metric_with_metadata(MetricName.PLATFORM_TOPOLOGY_CPUS,
+                                           value=platform.cpus),
+        Metric.create_metric_with_metadata(MetricName.PLATFORM_TOPOLOGY_SOCKETS,
+                                           value=platform.sockets),
+        Metric.create_metric_with_metadata(MetricName.PLATFORM_LAST_SEEN,
+                                           value=time.time()),
     ])
 
-    # PMEM HW info r
-    if 'ram_dimm_count' in platform.static_information:
-        platform_metrics.extend([
-            # RAM
-            Metric(name=PLATFORM_PREFIX + 'dimm_count',
-                   value=platform.static_information['ram_dimm_count'],
-                   labels={'type': 'ram'},
-                   type=MetricType.GAUGE, help=""),
-            Metric(name=PLATFORM_PREFIX + 'dimm_total_size_bytes',
-                   value=platform.static_information['ram_dimm_size'],
-                   labels={'type': 'ram'},
-                   type=MetricType.GAUGE, help=""),
-            # NVM
-            Metric(name=PLATFORM_PREFIX + 'dimm_count',
-                   value=platform.static_information['nvm_dimm_count'],
-                   labels={'type': 'nvm'},
-                   type=MetricType.GAUGE, help=""),
-            Metric(name=PLATFORM_PREFIX + 'dimm_total_size_bytes',
-                   value=platform.static_information['nvm_dimm_size'],
-                   labels={'type': 'nvm'},
-                   type=MetricType.GAUGE, help=""),
-        ])
-
-    # PMEM HW configuration
-    if 'memorymode_size' in platform.static_information:
-        platform_metrics.extend([
-            Metric(name=PLATFORM_PREFIX + 'memory_mode_size_bytes',
-                   value=platform.static_information['memorymode_size'],
-                   type=MetricType.GAUGE, help=""),
-        ])
-
     # Exporting measurements into metrics.
-    platform_metrics.extend(export_metrics_from_measurements(PLATFORM_PREFIX,
-                                                             platform.measurements))
+    platform_metrics.extend(export_metrics_from_measurements(platform.measurements))
+
+    platform_metrics.append(
+        Metric.create_metric_with_metadata(
+            MetricName.WCA_INFORMATION,
+            value=1,
+            labels=dict(
+                sockets=str(platform.sockets),
+                cores=str(platform.cores),
+                cpus=str(platform.cpus),
+                cpu_model=platform.cpu_model,
+                wca_version=get_wca_version(),
+            )
+        )
+    )
 
     return platform_metrics
 
 
-def create_labels(platform: Platform) -> Dict[str, str]:
-    """Returns dict of topology and hostname labels"""
+def create_labels(platform: Platform, include_optional_labels: bool) -> Dict[str, str]:
+    """Returns dict of topology and hostname labels
+    Note: Those will will assigned to every returned metric.
+    """
     labels = dict()
-    # Topology labels
-    labels["sockets"] = str(platform.sockets)
-    labels["cores"] = str(platform.cores)
-    labels["cpus"] = str(platform.cpus)
-    # Additional labels
+
+    # REQUIRED (for host identification)
     labels["host"] = socket.gethostname()
-    labels["wca_version"] = get_wca_version()
-    labels["cpu_model"] = platform.cpu_model
+
+    # OPTIONAL (for further metrics analysis)
+    if include_optional_labels:
+        # Topology labels
+        labels["sockets"] = str(platform.sockets)
+        labels["cores"] = str(platform.cores)
+        labels["cpus"] = str(platform.cpus)
+        # Additional labels
+        labels["cpu_model"] = platform.cpu_model
+        labels["wca_version"] = get_wca_version()
 
     return labels
 
@@ -369,7 +367,9 @@ def get_numa_nodes_count() -> int:
 
 
 def parse_node_meminfo() -> (Dict[NodeId, int], Dict[NodeId, int]):
-    """Parses /sys/devices/system/node/node*/meminfo and returns free/used"""
+    """Parses /sys/devices/system/node/node*/meminfo and returns free/used
+    return values are in bytes.
+    """
     node_free = {}
     node_used = {}
     for nodedir in os.listdir(BASE_SYSFS_NODES_PATH):
@@ -403,20 +403,25 @@ def parse_node_cpus() -> Dict[NodeId, Set[int]]:
     return node_cpus
 
 
-VMSTAT_METRICS = ["numa_pages_migrated", "pgmigrate_success", "pgmigrate_fail",
-                  "numa_hint_faults", "numa_hint_faults_local", "pgfault"]
+VMSTAT_METRICS = {
+    MetricName.PLATFORM_VMSTAT_NUMA_PAGES_MIGRATED: 'numa_pages_migrated',
+    MetricName.PLATFORM_VMSTAT_PGMIGRATE_SUCCESS: 'pgmigrate_success',
+    MetricName.PLATFORM_VMSTAT_PGMIGRATE_FAIL: 'pgmigrate_fail',
+    MetricName.PLATFORM_VMSTAT_NUMA_HINT_FAULTS: 'numa_hint_faults',
+    MetricName.PLATFORM_VMSTAT_NUMA_HINT_FAULTS_LOCAL: 'numa_hint_faults_local',
+    MetricName.PLATFORM_VMSTAT_PGFAULTS: 'pgfault',
+}
 
 
 def parse_proc_vmstat() -> Measurements:
-    """
-    """
-    d = {}
+    """Read/parse and return measurements based on /proc/vmstat/"""
+    measurements = {}
     with open('/proc/vmstat') as f:
-        for line in f:
-            for metric in VMSTAT_METRICS:
-                if line.startswith(metric):
-                    d['vmstat_'+metric] = int(line.split()[1])
-    return d
+        for line in f.readlines():
+            for metric_name, key in VMSTAT_METRICS.items():
+                if line.startswith(key):
+                    measurements[metric_name] = int(line.split()[1])
+    return measurements
 
 
 def parse_node_distances() -> Dict[int, Dict[int, int]]:
@@ -574,7 +579,8 @@ def _collect_rdt_information() -> RDTInformation:
 @profiler.profile_duration(name='collect_platform_information')
 def collect_platform_information(rdt_enabled: bool = True,
                                  gather_hw_mm_topology: bool = False,
-                                 extra_platform_measurements: Optional[Measurements] = None) -> (
+                                 extra_platform_measurements: Optional[Measurements] = None,
+                                 include_optional_labels: bool = False) -> (
         Platform, List[Metric], Dict[str, str]):
     """Returns Platform information, metrics and common labels.
 
@@ -603,11 +609,12 @@ def collect_platform_information(rdt_enabled: bool = True,
 
     # Dynamic information
     platform_measurements = {}
-    platform_measurements[MetricName.CPU_USAGE_PER_CPU] = parse_proc_stat(read_proc_stat())
-    platform_measurements[MetricName.MEM_USAGE] = parse_proc_meminfo(read_proc_meminfo())
+    platform_measurements[MetricName.PLATFORM_CPU_USAGE] = parse_proc_stat(read_proc_stat())
+    platform_measurements[MetricName.PLATFORM_MEM_USAGE_BYTES] = parse_proc_meminfo(
+        read_proc_meminfo())
     node_free, node_used = parse_node_meminfo()
-    platform_measurements[MetricName.MEM_NUMA_FREE] = node_free
-    platform_measurements[MetricName.MEM_NUMA_USED] = node_used
+    platform_measurements[MetricName.PLATFORM_MEM_NUMA_FREE_BYTES] = node_free
+    platform_measurements[MetricName.PLATFORM_MEM_NUMA_USED_BYTES] = node_used
 
     # Merge local platform measurements with passed extra_platform_measurements
     platform_measurements.update(extra_platform_measurements
@@ -620,6 +627,7 @@ def collect_platform_information(rdt_enabled: bool = True,
         platform_static_information = get_platform_static_information(strict_mode=True)
     else:
         platform_static_information = {}
+    platform_measurements.update(platform_static_information)
 
     platform_measurements.update(parse_proc_vmstat())
 
@@ -637,12 +645,11 @@ def collect_platform_information(rdt_enabled: bool = True,
         node_cpus=parse_node_cpus(),
         node_distances=parse_node_distances(),
         measurements=platform_measurements,
-        static_information=platform_static_information,
         swap_enabled=is_swap_enabled()
     )
-    assert len(platform_measurements[MetricName.CPU_USAGE_PER_CPU]) == platform.cpus, \
+    assert len(platform_measurements[MetricName.PLATFORM_CPU_USAGE]) == platform.cpus, \
         "Inconsistency in cpu data returned by kernel"
-    return platform, create_metrics(platform), create_labels(platform)
+    return platform, create_metrics(platform), create_labels(platform, include_optional_labels)
 
 
 def decode_listformat(value: str) -> Set[int]:
@@ -686,7 +693,7 @@ def is_swap_enabled() -> bool:
     mem_info = read_proc_meminfo()
     for line in mem_info.split('\n'):
         if line.startswith("SwapTotal"):
-            value = line.split(' ')[1]
+            value = line.split()[1]
             if value.startswith('0'):
                 return False
             return True

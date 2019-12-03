@@ -48,7 +48,7 @@ def test_get_tasks(find_cgroup_mock, post_mock):
                 'load_generator': 'ycsb'},
         name='root/staging14/cassandra--9043',
         task_id='root-staging14-cassandra--9043-0-9ee9fbf1-b51b-4bb3-9748-6a4327fd7e0e',
-        resources={'mem': 2048.0 * 1024 ** 2, 'cpus': 8.0, 'disk': 10240.0 * 1024 ** 2}
+        resources={'mem': 2048.0 * 1000 ** 2, 'cpus': 8.0, 'disk': 10240.0 * 1000 ** 2}
     )
 
 

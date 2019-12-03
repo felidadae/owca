@@ -13,17 +13,17 @@
 # limitations under the License.
 
 
-import os
-from io import BytesIO
 from unittest import mock
 from unittest.mock import Mock, patch, mock_open
 
+import os
 import pytest
+from io import BytesIO
 
 from wca import metrics
 from wca import perf
 from wca import perf_const as pc
-from wca.metrics import MetricName, DerivedMetricName, DefaultDerivedMetricsGenerator
+from wca.metrics import MetricName, DefaultDerivedMetricsGenerator
 from wca.perf import _parse_raw_event_name, _get_event_config
 from wca.platforms import CPUCodeName, Platform
 from wca.runners.measurement import _filter_out_event_names_for_cpu
@@ -66,7 +66,7 @@ def test_create_file_from_invalid_fd():
 ])
 def test_create_event_attributes_disabled_flag(disabled_flag, expected):
     assert perf._create_event_attributes(
-        metrics.MetricName.CYCLES,
+        metrics.MetricName.TASK_CYCLES,
         disabled_flag,
         cpu_code_name=CPUCodeName.UNKNOWN).flags == expected
 
@@ -83,33 +83,37 @@ def test_parse_online_cpus_string(raw_string, expected):
 @pytest.mark.parametrize("file,event_names,expected", [
     (BytesIO(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
              b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x4a\x16\x00\x00\x00\x00\x00\x00"),
-     [metrics.MetricName.CYCLES],
-     {metrics.MetricName.CYCLES: 0,
-      metrics.MetricName.SCALING_FACTOR_AVG: 0,
-      metrics.MetricName.SCALING_FACTOR_MAX: 0}
+     [metrics.MetricName.TASK_CYCLES],
+     {metrics.MetricName.TASK_CYCLES: 0,
+      metrics.MetricName.TASK_SCALING_FACTOR_AVG: 0,
+      metrics.MetricName.TASK_SCALING_FACTOR_MAX: 0}
      ),
     # case with no scaling
     (BytesIO(b"\x03\x00\x00\x00\x00\x00\x00\x00\x26\xe7\xea\x29\x01\x00\x00\x00\x26\xe7\xea\x29"
              b"\x01\x00\x00\x00\xa6\x6e\x1a\x9d\x08\x00\x00\x00\x1d\x17\x00\x00\x00\x00\x00\x00"
              b"\xc8\xfd\x08\x88\x04\x00\x00\x00\x1e\x17\x00\x00\x00\x00\x00\x00\x18\xc8\x43\x00"
              b"\x00\x00\x00\x00\x1f\x17\x00\x00\x00\x00\x00\x00"),
-     [metrics.MetricName.INSTRUCTIONS, metrics.MetricName.CYCLES, metrics.MetricName.CACHE_MISSES],
-     {metrics.MetricName.INSTRUCTIONS: 36995493542, metrics.MetricName.CYCLES: 19462159816,
-      metrics.MetricName.CACHE_MISSES: 4442136,
-      metrics.MetricName.SCALING_FACTOR_AVG: 1.0,
-      metrics.MetricName.SCALING_FACTOR_MAX: 1.0}
+     [metrics.MetricName.TASK_INSTRUCTIONS, metrics.MetricName.TASK_CYCLES,
+      metrics.MetricName.TASK_CACHE_MISSES],
+     {metrics.MetricName.TASK_INSTRUCTIONS: 36995493542,
+      metrics.MetricName.TASK_CYCLES: 19462159816,
+      metrics.MetricName.TASK_CACHE_MISSES: 4442136,
+      metrics.MetricName.TASK_SCALING_FACTOR_AVG: 1.0,
+      metrics.MetricName.TASK_SCALING_FACTOR_MAX: 1.0}
      ),
     # case with 50% scaling factor
     (BytesIO(b"\x03\x00\x00\x00\x00\x00\x00\x00\xb2\xef\xff\x29\x01\x00\x00\x00\x07\x13\x08\x95"
              b"\x00\x00\x00\x00\x86\xb2\xf1\x4b\x04\x00\x00\x00\x5d\x19\x00\x00\x00\x00\x00\x00"
              b"\xbe\x74\x5f\x43\x02\x00\x00\x00\x5e\x19\x00\x00\x00\x00\x00\x00\xf0\xa5\x15\x00"
              b"\x00\x00\x00\x00\x5f\x19\x00\x00\x00\x00\x00\x00"),
-     [metrics.MetricName.INSTRUCTIONS, metrics.MetricName.CYCLES, metrics.MetricName.CACHE_MISSES],
-     {metrics.MetricName.INSTRUCTIONS: 36900158682, metrics.MetricName.CYCLES: 19436397211,
-      metrics.MetricName.CACHE_MISSES: 2836869,
+     [metrics.MetricName.TASK_INSTRUCTIONS, metrics.MetricName.TASK_CYCLES,
+      metrics.MetricName.TASK_CACHE_MISSES],
+     {metrics.MetricName.TASK_INSTRUCTIONS: 36900158682,
+      metrics.MetricName.TASK_CYCLES: 19436397211,
+      metrics.MetricName.TASK_CACHE_MISSES: 2836869,
       # TODO: assert for 2.0 with some margin
-      metrics.MetricName.SCALING_FACTOR_AVG: 1.9995750600302817,
-      metrics.MetricName.SCALING_FACTOR_MAX: 1.9995750600302817}
+      metrics.MetricName.TASK_SCALING_FACTOR_AVG: 1.9995750600302817,
+      metrics.MetricName.TASK_SCALING_FACTOR_MAX: 1.9995750600302817}
      )
 ])
 def test_parse_event_groups(file, event_names, expected):
@@ -120,7 +124,7 @@ def test_parse_event_groups(file, event_names, expected):
 @patch('wca.perf.PerfCounters._open')
 def test_perf_counters_init(_open_mock, _get_cgroup_fd_mock):
     platform_mock = Mock(Spec=Platform, cpu_model='intel xeon', cpu_codename=CPUCodeName.SKYLAKE)
-    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.CYCLES], platform_mock)
+    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.TASK_CYCLES], platform_mock)
     assert prf._group_event_leader_files == {}
     _get_cgroup_fd_mock.assert_called_once()
     _open_mock.assert_called_once()
@@ -134,18 +138,18 @@ def test_get_online_cpus(_parse_online_cpu_string_mock, open_mock):
 
 
 @patch('wca.perf._parse_event_groups', return_value={
-    metrics.MetricName.CYCLES:  0,
-    metrics.MetricName.SCALING_FACTOR_MAX: 0,
-    metrics.MetricName.SCALING_FACTOR_AVG: 0})
+    metrics.MetricName.TASK_CYCLES: 0,
+    metrics.MetricName.TASK_SCALING_FACTOR_MAX: 0,
+    metrics.MetricName.TASK_SCALING_FACTOR_AVG: 0})
 @patch('wca.perf._get_cgroup_fd')
 @patch('wca.perf.PerfCounters._open')
 def test_read_metrics(*args):
     platform_mock = Mock(Spec=Platform, cpu_model='intel xeon', cpu_codename=CPUCodeName.SKYLAKE)
-    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.CYCLES], platform_mock)
+    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.TASK_CYCLES], platform_mock)
     prf._group_event_leader_files[0] = {0: mock_open()}
-    assert prf.get_measurements() == {metrics.MetricName.CYCLES: {0: 0},
-                                      metrics.MetricName.SCALING_FACTOR_AVG: 0,
-                                      metrics.MetricName.SCALING_FACTOR_MAX: 0}
+    assert prf.get_measurements() == {metrics.MetricName.TASK_CYCLES: {0: 0},
+                                      metrics.MetricName.TASK_SCALING_FACTOR_AVG: 0,
+                                      metrics.MetricName.TASK_SCALING_FACTOR_MAX: 0}
 
 
 @patch('wca.perf.LIBC.ioctl', return_value=1)
@@ -153,7 +157,7 @@ def test_read_metrics(*args):
 @patch('wca.perf.PerfCounters._open')
 def test_reset_and_enable_group_event_leaders(_open_mock, _get_cgroup_fd_mock, ioctl_mock):
     platform_mock = Mock(Spec=Platform, cpu_model='intel xeon', cpu_codename=CPUCodeName.SKYLAKE)
-    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.CYCLES], platform_mock)
+    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.TASK_CYCLES], platform_mock)
     # cpu0 group event leader mock
     prf._group_event_leader_files = {0: Mock()}
     prf._reset_and_enable_group_event_leaders()
@@ -167,7 +171,7 @@ def test_reset_and_enable_group_event_leaders_reset_fail(
         _open_mock, _get_cgroup_fd_mock, ioctl_mock
 ):
     platform_mock = Mock(Spec=Platform, cpu_model='intel xeon', cpu_codename=CPUCodeName.SKYLAKE)
-    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.CYCLES], platform_mock)
+    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.TASK_CYCLES], platform_mock)
     # cpu0 group event leader mock
     prf._group_event_leader_files = {0: Mock()}
     with pytest.raises(OSError, match="Cannot reset perf counts"):
@@ -181,7 +185,7 @@ def test_reset_and_enable_group_event_leaders_enable_fail(
         _open_mock, _get_cgroup_fd_mock, ioctl_mock
 ):
     platform_mock = Mock(Spec=Platform, cpu_model='intel xeon', cpu_codename=CPUCodeName.SKYLAKE)
-    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.CYCLES], platform_mock)
+    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.TASK_CYCLES], platform_mock)
     # cpu0 group event leader mock
     prf._group_event_leader_files = {0: Mock()}
     with pytest.raises(OSError, match="Cannot enable perf counts"):
@@ -193,7 +197,7 @@ def test_reset_and_enable_group_event_leaders_enable_fail(
 @patch('wca.perf.PerfCounters._open')
 def test_cleanup(_open_mock, _get_cgroup_fd_mock, os_close_mock):
     platform_mock = Mock(Spec=Platform, cpu_model='intel xeon', cpu_codename=CPUCodeName.SKYLAKE)
-    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.CYCLES], platform_mock)
+    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.TASK_CYCLES], platform_mock)
     file_descriptor_mock = Mock()
     file_descriptor_mock.close = Mock()
     prf._group_event_leader_files = {'mock1': file_descriptor_mock, 'mock2': file_descriptor_mock}
@@ -222,8 +226,8 @@ def test_open_for_cpu_wrong_arg(_open_mock, _get_cgroup_fd_mock):
 def test_open_for_cpu(_open_mock, _get_cgroup_fd_mock,
                       _perf_event_open_mock, fdopen_mock):
     platform_mock = Mock(Spec=Platform, cpu_model='intel xeon', cpu_codename=CPUCodeName.SKYLAKE)
-    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.CYCLES], platform_mock)
-    prf._open_for_cpu(0, metrics.MetricName.CYCLES)
+    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.TASK_CYCLES], platform_mock)
+    prf._open_for_cpu(0, metrics.MetricName.TASK_CYCLES)
     assert prf._group_event_leader_files == {0: mock.ANY}
     assert prf._event_files == []
     # perf_event_open call for the event group leader
@@ -246,11 +250,11 @@ def test_open_for_cpu_with_existing_event_group_leader(_open_mock,
                                                        _get_cgroup_fd_mock,
                                                        _perf_event_open_mock, fdopen_mock):
     platform_mock = Mock(Spec=Platform, cpu_model='intel xeon', cpu_codename=CPUCodeName.SKYLAKE)
-    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.CYCLES], platform_mock)
+    prf = perf.PerfCounters('/mycgroup', [metrics.MetricName.TASK_CYCLES], platform_mock)
     # Create event group leader
-    prf._open_for_cpu(0, metrics.MetricName.CYCLES)
+    prf._open_for_cpu(0, metrics.MetricName.TASK_CYCLES)
     # Create non leading event
-    prf._open_for_cpu(0, metrics.MetricName.INSTRUCTIONS)
+    prf._open_for_cpu(0, metrics.MetricName.TASK_INSTRUCTIONS)
     assert prf._group_event_leader_files[0].fileno() == 5
     assert prf._event_files[0].fileno() == 6
     # perf_event_open call for non leading event
@@ -307,11 +311,11 @@ def test_parse_raw_event_name_invalid(event_name, expected_match):
 
 
 @pytest.mark.parametrize('cpu, event_name, expected_config', [
-    (CPUCodeName.SKYLAKE, MetricName.MEMSTALL, 0x140014A3),
-    (CPUCodeName.BROADWELL, MetricName.MEMSTALL, 0x60006A3),
-    (CPUCodeName.SKYLAKE, MetricName.OFFCORE_REQUESTS_L3_MISS_DEMAND_DATA_RD, 0x00001060),
+    (CPUCodeName.SKYLAKE, MetricName.TASK_STALLED_MEM_LOADS, 0x140014A3),
+    (CPUCodeName.BROADWELL, MetricName.TASK_STALLED_MEM_LOADS, 0x60006A3),
+    (CPUCodeName.SKYLAKE, MetricName.TASK_OFFCORE_REQUESTS_L3_MISS_DEMAND_DATA_RD, 0x00001060),
     (CPUCodeName.SKYLAKE,
-     MetricName.OFFCORE_REQUESTS_OUTSTANDING_L3_MISS_DEMAND_DATA_RD, 0x000010B0),
+     MetricName.TASK_OFFCORE_REQUESTS_OUTSTANDING_L3_MISS_DEMAND_DATA_RD, 0x000010B0),
 ])
 def test_get_event_config(cpu, event_name, expected_config):
     assert expected_config == _get_event_config(cpu, event_name)
@@ -320,10 +324,10 @@ def test_get_event_config(cpu, event_name, expected_config):
 def test_derived_metrics():
     def gm_func():
         return {
-            MetricName.INSTRUCTIONS: {0: 1000},
-            MetricName.CYCLES: {0: 5},
-            MetricName.CACHE_MISSES: {0: 10000},
-            MetricName.CACHE_REFERENCES: {0: 50000},
+            MetricName.TASK_INSTRUCTIONS: {0: 1000},
+            MetricName.TASK_CYCLES: {0: 5},
+            MetricName.TASK_CACHE_MISSES: {0: 10000},
+            MetricName.TASK_CACHE_REFERENCES: {0: 50000},
         }
 
     derived_metrics_generator = DefaultDerivedMetricsGenerator(
@@ -333,56 +337,56 @@ def test_derived_metrics():
 
     with patch('time.time', return_value=1):
         measurements = derived_metrics_generator.get_measurements()
-    assert DerivedMetricName.IPC not in measurements
-    assert DerivedMetricName.IPS not in measurements
-    assert DerivedMetricName.CACHE_HIT_RATIO not in measurements
-    assert DerivedMetricName.CACHE_MISSES_PER_KILO_INSTRUCTIONS not in measurements
+    assert MetricName.TASK_IPC not in measurements
+    assert MetricName.TASK_IPS not in measurements
+    assert MetricName.TASK_CACHE_HIT_RATIO not in measurements
+    assert MetricName.TASK_CACHE_MISSES_PER_KILO_INSTRUCTIONS not in measurements
 
     # 5 seconds later
     def gm_func_2():
         return {
-            MetricName.INSTRUCTIONS: {0: 11000},  # 10k more
-            MetricName.CYCLES: {0: 15},  # 10 more
-            MetricName.CACHE_MISSES: {0: 20000},  # 10k more
-            MetricName.CACHE_REFERENCES: {0: 100000},  # 50k more
+            MetricName.TASK_INSTRUCTIONS: {0: 11000},  # 10k more
+            MetricName.TASK_CYCLES: {0: 15},  # 10 more
+            MetricName.TASK_CACHE_MISSES: {0: 20000},  # 10k more
+            MetricName.TASK_CACHE_REFERENCES: {0: 100000},  # 50k more
         }
 
     derived_metrics_generator.get_measurements_func = gm_func_2
     with patch('time.time', return_value=6):
         measurements = derived_metrics_generator.get_measurements()
-    assert DerivedMetricName.IPC in measurements
-    assert DerivedMetricName.IPS in measurements
-    assert DerivedMetricName.CACHE_HIT_RATIO in measurements
-    assert DerivedMetricName.CACHE_MISSES_PER_KILO_INSTRUCTIONS in measurements
+    assert MetricName.TASK_IPC in measurements
+    assert MetricName.TASK_IPS in measurements
+    assert MetricName.TASK_CACHE_HIT_RATIO in measurements
+    assert MetricName.TASK_CACHE_MISSES_PER_KILO_INSTRUCTIONS in measurements
 
-    assert measurements[DerivedMetricName.IPC] == ({0: 10000 / 10})
-    assert measurements[DerivedMetricName.IPS] == ({0: 10000 / 5})
+    assert measurements[MetricName.TASK_IPC] == ({0: 10000 / 10})
+    assert measurements[MetricName.TASK_IPS] == ({0: 10000 / 5})
 
     # Assuming cache misses increase is 10k over all 50k cache references
     # Cache hit ratio should be 40k / 50k = 80%
-    assert measurements[DerivedMetricName.CACHE_HIT_RATIO] == {0: 0.8}
+    assert measurements[MetricName.TASK_CACHE_HIT_RATIO] == {0: 0.8}
 
     # 10k misses per 10k instructions / 1000 = 10k / 10
-    assert measurements[DerivedMetricName.CACHE_MISSES_PER_KILO_INSTRUCTIONS] == {0: 1000}
+    assert measurements[MetricName.TASK_CACHE_MISSES_PER_KILO_INSTRUCTIONS] == {0: 1000}
 
 
 @pytest.mark.parametrize('event_names, cpu_codename, expected', [
-    (['cycles', 'instructions', 'cache_misses', 'cache_references'],
+    (['task_cycles', 'task_instructions', 'task_cache_misses', 'task_cache_references'],
      CPUCodeName.SKYLAKE,
-     ['cache_misses', 'cache_references', 'cycles', 'instructions']),
-    (['__r1234', 'instructions', 'cycles', 'cache_references'],
+     ['task_cache_misses', 'task_cache_references', 'task_cycles', 'task_instructions']),
+    (['__r1234', 'task_instructions', 'task_cycles', 'task_cache_references'],
      CPUCodeName.SKYLAKE,
-     ['instructions', 'cache_references', 'cycles', '__r1234']),
-    (['offcore_requests_outstanding_l3_miss_demand_data_rd', 'instructions',
-      'cache_misses', 'cache_references'],
+     ['task_instructions', 'task_cache_references', 'task_cycles', '__r1234']),
+    ([MetricName.TASK_OFFCORE_REQUESTS_OUTSTANDING_L3_MISS_DEMAND_DATA_RD, 'task_instructions',
+      'task_cache_misses', 'task_cache_references'],
      CPUCodeName.SKYLAKE,
-     ['cache_misses', 'cache_references',
-      'offcore_requests_outstanding_l3_miss_demand_data_rd', 'instructions']),
-    (['offcore_requests_outstanding_l3_miss_demand_data_rd', 'instructions',
-      'cache_misses', 'offcore_requests_l3_miss_demand_data_rd'],
+     ['task_cache_misses', 'task_cache_references',
+      MetricName.TASK_OFFCORE_REQUESTS_OUTSTANDING_L3_MISS_DEMAND_DATA_RD, 'task_instructions']),
+    ([MetricName.TASK_OFFCORE_REQUESTS_OUTSTANDING_L3_MISS_DEMAND_DATA_RD, 'task_instructions',
+      'task_cache_misses', MetricName.TASK_OFFCORE_REQUESTS_OUTSTANDING_L3_MISS_DEMAND_DATA_RD],
      CPUCodeName.SKYLAKE,
-     ['cache_misses', 'offcore_requests_l3_miss_demand_data_rd',
-      'offcore_requests_outstanding_l3_miss_demand_data_rd', 'instructions']),
+     ['task_cache_misses', MetricName.TASK_OFFCORE_REQUESTS_OUTSTANDING_L3_MISS_DEMAND_DATA_RD,
+      MetricName.TASK_OFFCORE_REQUESTS_OUTSTANDING_L3_MISS_DEMAND_DATA_RD, 'task_instructions']),
 ])
 def test_parse_event_names(event_names, cpu_codename, expected):
     parsed_event_names = _filter_out_event_names_for_cpu(event_names, cpu_codename)
@@ -390,12 +394,17 @@ def test_parse_event_names(event_names, cpu_codename, expected):
 
 
 @pytest.mark.parametrize('event_names, cpu_codename', [
-    (['cycles', 'instructions', 'cache_misses', 'false_metric'], CPUCodeName.SKYLAKE),
-    (['__r1234', 'instructions', 'false_metric', 'cache_references'], CPUCodeName.SKYLAKE),
-    (['offcore_requests_outstanding_l3_miss_demand_data_rd', 'instructions',
-      'false_metric', 'cache_references'], CPUCodeName.SKYLAKE),
-    (['offcore_requests_outstanding_l3_miss_demand_data_rd', 'false_metric',
-      'cache_misses', 'offcore_requests_l3_miss_demand_data_rd'], CPUCodeName.SKYLAKE)])
+    (
+            ['task_cycles', 'task_instructions', 'task_cache_misses', 'false_metric'],
+            CPUCodeName.SKYLAKE),
+    (
+            ['__r1234', 'task_instructions', 'false_metric', 'task_cache_references'],
+            CPUCodeName.SKYLAKE),
+    ([MetricName.TASK_OFFCORE_REQUESTS_OUTSTANDING_L3_MISS_DEMAND_DATA_RD, 'task_instructions',
+      'false_metric', 'task_cache_references'], CPUCodeName.SKYLAKE),
+    ([MetricName.TASK_OFFCORE_REQUESTS_OUTSTANDING_L3_MISS_DEMAND_DATA_RD, 'false_metric',
+      'task_cache_misses', MetricName.TASK_OFFCORE_REQUESTS_OUTSTANDING_L3_MISS_DEMAND_DATA_RD],
+     CPUCodeName.SKYLAKE)])
 def test_exception_parse_event_names(event_names, cpu_codename):
     with pytest.raises(Exception):
         _filter_out_event_names_for_cpu(event_names, cpu_codename)

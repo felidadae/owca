@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import abstractmethod
 import logging
 import time
 from typing import Dict, List, Optional
 
 import re
 import resource
+from abc import abstractmethod
 from dataclasses import dataclass
 
 from wca import platforms, profiling, perf_const as pc
@@ -29,7 +29,7 @@ from wca.config import Numeric, Str
 from wca.containers import ContainerManager, Container
 from wca.detectors import TaskData, TasksData, TaskResource
 from wca.logger import trace, get_logging_metrics, TRACE
-from wca.metrics import Metric, MetricType, MetricName, MissingMeasurementException, \
+from wca.metrics import Metric, MetricName, MissingMeasurementException, \
     export_metrics_from_measurements
 from wca.nodes import Node, Task
 from wca.nodes import TaskSynchronizationException
@@ -45,9 +45,9 @@ log = logging.getLogger(__name__)
 
 _INITIALIZE_FAILURE_ERROR_CODE = 1
 
-
-DEFAULT_EVENTS = [MetricName.INSTRUCTIONS, MetricName.CYCLES,
-                  MetricName.CACHE_MISSES, MetricName.CACHE_REFERENCES, MetricName.MEMSTALL]
+DEFAULT_EVENTS = [MetricName.TASK_INSTRUCTIONS, MetricName.TASK_CYCLES,
+                  MetricName.TASK_CACHE_MISSES, MetricName.TASK_CACHE_REFERENCES,
+                  MetricName.TASK_STALLED_MEM_LOADS]
 
 
 class TaskLabelGenerator:
@@ -115,7 +115,9 @@ class MeasurementRunner(Runner):
         allocation_configuration: Allows fine grained control over allocations.
             (defaults to AllocationConfiguration() instance)
         wss_reset_interval: Interval of reseting wss.
-            (defaults to 0, every iteration)
+            (defaults to 0, not measured)
+        include_optional_labels: Include optional labels like: sockets, cpus, cpu_model
+            (defaults to False)
     """
 
     def __init__(
@@ -131,14 +133,16 @@ class MeasurementRunner(Runner):
             enable_perf_uncore: bool = True,
             task_label_generators: Optional[Dict[str, TaskLabelGenerator]] = None,
             allocation_configuration: Optional[AllocationConfiguration] = None,
-            wss_reset_interval: int = 0
-            ):
+            wss_reset_interval: int = 0,
+            include_optional_labels: bool = False
+    ):
 
         self._node = node
         self._metrics_storage = metrics_storage
         self._action_delay = action_delay
         self._rdt_enabled = rdt_enabled
         self._gather_hw_mm_topology = gather_hw_mm_topology
+        self._include_optional_labels = include_optional_labels
 
         # QUICK FIX for Str from ENV TODO: fix me
         self._extra_labels = {k: str(v) for k, v in
@@ -162,14 +166,6 @@ class MeasurementRunner(Runner):
             }
         else:
             self._task_label_generators = task_label_generators
-        # Generate label value with cpu initial assignment, to simplify
-        #   management of distributed model system for plugin:
-        #   https://github.com/intel/platform-resource-manager/tree/master/prm"""
-        #
-        # To not risk subtle bugs in 1.0.x do not add it to _task_label_generators as default,
-        #   but make it hardcoded here and possible do be removed.
-        self._task_label_generators['initial_task_cpu_assignment'] = \
-            TaskLabelResourceGenerator('cpus')
 
         self._wss_reset_interval = wss_reset_interval
 
@@ -232,7 +228,11 @@ class MeasurementRunner(Runner):
                     return 1
 
         log.debug('rdt_enabled: %s', self._rdt_enabled)
-        platform, _, _ = platforms.collect_platform_information(self._rdt_enabled)
+        log.debug('gather_hw_mm_topology: %s', self._gather_hw_mm_topology)
+        platform, _, _ = platforms.collect_platform_information(
+            self._rdt_enabled,
+            gather_hw_mm_topology=self._gather_hw_mm_topology
+        )
         rdt_information = platform.rdt_information
 
         self._event_names = _filter_out_event_names_for_cpu(
@@ -252,11 +252,12 @@ class MeasurementRunner(Runner):
             wss_reset_interval=self._wss_reset_interval,
         )
 
-        self._init_uncore_pmu(self._enable_derived_metrics, self._enable_perf_uncore)
+        self._init_uncore_pmu(self._enable_derived_metrics, self._enable_perf_uncore, platform)
 
         return None
 
-    def _init_uncore_pmu(self, enable_derived_metrics, enable_perf_uncore):
+    def _init_uncore_pmu(self, enable_derived_metrics, enable_perf_uncore,
+                         platform: platforms.Platform):
         self._uncore_pmu = None
         self._uncore_get_measurements = lambda: {}
         if enable_perf_uncore:
@@ -284,7 +285,8 @@ class MeasurementRunner(Runner):
             # Prepare uncore object
             self._uncore_pmu = UncorePerfCounters(
                 cpus=cpus,
-                pmu_events=pmu_events
+                pmu_events=pmu_events,
+                platform=platform,
             )
 
             # Wrap with derived..
@@ -321,7 +323,9 @@ class MeasurementRunner(Runner):
         # Platform information
         platform, platform_metrics, platform_labels = platforms.collect_platform_information(
             self._rdt_enabled, self._gather_hw_mm_topology,
-            extra_platform_measurements=extra_platform_measurements)
+            extra_platform_measurements=extra_platform_measurements,
+            include_optional_labels=False,
+        )
 
         # Common labels
         common_labels = dict(platform_labels, **self._extra_labels)
@@ -413,23 +417,24 @@ def _prepare_tasks_data(containers: Dict[Task, Container]) -> TasksData:
                         '(because {})'.format(container, e))
             raise
         # Extra metrics
-        task_measurements[MetricName.UP.value] = 1
-        task_measurements[MetricName.LAST_SEEN.value] = time.time()
+        task_measurements[MetricName.TASK_LAST_SEEN.value] = time.time()
         #
         if TaskResource.CPUS in task.resources:
-            task_measurements[MetricName.CPUS.value] = task.resources[TaskResource.CPUS.value]
+            task_measurements[MetricName.TASK_REQUESTED_CPUS.value] = task.resources[
+                TaskResource.CPUS.value]
         if TaskResource.MEM in task.resources:
-            task_measurements[MetricName.MEM.value] = task.resources[TaskResource.MEM.value]
+            task_measurements[MetricName.TASK_REQUESTED_MEM_BYTES.value] = task.resources[
+                TaskResource.MEM.value]
 
         tasks_data[task.task_id] = TaskData(
-                    name=task.name,
-                    task_id=task.task_id,
-                    cgroup_path=task.cgroup_path,
-                    subcgroups_paths=task.subcgroups_paths,
-                    labels=task.labels,
-                    resources=task.resources,
-                    measurements=task_measurements
-                )
+            name=task.name,
+            task_id=task.task_id,
+            cgroup_path=task.cgroup_path,
+            subcgroups_paths=task.subcgroups_paths,
+            labels=task.labels,
+            resources=task.resources,
+            measurements=task_measurements
+        )
 
     return tasks_data
 
@@ -438,11 +443,8 @@ def _build_tasks_metrics(tasks_data: TasksData) -> List[Metric]:
     """TODO:  TBD ALSO ADDS PREFIX for name!"""
     tasks_metrics: List[Metric] = []
 
-    TASK_METRICS_PREFIX = 'task__'
-
     for task, data in tasks_data.items():
-        task_metrics = export_metrics_from_measurements(
-                TASK_METRICS_PREFIX, data.measurements)
+        task_metrics = export_metrics_from_measurements(data.measurements)
 
         # Decorate metrics with task specific labels.
         for task_metric in task_metrics:
@@ -462,10 +464,10 @@ def _get_internal_metrics(tasks: List[Task]) -> List[Metric]:
     memory_usage_rss = memory_usage_rss_self + memory_usage_rss_children
 
     metrics = [
-        Metric(name='wca_up', type=MetricType.COUNTER, value=time.time()),
-        Metric(name='wca_tasks', type=MetricType.GAUGE, value=len(tasks)),
-        Metric(name='wca_memory_usage_bytes', type=MetricType.GAUGE,
-               value=int(memory_usage_rss * 1024)),
+        Metric.create_metric_with_metadata(MetricName.WCA_UP, value=time.time()),
+        Metric.create_metric_with_metadata(MetricName.WCA_TASKS, value=len(tasks)),
+        Metric.create_metric_with_metadata(MetricName.WCA_MEM_USAGE_BYTES,
+                                           value=int(memory_usage_rss * 1024)),
     ]
 
     return metrics

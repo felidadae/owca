@@ -32,7 +32,7 @@ def test_get_measurements_not_found_cgroup(mock_file, mock_log_warning):
 
 
 @patch('builtins.open', create_open_mock({
-    '/sys/fs/cgroup/cpu/some/foo1/cpuacct.usage': '100',
+    '/sys/fs/cgroup/cpu/some/foo1/cpuacct.usage': '1000000000',  # nanoseconds
     '/sys/fs/cgroup/memory/some/foo1/memory.usage_in_bytes': '101',
     '/sys/fs/cgroup/memory/some/foo1/memory.max_usage_in_bytes': '999',
     '/sys/fs/cgroup/memory/some/foo1/memory.limit_in_bytes': '2000',
@@ -44,13 +44,13 @@ def test_get_measurements():
     cgroup = Cgroup('/some/foo1', platform=platform_mock)
     measurements = cgroup.get_measurements()
 
-    assert measurements == {MetricName.CPU_USAGE_PER_TASK: 100,
-                            MetricName.MEM_USAGE_PER_TASK: 101,
-                            MetricName.MEM_MAX_USAGE_PER_TASK: 999,
-                            MetricName.MEM_LIMIT_PER_TASK: 2000,
-                            MetricName.MEM_SOFT_LIMIT_PER_TASK: 1500,
-                            MetricName.MEM_PAGE_FAULTS: 2730362811,
-                            MetricName.MEM_NUMA_STAT_PER_TASK: {'0': 123, '1': 234}}
+    assert measurements == {MetricName.TASK_CPU_USAGE_SECONDS: 1,
+                            MetricName.TASK_MEM_USAGE_BYTES: 101,
+                            MetricName.TASK_MEM_MAX_USAGE_BYTES: 999,
+                            MetricName.TASK_MEM_LIMIT_BYTES: 2000,
+                            MetricName.TASK_MEM_SOFT_LIMIT_BYTES: 1500,
+                            MetricName.TASK_MEM_PAGE_FAULTS: 2730362811,
+                            MetricName.TASK_MEM_NUMA_PAGES: {'0': 123, '1': 234}}
 
 
 @patch('builtins.open', mock_open(read_data='100'))

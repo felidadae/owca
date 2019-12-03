@@ -1,4 +1,6 @@
 tests:
+
+  # ----------------------------- Test case 1 ---------------------------
   - test_case_name1:
     tasks:
       - /wcatask1
@@ -39,35 +41,35 @@ tests:
         name: anomaly_count
         value: 0
       - !MetricCheck
-        name: task__memory_bandwidth 
+        name: task_mem_bandwidth_bytes
         labels:
           task_id: wcatask1
       - !MetricCheck
-        name: task__memory_bandwidth
+        name: task_mem_bandwidth_bytes
         labels:
           task_id: wcatask2
       - !MetricCheck
-        name: task__memory_bandwidth_local 
+        name: task_mem_bandwidth_local_bytes
         labels:
           task_id: wcatask1
       - !MetricCheck
-        name: task__memory_bandwidth_local 
+        name: task_mem_bandwidth_local_bytes
         labels:
           task_id: wcatask2
       - !MetricCheck
-        name: task__memory_bandwidth_remote 
+        name: task_mem_bandwidth_remote_bytes
         labels:
           task_id: wcatask1
       - !MetricCheck
-        name: task__memory_bandwidth_remote 
+        name: task_mem_bandwidth_remote_bytes
         labels:
           task_id: wcatask2
       - !MetricCheck
-        name: task__wss_referenced_mb 
+        name: task_wss_referenced_bytes
         labels:
           task_id: wcatask1
       - !MetricCheck
-        name: task__wss_referenced_mb 
+        name: task_wss_referenced_bytes
         labels:
           task_id: wcatask2
       - !FileCheck
@@ -106,37 +108,39 @@ tests:
           task: wcatask2
         value: 10
       - !MetricCheck
-        name: task__cycles
+        name: task_cycles
         labels:
           task_id: wcatask1
       - !MetricCheck
-        name: task__instructions
+        name: task_instructions
         labels:
           task_id: wcatask1
       - !MetricCheck
-        name: task__cache_misses
+        name: task_cache_misses
         labels:
           task_id: wcatask1
       - !MetricCheck
-        name: task__cache_references
+        name: task_cache_references
         labels:
           task_id: wcatask1
       - !MetricCheck
-        name: task__cycles
+        name: task_cycles
         labels:
           task_id: wcatask2
       - !MetricCheck
-        name: task__instructions
+        name: task_instructions
         labels:
           task_id: wcatask2
       - !MetricCheck
-        name: task__cache_misses
+        name: task_cache_misses
         labels:
           task_id: wcatask2
       - !MetricCheck
-        name: task__cache_references
+        name: task_cache_references
         labels:
           task_id: wcatask2
+
+  # ----------------------------- Test case 2 ---------------------------
   - test_case_name2:
     tasks:
       - /wcatask2
@@ -163,69 +167,69 @@ tests:
       - !MetricCheck
         name: anomaly_count
       - !MetricCheck
-        name: task__cycles
+        name: task_cycles
         labels:
           task_id: wcatask2
       - !MetricCheck
-        name: task__instructions
+        name: task_instructions
         labels:
           task_id: wcatask2
       - !MetricCheck
-        name: task__cache_misses
+        name: task_cache_misses
         labels:
           task_id: wcatask2
       - !MetricCheck
-        name: task__cache_references
+        name: task_cache_references
         labels:
           task_id: wcatask2
       - !MetricCheck
-        name: task__cycles
+        name: task_cycles
         labels:
           task_id: wcatask4
       - !MetricCheck
-        name: task__instructions
+        name: task_instructions
         labels:
           task_id: wcatask4
       - !MetricCheck
-        name: task__cache_misses
+        name: task_cache_misses
         labels:
           task_id: wcatask4
       - !MetricCheck
-        name: task__cache_references
+        name: task_cache_references
         labels:
           task_id: wcatask4
       - !MetricCheck
-        name: task__memory_bandwidth 
+        name: task_mem_bandwidth_bytes
         labels:
           task_id: wcatask2
       - !MetricCheck
-        name: task__memory_bandwidth 
+        name: task_mem_bandwidth_bytes
         labels:
           task_id: wcatask4
       - !MetricCheck
-        name: task__memory_bandwidth_local 
+        name: task_mem_bandwidth_local_bytes
         labels:
           task_id: wcatask2
       - !MetricCheck
-        name: task__memory_bandwidth_local 
+        name: task_mem_bandwidth_local_bytes
         labels:
           task_id: wcatask4
       - !MetricCheck
-        name: task__memory_bandwidth_remote 
+        name: task_mem_bandwidth_remote_bytes
         labels:
           task_id: wcatask2
       - !MetricCheck
-        name: task__memory_bandwidth_remote 
+        name: task_mem_bandwidth_remote_bytes
         labels:
           task_id: wcatask4
       - !MetricCheck
-        name: task__wss_referenced_mb 
+        name: task_wss_referenced_bytes
         labels:
           task_id: wcatask2
       - !MetricCheck
-        name: task__wss_referenced_mb 
+        name: task_wss_referenced_bytes
         labels:
-          task_id: wcatask4    
+          task_id: wcatask4
       - !MetricCheck
         name: allocation_cpuset_cpus_number_of_cpus
         labels:
@@ -236,3 +240,41 @@ tests:
         labels:
           task: wcatask4
         value: 4
+
+
+  # ----------------------------- Test case 3 ---------------------------
+  - test_case_numa:
+    tasks:
+      - /wcatask1
+      - /wcatask2
+    allocator: !NUMAAllocator
+    checks:
+      - !MetricCheck
+        name: numa__task_tasks_count
+        value: 2
+
+  # ----------------------------- Test case 4: cgroups cpus ets/mems/memory_migrate/cgroup_migrate
+  - test_case_numa:
+    tasks:
+      - /wcatask5
+    allocator: !StaticAllocator
+      rules:
+        - name: Rule to set cpuset
+          allocations:
+            cpuset_cpus: '1'
+            cpuset_mems: '0'
+            cpuset_memory_migrate: 1
+            migrate_pages: 1
+    checks:
+      - !MetricCheck
+        name: allocation_cpuset_cpus_number_of_cpus
+        value: 1
+      - !MetricCheck
+        name: allocation_cpuset_mems_number_of_mems
+        value: 1
+      - !MetricCheck
+        name: allocation_cpuset_memory_migrate
+        value: 1
+      - !MetricCheck
+        name: allocation_migrate_pages
+        value: 1

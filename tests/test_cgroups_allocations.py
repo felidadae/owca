@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
-
 from unittest.mock import patch, call, Mock
 
+import pytest
+
 from tests.testing import allocation_metric
-from wca.allocators import AllocationConfiguration, AllocationType
 from wca.allocations import InvalidAllocations
+from wca.allocators import AllocationConfiguration, AllocationType
 from wca.cgroups_allocations import (QuotaAllocationValue, SharesAllocationValue,
                                      CPUSetCPUSAllocationValue, CPUSetMEMSAllocationValue,
                                      MigratePagesAllocationValue)
 from wca.containers import Container
 from wca.metrics import Metric, MetricType
-from wca.platforms import Platform, RDTInformation
+from wca.platforms import Platform, RDTInformation, is_swap_enabled
 
 
 @patch('wca.perf.PerfCounters')
@@ -84,8 +84,19 @@ def test_cgroup_allocations(Cgroup_mock, PerfCounters_mock):
     ], True)
 
 
+@pytest.mark.parametrize("raw_meminfo_output,expected", [
+    ("SwapCached:   3000kB \nSwapTotal:   123000kB\nSwapFree: 20000kB", True),
+    ("SwapCached:   0kB \nSwapTotal:   0kB\nSwapFree: 0 kB", False),
+])
+def test_is_swap_enabled(raw_meminfo_output, expected):
+    with patch('wca.platforms.read_proc_meminfo',
+               return_value=raw_meminfo_output):
+        got = is_swap_enabled()
+        assert got == expected
+
+
 @patch('wca.platforms.read_proc_meminfo',
-       return_value='SwapCached: 3000kB \nSwapTotal: 123000kB\nSwapFree: 20000kB')
+       return_value='SwapCached: 3000kB \nSwapTotal:   123000kB\nSwapFree: 20000kB')
 @patch('wca.cgroups.Cgroup')
 def test_migrate_pages_raise_exception_when_swap_is_enabled(*mocks):
     rdt_information = RDTInformation(True, True, True, True, '0', '0', 0, 0, 0)
@@ -97,7 +108,7 @@ def test_migrate_pages_raise_exception_when_swap_is_enabled(*mocks):
         rdt_information=rdt_information,
         node_cpus={0: [0, 1], 1: [2, 3]},
         numa_nodes=2,
-        swap_enabled=True
+        swap_enabled=is_swap_enabled(),
     )
 
     foo_container = Container(

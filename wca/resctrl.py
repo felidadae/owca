@@ -236,11 +236,11 @@ class ResGroup:
 
         measurements = {}
         if mb_monitoring_enabled:
-            measurements[MetricName.MEM_BW] = mbm_total
-            measurements[MetricName.MEMORY_BANDWIDTH_LOCAL] = mbm_local
-            measurements[MetricName.MEMORY_BANDWIDTH_REMOTE] = mbm_total - mbm_local
+            measurements[MetricName.TASK_MEM_BANDWIDTH_BYTES] = mbm_total
+            measurements[MetricName.TASK_MEM_BANDWIDTH_LOCAL_BYTES] = mbm_local
+            measurements[MetricName.TASK_MEM_BANDWIDTH_REMOTE_BYTES] = mbm_total - mbm_local
         if cache_monitoring_enabled:
-            measurements[MetricName.LLC_OCCUPANCY] = llc_occupancy
+            measurements[MetricName.TASK_LLC_OCCUPANCY_BYTES] = llc_occupancy
         return measurements
 
     def get_allocations(self) -> TaskAllocations:

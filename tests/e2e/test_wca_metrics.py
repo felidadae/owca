@@ -76,7 +76,7 @@ def _fetch_metrics(url):
     'twemcache_mutilate'
 ])
 def test_wca_metrics(workload_name):
-    test_wca(workload_name, ['sli', 'task__cycles'])
+    test_wca(workload_name, ['sli', 'task_cycles'])
 
 
 @pytest.mark.parametrize('workload_name', [
@@ -86,7 +86,7 @@ def test_wca_metrics(workload_name):
     'stress'
 ])
 def test_wca_metrics_kustomize(workload_name):
-    test_wca(workload_name, ['apm__sli', 'task__cycles'])
+    test_wca(workload_name, ['apm__sli', 'task_cycles'])
 
 
 def test_wca(workload_name, metrics):

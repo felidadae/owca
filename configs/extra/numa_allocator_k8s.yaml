@@ -1,7 +1,7 @@
 loggers:
-  "wca.extra.numa_allocator": "trace"
-  "wca.cgroups_allocations": "trace"
-  "wca": "info"
+#  "wca.extra.numa_allocator": "trace"
+#  "wca.cgroups_allocations": "trace"
+  "wca": "debug"
 runner: !AllocationRunner
   measurement_runner: !MeasurementRunner
     action_delay: 5
@@ -18,10 +18,10 @@ runner: !AllocationRunner
     # Disable all measurements based on perf system and resctrl
     enable_perf_uncore: true
     enable_derived_metrics: true
-    gather_hw_mm_topology: false
+    gather_hw_mm_topology: true
     rdt_enabled: false
-    event_names: []  # if uncommented disables metrics from perf event subsystem
-    wss_reset_interval: 0
+#    event_names: []  # if uncommented disables metrics from perf event subsystem
+    wss_reset_interval: 1
     #event_names:  # if uncommented disables metrics from perf event subsystem
     #- instructions
     #- cycles
@@ -48,6 +48,7 @@ runner: !AllocationRunner
   allocator: !NUMAAllocator
     loop_min_task_balance: 0.0
     migrate_pages: true
+    cgroups_cpus_binding: false
     cgroups_memory_binding: false
     cgroups_memory_migrate: false
     double_match: false

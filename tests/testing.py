@@ -27,7 +27,7 @@ from wca.allocators import AllocationConfiguration
 from wca.containers import Container, ContainerSet, ContainerInterface
 from wca.detectors import ContendedResource, ContentionAnomaly, LABEL_WORKLOAD_INSTANCE, \
     _create_uuid_from_tasks_ids, TaskData
-from wca.metrics import Metric, MetricType
+from wca.metrics import Metric, MetricType, MetricName
 from wca.nodes import TaskId, Task
 from wca.platforms import CPUCodeName, Platform, RDTInformation
 from wca.resctrl import ResGroup
@@ -183,9 +183,8 @@ def container(cgroup_path, subcgroups_paths=None, with_config=False,
                     True, True, rdt_mb_control_enabled,
                     rdt_cache_control_enabled, '0', '0', 0, 0, 0),
                 node_cpus={0: {0, 1}},
-                node_distances={0: [10]},
+                node_distances={0: {0: 10}},
                 measurements={},
-                static_information={},
                 swap_enabled=False
             )
             return ContainerSet(
@@ -209,9 +208,8 @@ def container(cgroup_path, subcgroups_paths=None, with_config=False,
                 rdt_information=RDTInformation(
                     True, True, True, True, '0', '0', 0, 0, 0),
                 node_cpus={0: {0, 1}},
-                node_distances={0: [10]},
+                node_distances={0: {0: 10}},
                 measurements={},
-                static_information={},
                 swap_enabled=False
             )
             return Container(
@@ -321,7 +319,7 @@ def prepare_runner_patches(func):
              patch('wca.cgroups.Cgroup.set_quota'), \
              patch('wca.cgroups.Cgroup.set_shares'), \
              patch('wca.cgroups.Cgroup.get_measurements',
-                   return_value=dict(cpu_usage=TASK_CPU_USAGE)), \
+                   return_value={MetricName.TASK_CPU_USAGE_SECONDS: TASK_CPU_USAGE}), \
              patch('wca.resctrl.ResGroup.add_pids'), \
              patch('wca.resctrl.ResGroup.get_measurements'), \
              patch('wca.resctrl.ResGroup.get_mon_groups'), \

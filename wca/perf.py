@@ -86,8 +86,8 @@ def _parse_event_groups(file, event_names, include_scaling_info) -> Measurements
     # we add 2 non-standard metrics based on unpacked values,
     # we need to collect scaling factors here
     if include_scaling_info:
-        measurements[MetricName.SCALING_FACTOR_AVG] = statistics.mean(scaling_factors)
-        measurements[MetricName.SCALING_FACTOR_MAX] = max(scaling_factors)
+        measurements[MetricName.TASK_SCALING_FACTOR_AVG] = statistics.mean(scaling_factors)
+        measurements[MetricName.TASK_SCALING_FACTOR_MAX] = max(scaling_factors)
     return measurements
 
 
@@ -343,16 +343,16 @@ class PerfCounters:
                 measurements[metric][cpu] = scaled_measurements_and_factor_per_cpu[cpu][metric]
 
         if self._group_event_leader_files:
-            measurements.update(**{MetricName.SCALING_FACTOR_MAX: 0,
-                                   MetricName.SCALING_FACTOR_AVG: 0})
+            measurements.update(**{MetricName.TASK_SCALING_FACTOR_MAX: 0,
+                                   MetricName.TASK_SCALING_FACTOR_AVG: 0})
 
             for cpu, metrics in scaled_measurements_and_factor_per_cpu.items():
-                measurements[MetricName.SCALING_FACTOR_MAX] = max(
-                    scaled_measurements_and_factor_per_cpu[cpu][MetricName.SCALING_FACTOR_MAX],
-                    measurements[MetricName.SCALING_FACTOR_MAX])
-                measurements[MetricName.SCALING_FACTOR_AVG] += \
+                measurements[MetricName.TASK_SCALING_FACTOR_MAX] = max(
+                    scaled_measurements_and_factor_per_cpu[cpu][MetricName.TASK_SCALING_FACTOR_MAX],
+                    measurements[MetricName.TASK_SCALING_FACTOR_MAX])
+                measurements[MetricName.TASK_SCALING_FACTOR_AVG] += \
                     scaled_measurements_and_factor_per_cpu[cpu][
-                        MetricName.SCALING_FACTOR_AVG]
+                        MetricName.TASK_SCALING_FACTOR_AVG]
 
         return measurements
 

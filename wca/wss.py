@@ -1,7 +1,7 @@
 import logging
 import os
 
-from wca.metrics import Measurements
+from wca.metrics import Measurements, MetricName
 
 log = logging.getLogger(__name__)
 
@@ -32,8 +32,9 @@ class WSS:
             except (ProcessLookupError, FileNotFoundError):
                 log.warning('pid does not exist for clearing refs - ignoring!')
                 referenced = 0
-        referenced = referenced / 1024  # scale as mega bytes
-        measurements['wss_referenced_mb'] = referenced
+        # Referenced comes in kb (rescale to bytes)
+        referenced = referenced * 1000  # scale as mega bytes
+        measurements[MetricName.TASK_WSS_REFERENCED_BYTES] = referenced
 
         if self._cycle % self.reset_interval == 0:
             for pid in pids:
