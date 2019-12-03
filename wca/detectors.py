@@ -52,6 +52,7 @@ TasksData = Dict[TaskId, TaskData]
 class TaskResource(str, Enum):
     CPUS = 'cpus'
     MEM = 'mem'
+    DISK = 'disk'
 
 
 class ContendedResource(str, Enum):
