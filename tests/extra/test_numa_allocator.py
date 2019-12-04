@@ -95,11 +95,11 @@ def prepare_input(tasks: Dict[TaskId, Dict[NumaNodeId, PercentageMemUsage]],
 
 
 fill_biggest_first_params = {
-    'algorithm': NUMAAllocator.AlgorithmName.fill_biggest_first,
+    'algorithm': NUMAAllocator.fill_biggest_first_,
     'migrate_pages': True
 }
 minimize_migrate_params = {
-    'algorithm': NUMAAllocator.AlgorithmName.minimize_migration,
+    'algorithm': NUMAAllocator.minimize_migration_,
     'migrate_pages': True
 }
 

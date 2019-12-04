@@ -28,15 +28,14 @@ TasksMemory = List[TaskMemory]
 
 @dataclass
 class NUMAAllocator(Allocator):
-    class AlgorithmName(Enum):
-        """solve bin packing problem by heuristic which takes the biggest first"""
-        fill_biggest_first = 'fill_biggest_first'
+    """solve bin packing problem by heuristic which takes the biggest first"""
+    fill_biggest_first_ = 'fill_biggest_first'
 
-        """tries to minimize how much memory is migrated between numa nodes; in other words tries to keep taski
-        where most of its memory resides"""
-        minimize_migration = 'minimize_migration'
+    """tries to minimize how much memory is migrated between numa nodes; in other words tries to keep taski
+    where most of its memory resides"""
+    minimize_migration_ = 'minimize_migration'
 
-    algorithm: AlgorithmName = AlgorithmName.fill_biggest_first
+    algorithm: str = fill_biggest_first_
 
     # minimal value of task_balance so the task is not skipped during rebalancing analysis
     # by default turn off, none of tasks are skipped due to this reason
@@ -92,10 +91,10 @@ class NUMAAllocator(Allocator):
                 continue
 
             if balance_task is None:
-                if self.algorithm == self.AlgorithmName.minimize_migration:
+                if self.algorithm == self.minimize_migration_:
                     balance_task, balance_task_node = self.migration_minimizer(task_data, task_memory, balanced_memory,
                                                                                platform)
-                elif self.algorithm == self.AlgorithmName.fill_biggest_first:
+                elif self.algorithm == self.fill_biggest_first_:
                     balance_task, balance_task_node = self.fill_biggest_first(task, memory_limit, balanced_memory)
 
                 # Validate if we have enough memory to migrate to desired node.
