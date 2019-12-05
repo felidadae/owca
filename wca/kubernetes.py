@@ -85,17 +85,17 @@ class KubernetesNode(Node):
     Derived from abstract Node class providing get_tasks interface.
 
     - ``cgroup_driver``: **CgroupDriverType** = *CgroupDriverType.CGROUPFS*
-        
+
         We need to know what cgroup driver is used to properly build cgroup paths for pods.
-        Reference in source code for kubernetes version stable 1.13: 
+        Reference in source code for kubernetes version stable 1.13:
         https://github.com/kubernetes/kubernetes/blob/v1.13.3/pkg/kubelet/cm/cgroup_manager_linux.go#L207
 
 
     - ``ssl``: **Optional[SSL]** = *None*
-        
+
         ssl object used to communicate with kubernetes
 
-    - ``client_token_path``: **Optional[Path(absolute=True, mode=os.R_OK)]** = *SERVICE_TOKEN_FILENAME*
+    - ``client_token_path``: **Optional[Path]** = *SERVICE_TOKEN_FILENAME*
 
         Default path is using by pods. You can override it to use wca outside pod.
 
@@ -113,7 +113,7 @@ class KubernetesNode(Node):
 
     - ``kubeapi_host``: **Str** = *None*
 
-    - ``kubeapi_port``: **Str** = *None* 
+    - ``kubeapi_port``: **Str** = *None*
 
     - ``node_ip``: **Str** = *None*
 

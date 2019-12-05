@@ -109,7 +109,7 @@ class MesosNode(Node):
         Timeout to access kubernetes agent [seconds].
 
     - ``ssl``: **Optional[SSL]** = *None*
-        
+
         ssl object used to communicate with kubernetes
     """
     mesos_agent_endpoint: Url = 'https://127.0.0.1:5051'

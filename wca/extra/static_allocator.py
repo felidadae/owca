@@ -131,7 +131,7 @@ class StaticAllocator(Allocator):
     If there are multiple matching rules then the rules' allocations are merged and applied.
 
     Arguments:
-    
+
     - ``rules``: **List[dict]** = *None*
 
         Direct way to pass rules.
