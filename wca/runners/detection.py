@@ -58,12 +58,21 @@ class AnomalyStatistics:
 
 
 class DetectionRunner(Runner):
-    """
+    """rst
     DetectionRunner extends MeasurementRunner with ability to callback Detector,
     serialize received anomalies and storing them in anomalies_storage.
 
-    Arguments:
-        config: Runner configuration object.
+    - ``measurement_runner``: **MeasurementRunner**
+
+        Measurement runner object.
+
+    - ``allocator``: **AnomalyDetector**
+
+        Component that provides allocation logic.
+
+    - ``anomalies_storages``: **Storage** = *DEFAULT_STORAGE*
+
+        Storage to store serialized anomalies.
     """
 
     def __init__(

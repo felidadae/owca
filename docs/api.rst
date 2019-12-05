@@ -124,13 +124,21 @@ AllocationRunner
 
 DetectionRunner
 ===============
-.. code-block:: 
 
 	    DetectionRunner extends MeasurementRunner with ability to callback Detector,
 	    serialize received anomalies and storing them in anomalies_storage.
 	
-	    Arguments:
-	        config: Runner configuration object.
+	    - ``measurement_runner``: **MeasurementRunner**
+	
+	        Measurement runner object.
+	
+	    - ``allocator``: **AnomalyDetector**
+	
+	        Component that provides allocation logic.
+	
+	    - ``anomalies_storages``: **Storage** = *DEFAULT_STORAGE*
+	
+	        Storage to store serialized anomalies.
 	    
 
 MesosNode
@@ -264,7 +272,7 @@ AllocationConfiguration
 =======================
 .. code-block:: 
 
-	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f091cc6dd08>=None, default_rdt_mb:<function Str at 0x7f091cc6dd08>=None)
+	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f33352fad08>=None, default_rdt_mb:<function Str at 0x7f33352fad08>=None)
 
 CgroupDriverType
 ================
