@@ -235,8 +235,8 @@ to standard error (default) or provided file (output_filename).
     set in the constructor to a value depending on the field `overwrite`:
 
     - with `overwrite` set to True, timestamps are not added
-       (in order to minimise number of parameters needed to be
-       set when one use node exporter),
+      (in order to minimise number of parameters needed to be
+      set when one use node exporter),
     - with `overwrite` set to False, timestamps are added.
 
 - ``filter_labels``: **Optional[List[str]]** = *None*
