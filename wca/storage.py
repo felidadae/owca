@@ -74,6 +74,7 @@ class LogStorage(Storage):
         Whether to add timestamps to metrics.
         If set to None while constructing (default value), then it will be
         set in the constructor to a value depending on the field `overwrite`:
+
         * with `overwrite` set to True, timestamps are not added
            (in order to minimise number of parameters needed to be
            set when one use node exporter),
