@@ -312,29 +312,28 @@ class KafkaStorage(Storage):
     """rst
     Storage for saving metrics in Kafka.
 
-    Args:
-        - ``topic``: **Str**
+    - ``topic``: **Str**
 
-            name of a kafka topic where message should be saved
+        name of a kafka topic where message should be saved
 
-        - ``brokers_ips``: **List[IpPort]** = *"127.0.0.1:9092"*  
+    - ``brokers_ips``: **List[IpPort]** = *"127.0.0.1:9092"*  
 
-            list of addresses with ports of all kafka brokers (kafka nodes)
+        list of addresses with ports of all kafka brokers (kafka nodes)
 
-        - ``max_timeout_in_seconds``: **Numeric(0, 5)** = *0.5* 
+    - ``max_timeout_in_seconds``: **Numeric(0, 5)** = *0.5* 
 
-            if a message was not delivered in maximum_timeout seconds
-            self.store will throw FailedDeliveryException
+        if a message was not delivered in maximum_timeout seconds
+        self.store will throw FailedDeliveryException
 
-        - ``extra_config``: **Dict[Str, Str]** = *None* 
+    - ``extra_config``: **Dict[Str, Str]** = *None* 
 
-            additionall key value pairs that will be passed to kafka driver
-            https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
-            e.g. {'debug':'broker,topic,msg'} to enable logging for kafka producer threads
+        additionall key value pairs that will be passed to kafka driver
+        https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
+        e.g. {'debug':'broker,topic,msg'} to enable logging for kafka producer threads
 
-        - ``ssl``: **Optional[SSL]** = *None* 
+    - ``ssl``: **Optional[SSL]** = *None* 
 
-            secure socket layer object
+        secure socket layer object
     """
     topic: Str
     brokers_ips: List[IpPort] = field(default=("127.0.0.1:9092",))
