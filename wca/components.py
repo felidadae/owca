@@ -51,7 +51,6 @@ REGISTERED_COMPONENTS = [
     kubernetes.CgroupDriverType,
     static_node.StaticNode,
     numa_allocator.NUMAAllocator,
-    numa_allocator.NUMAAlgorithm,
     static_allocator.StaticAllocator,
     security.SSL,
     measurement.TaskLabelRegexGenerator,

@@ -419,11 +419,6 @@ Allocator aimed to minimize remote NUMA memory accesses for processes.
 
 
 
-NUMAAlgorithm
-=============
-
-	solve bin packing problem by heuristic which takes the biggest first
-
 StaticAllocator
 ===============
 
