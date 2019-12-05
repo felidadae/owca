@@ -51,11 +51,6 @@ def prepare_api_docs():
             raise MissingDocstring(component.__name__)
 
         lines = docstring.splitlines(True)
-        def remove_trailing_whitespaces(line):
-            s = re.search(r'[ \t]+(.*)', line)
-            if s:
-                return s.group(1) + '\n'
-            return line
         lines = [remove_trailing_whitespaces(line) for line in lines]
         if len(lines) == 1:
             docs += '\n\t' + docstring
@@ -176,6 +171,13 @@ def generate_docs(csv=False):
     internal += prepare_csv_table(internal_data, header=not csv) + '\n\n'
 
     return tasks + '\n\n' + platforms + '\n\n' + internal
+
+
+def remove_trailing_whitespaces(line):
+    s = re.search(r'[ \t]+(.*)', line)
+    if s:
+        return s.group(1) + '\n'
+    return line
 
 
 if __name__ == '__main__':
