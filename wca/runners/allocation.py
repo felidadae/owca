@@ -163,7 +163,7 @@ def validate_shares_allocation_for_kubernetes(tasks: List[Task], allocations: Ta
 
 
 class AllocationRunner(Runner):
-    """
+    """rst
     Runner is responsible for getting information about tasks from node,
     calling allocate() callback on allocator, performing returning allocations
     and storing all allocation related metrics in allocations_storage.
