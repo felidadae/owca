@@ -219,6 +219,26 @@ LogStorage
 Outputs metrics encoded in Prometheus exposition format
 to standard error (default) or provided file (output_filename).
 
+- ``output_filename``: **Optional[Path]** = *None*
+
+    If set to None, then prints data to stderr.
+
+# When set to True the `output_filename` file will always contain
+# only last stored metrics.
+overwrite: bool = False
+
+# Whether to add timestamps to metrics.
+# If set to None while constructing (default value), then it will be
+# set in the constructor to a value depending on the field `overwrite`:
+# * with `overwrite` set to True, timestamps are not added
+#   (in order to minimise number of parameters needed to be
+#    set when one use node exporter),
+# * with `overwrite` set to False, timestamps are added.
+include_timestamp: Optional[bool] = None
+
+filter_labels: Optional[List[str]] = None
+
+
 
 
 KafkaStorage
