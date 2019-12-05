@@ -64,39 +64,28 @@ class LogStorage(Storage):
 
         If set to None, then prints data to stderr.
 
-    # When set to True the `output_filename` file will always contain
-    # only last stored metrics.
-    overwrite: bool = False
+    - ``overwrite``: **bool** = *False*
 
-    # Whether to add timestamps to metrics.
-    # If set to None while constructing (default value), then it will be
-    # set in the constructor to a value depending on the field `overwrite`:
-    # * with `overwrite` set to True, timestamps are not added
-    #   (in order to minimise number of parameters needed to be
-    #    set when one use node exporter),
-    # * with `overwrite` set to False, timestamps are added.
-    include_timestamp: Optional[bool] = None
+        When set to True the `output_filename` file will always contain
+        only last stored metrics.
 
-    filter_labels: Optional[List[str]] = None
+    - ``include_timestamp``: **Optional[bool]** = *None*
+
+        Whether to add timestamps to metrics.
+        If set to None while constructing (default value), then it will be
+        set in the constructor to a value depending on the field `overwrite`:
+        * with `overwrite` set to True, timestamps are not added
+           (in order to minimise number of parameters needed to be
+           set when one use node exporter),
+        * with `overwrite` set to False, timestamps are added.
+
+    - ``filter_labels``: **Optional[List[str]]** = *None*
 
     """
 
-    # If set to None, then prints data to stderr.
     output_filename: Optional[Path] = None
-
-    # When set to True the `output_filename` file will always contain
-    # only last stored metrics.
     overwrite: bool = False
-
-    # Whether to add timestamps to metrics.
-    # If set to None while constructing (default value), then it will be
-    # set in the constructor to a value depending on the field `overwrite`:
-    # * with `overwrite` set to True, timestamps are not added
-    #   (in order to minimise number of parameters needed to be
-    #    set when one use node exporter),
-    # * with `overwrite` set to False, timestamps are added.
     include_timestamp: Optional[bool] = None
-
     filter_labels: Optional[List[str]] = None
 
     def __post_init__(self):
