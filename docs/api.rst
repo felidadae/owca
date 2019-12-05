@@ -95,29 +95,29 @@ AllocationRunner
 	
 	        Measurement runner object.
 	
-	    ``allocator``: **Allocator**
+	    - ``allocator``: **Allocator**
 	
 	        Component that provides allocation logic.
 	
-	    ``anomalies_storage``: **Storage** = `DEFAULT_STORAGE`
+	    - ``anomalies_storage``: **Storage** = `DEFAULT_STORAGE`
 	
 	        Storage to store serialized anomalies and extra metrics.
 	
-	    ``allocations_storage``: **tdwiboolype** = `DEFAULT_STORAGE`
+	    - ``allocations_storage``: **tdwiboolype** = `DEFAULT_STORAGE`
 	
 	        Storage to store serialized resource allocations.
 	
-	    ``rdt_mb_control_required``: **bool** = *False* 
+	    - ``rdt_mb_control_required``: **bool** = *False* 
 	
 	        Indicates that MB control is required,
 	        if the platform does not support this feature the WCA will exit.
 	
-	    ``rdt_cache_control_required``: **bool** = *False* 
+	    - ``rdt_cache_control_required``: **bool** = *False* 
 	
 	        Indicates tha L3 control is required,
 	        if the platform does not support this feature the WCA will exit.
 	
-	    ``remove_all_resctrl_groups``: **bool** = *False* 
+	    - ``remove_all_resctrl_groups``: **bool** = *False* 
 	
 	        Remove all RDT controls groups upon starting.
 	    
@@ -137,13 +137,13 @@ MesosNode
 =========
 .. code-block:: 
 
-	MesosNode(mesos_agent_endpoint:<function Url at 0x7f02e40b9f28>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
+	MesosNode(mesos_agent_endpoint:<function Url at 0x7f178dab5f28>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
 
 KubernetesNode
 ==============
 .. code-block:: 
 
-	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7f02e40b9f28>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7f02e40b9d08>=None, kubeapi_port:<function Str at 0x7f02e40b9d08>=None, node_ip:<function Str at 0x7f02e40b9d08>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
+	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7f178dab5f28>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7f178dab5d08>=None, kubeapi_port:<function Str at 0x7f178dab5d08>=None, node_ip:<function Str at 0x7f178dab5d08>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
 
 LogStorage
 ==========
@@ -192,7 +192,7 @@ AllocationConfiguration
 =======================
 .. code-block:: 
 
-	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f02e40b9d08>=None, default_rdt_mb:<function Str at 0x7f02e40b9d08>=None)
+	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f178dab5d08>=None, default_rdt_mb:<function Str at 0x7f178dab5d08>=None)
 
 CgroupDriverType
 ================

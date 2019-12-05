@@ -176,29 +176,29 @@ class AllocationRunner(Runner):
 
         Measurement runner object.
 
-    ``allocator``: **Allocator**
+    - ``allocator``: **Allocator**
 
         Component that provides allocation logic.
 
-    ``anomalies_storage``: **Storage** = `DEFAULT_STORAGE`
+    - ``anomalies_storage``: **Storage** = `DEFAULT_STORAGE`
 
         Storage to store serialized anomalies and extra metrics.
 
-    ``allocations_storage``: **tdwiboolype** = `DEFAULT_STORAGE`
+    - ``allocations_storage``: **tdwiboolype** = `DEFAULT_STORAGE`
 
         Storage to store serialized resource allocations.
 
-    ``rdt_mb_control_required``: **bool** = *False* 
+    - ``rdt_mb_control_required``: **bool** = *False* 
 
         Indicates that MB control is required,
         if the platform does not support this feature the WCA will exit.
 
-    ``rdt_cache_control_required``: **bool** = *False* 
+    - ``rdt_cache_control_required``: **bool** = *False* 
 
         Indicates tha L3 control is required,
         if the platform does not support this feature the WCA will exit.
 
-    ``remove_all_resctrl_groups``: **bool** = *False* 
+    - ``remove_all_resctrl_groups``: **bool** = *False* 
 
         Remove all RDT controls groups upon starting.
     """
