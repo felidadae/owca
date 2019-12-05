@@ -137,13 +137,13 @@ MesosNode
 =========
 .. code-block:: 
 
-	MesosNode(mesos_agent_endpoint:<function Url at 0x7f36022a9f28>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
+	MesosNode(mesos_agent_endpoint:<function Url at 0x7f45ab624f28>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
 
 KubernetesNode
 ==============
 .. code-block:: 
 
-	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7f36022a9f28>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7f36022a9d08>=None, kubeapi_port:<function Str at 0x7f36022a9d08>=None, node_ip:<function Str at 0x7f36022a9d08>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
+	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7f45ab624f28>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7f45ab624d08>=None, kubeapi_port:<function Str at 0x7f45ab624d08>=None, node_ip:<function Str at 0x7f45ab624d08>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
 
 LogStorage
 ==========
@@ -155,19 +155,32 @@ LogStorage
 
 KafkaStorage
 ============
-.. code-block:: 
 
 	    Storage for saving metrics in Kafka.
 	
 	    Args:
-	        topic: name of a kafka topic where message should be saved
-	        brokers_ips:  list of addresses with ports of all kafka brokers (kafka nodes)
-	        max_timeout_in_seconds: if a message was not delivered in maximum_timeout seconds
+	        - ``topic``: **Str**
+	
+	            name of a kafka topic where message should be saved
+	
+	        - ``brokers_ips``: **List[IpPort]** = *"127.0.0.1:9092"*  
+	
+	            list of addresses with ports of all kafka brokers (kafka nodes)
+	
+	        - ``max_timeout_in_seconds``: **Numeric(0, 5)** = *0.5* 
+	
+	            if a message was not delivered in maximum_timeout seconds
 	            self.store will throw FailedDeliveryException
-	        extra_config: additionall key value pairs that will be passed to kafka driver
+	
+	        - ``extra_config``: **Dict[Str, Str]** = *None* 
+	
+	            additionall key value pairs that will be passed to kafka driver
 	            https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
 	            e.g. {'debug':'broker,topic,msg'} to enable logging for kafka producer threads
-	        ssl: secure socket layer object
+	
+	        - ``ssl``: **Optional[SSL]** = *None* 
+	
+	            secure socket layer object
 	    
 
 FilterStorage
@@ -192,7 +205,7 @@ AllocationConfiguration
 =======================
 .. code-block:: 
 
-	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f36022a9d08>=None, default_rdt_mb:<function Str at 0x7f36022a9d08>=None)
+	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f45ab624d08>=None, default_rdt_mb:<function Str at 0x7f45ab624d08>=None)
 
 CgroupDriverType
 ================
