@@ -31,6 +31,7 @@ class StaticNode(Node):
     provided list on tasks names.
 
     Tasks are returned only if corresponding cgroups exists:
+
     - /sys/fs/cgroup/cpu/(task_name)
     - /sys/fs/cgroup/cpuacct/(task_name)
     - /sys/fs/cgroup/perf_event/(task_name)
