@@ -10,36 +10,74 @@ Workload Collocation Agent API
 
 MeasurementRunner
 =================
-.. code-block:: 
 
+	
 	    MeasurementRunner run iterations to collect platform, resource, task measurements
 	    and store them in metrics_storage component.
 	
 	    Arguments:
-	        node: Component used for tasks discovery.
-	        metrics_storage: Storage to store platform, internal, resource and task metrics.
+	        - `node`: **type**: 
+	            
+	            Component used for tasks discovery.
+	
+	        - ``metrics_storage``: **type** = `DEFAULT_STORAGE` 
+	
+	            Storage to store platform, internal, resource and task metrics.
 	            (defaults to DEFAULT_STORAGE/LogStorage to output for standard error)
-	        action_delay: Iteration duration in seconds (None disables wait and iterations).
+	
+	        - ``action_delay``: **Numeric(0,60)** = *1.* 
+	
+	            Iteration duration in seconds (None disables wait and iterations).
 	            (defaults to 1 second)
-	        rdt_enabled: Enables or disabled support for RDT monitoring.
+	
+	        - ``rdt_enabled``: **Optional[bool]** = *None* 
+	
+	            Enables or disabled support for RDT monitoring.
 	            (defaults to None(auto) based on platform capabilities)
-	        gather_hw_mm_topology: Gather hardware/memory topology based on lshw and ipmctl.
+	
+	        - ``gather_hw_mm_topology``: **bool** = *False* 
+	
+	            Gather hardware/memory topology based on lshw and ipmctl.
 	            (defaults to False)
-	        extra_labels: Additional labels attached to every metrics.
+	
+	        - ``extra_labels``: **Optional[Dict[Str, Str]]** = *None* 
+	
+	            Additional labels attached to every metrics.
 	            (defaults to empty dict)
-	        event_names: Perf counters to monitor.
-	            (defaults to instructions, cycles, cache-misses, memstalls)
-	        enable_derived_metrics: Enable derived metrics ips, ipc and cache_hit_ratio.
+	
+	        - ``event_names``: **List[str]** = `DEFAULT_EVENTS` 
+	
+	            Perf counters to monitor.
+	            (defaults to `DEFAULT_EVENTS` what is: instructions, cycles, cache-misses, memstalls)
+	
+	        - ``enable_derived_metrics``: **bool** = *False* 
+	
+	            Enable derived metrics ips, ipc and cache_hit_ratio.
 	            (based on enabled_event names, default to False)
-	        enable_perf_uncore: Enable perf event uncore metrics.
-	            (defaults to None - auto)
-	        task_label_generators: Component to generate additional labels for tasks.
+	
+	        - ``enable_perf_uncore``: **bool** = *None* 
+	
+	            Enable perf event uncore metrics.
+	            (defaults to None - automatic, if available enable)
+	
+	        - ``task_label_generators``: **Optional[Dict[str, TaskLabelGenerator]]** = *None* 
+	
+	            Component to generate additional labels for tasks.
 	            (optional)
-	        allocation_configuration: Allows fine grained control over allocations.
+	
+	        - ``allocation_configuration``: **Optional[AllocationConfiguration]** = *None* 
+	
+	            Allows fine grained control over allocations.
 	            (defaults to AllocationConfiguration() instance)
-	        wss_reset_interval: Interval of reseting wss.
+	
+	        - ``wss_reset_interval``: **int** = *0* 
+	
+	            Interval of reseting wss.
 	            (defaults to 0, not measured)
-	        include_optional_labels: Include optional labels like: sockets, cpus, cpu_model
+	
+	        - ``include_optional_labels``: **bool** = *False* 
+	
+	            Include optional labels like: sockets, cpus, cpu_model
 	            (defaults to False)
 	    
 
@@ -54,19 +92,36 @@ AllocationRunner
 	    Because Allocator interface is also detector, we store serialized detected anomalies
 	    in anomalies_storage and all other measurements in metrics_storage.
 	
-	    Arguments:
-	        measurement_runner: Measurement runner object.
-	        allocator: Component that provides allocation logic.
-	        anomalies_storage: Storage to store serialized anomalies and extra metrics.
-	            (defaults to DEFAULT_STORAGE/LogStorage to output for standard error)
-	        allocations_storage: Storage to store serialized resource allocations.
-	            (defaults to DEFAULT_STORAGE/LogStorage to output for standard error)
-	        rdt_mb_control_required: Indicates that MB control is required,
-	            if the platform does not support this feature the WCA will exit.
-	        rdt_cache_control_required: Indicates tha L3 control is required,
-	            if the platform does not support this feature the WCA will exit.
-	        remove_all_resctrl_groups (bool): Remove all RDT controls groups upon starting.
-	            (defaults to False)
+	
+	    - ``measurement_runner``: **MeasurementRunner**
+	
+	        Measurement runner object.
+	
+	    ``allocator``: **Allocator**
+	
+	        Component that provides allocation logic.
+	
+	    ``anomalies_storage``: **Storage** = `DEFAULT_STORAGE`
+	
+	        Storage to store serialized anomalies and extra metrics.
+	
+	    ``allocations_storage``: **tdwiboolype** = `DEFAULT_STORAGE`
+	
+	        Storage to store serialized resource allocations.
+	
+	    ``rdt_mb_control_required``: **bool** = *False* 
+	
+	        Indicates that MB control is required,
+	        if the platform does not support this feature the WCA will exit.
+	
+	    ``rdt_cache_control_required``: **bool** = *False* 
+	
+	        Indicates tha L3 control is required,
+	        if the platform does not support this feature the WCA will exit.
+	
+	    ``remove_all_resctrl_groups``: **bool** = *False* 
+	
+	        Remove all RDT controls groups upon starting.
 	    
 
 DetectionRunner
@@ -84,13 +139,13 @@ MesosNode
 =========
 .. code-block:: 
 
-	MesosNode(mesos_agent_endpoint:<function Url at 0x7fdf6aac0488>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
+	MesosNode(mesos_agent_endpoint:<function Url at 0x7f65bfc18f28>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
 
 KubernetesNode
 ==============
 .. code-block:: 
 
-	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7fdf6aac0488>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7fdf6aac0268>=None, kubeapi_port:<function Str at 0x7fdf6aac0268>=None, node_ip:<function Str at 0x7fdf6aac0268>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
+	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7f65bfc18f28>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7f65bfc18d08>=None, kubeapi_port:<function Str at 0x7f65bfc18d08>=None, node_ip:<function Str at 0x7f65bfc18d08>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
 
 LogStorage
 ==========
@@ -139,7 +194,7 @@ AllocationConfiguration
 =======================
 .. code-block:: 
 
-	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7fdf6aac0268>=None, default_rdt_mb:<function Str at 0x7fdf6aac0268>=None)
+	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f65bfc18d08>=None, default_rdt_mb:<function Str at 0x7f65bfc18d08>=None)
 
 CgroupDriverType
 ================
@@ -183,11 +238,6 @@ NUMAAllocator
 	            Algorithm tries to minimize amount of memory which needs to be remigrated between numa nodes.
 	            Into consideration takes information: where a task memory is allocated (on which NUMA nodes),
 	            which are nodes where the sum of pinned memory is the lowest and which are nodes where most free memory is available.
-	
-	    - ``var``: **type** = *default*:
-	        
-	        text
-	
 	
 	    - ``loop_min_task_balance``: **float** = *0.0*:
 	        
