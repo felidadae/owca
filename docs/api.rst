@@ -440,6 +440,7 @@ Refer to configs/extra/static_allocator_config.yaml to see sample
 input file for StaticAllocator.
 
 A rule is an object with three fields:
+
 - name,
 - labels (optional),
 - allocations.
@@ -452,6 +453,16 @@ The third field is a dictionary of allocations which should be applied to
 matching tasks.
 
 If there are multiple matching rules then the rules' allocations are merged and applied.
+
+Arguments:
+
+- ``rules``: **List[dict]** = *None*
+
+    Direct way to pass rules.
+
+- ``config``: **Path** = *None*
+
+    Filepath of yaml config file with rules.
 
 
 
