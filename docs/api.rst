@@ -272,7 +272,7 @@ AllocationConfiguration
 =======================
 .. code-block:: 
 
-	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f0a1970fd08>=None, default_rdt_mb:<function Str at 0x7f0a1970fd08>=None)
+	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7ff178812d08>=None, default_rdt_mb:<function Str at 0x7ff178812d08>=None)
 
 CgroupDriverType
 ================
@@ -282,7 +282,6 @@ CgroupDriverType
 
 StaticNode
 ==========
-.. code-block:: 
 
 	    Simple implementation of Node that returns tasks based on
 	    provided list on tasks names.

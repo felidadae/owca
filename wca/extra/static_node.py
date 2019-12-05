@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class StaticNode(Node):
-    """
+    """rst
     Simple implementation of Node that returns tasks based on
     provided list on tasks names.
 
