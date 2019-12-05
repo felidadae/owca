@@ -15,70 +15,69 @@ MeasurementRunner
 	    MeasurementRunner run iterations to collect platform, resource, task measurements
 	    and store them in metrics_storage component.
 	
-	    Arguments:
-	        - `node`: **type**: 
-	            
-	            Component used for tasks discovery.
+	    - `node`: **type**: 
+	        
+	        Component used for tasks discovery.
 	
-	        - ``metrics_storage``: **type** = `DEFAULT_STORAGE` 
+	    - ``metrics_storage``: **type** = `DEFAULT_STORAGE` 
 	
-	            Storage to store platform, internal, resource and task metrics.
-	            (defaults to DEFAULT_STORAGE/LogStorage to output for standard error)
+	        Storage to store platform, internal, resource and task metrics.
+	        (defaults to DEFAULT_STORAGE/LogStorage to output for standard error)
 	
-	        - ``action_delay``: **Numeric(0,60)** = *1.* 
+	    - ``action_delay``: **Numeric(0,60)** = *1.* 
 	
-	            Iteration duration in seconds (None disables wait and iterations).
-	            (defaults to 1 second)
+	        Iteration duration in seconds (None disables wait and iterations).
+	        (defaults to 1 second)
 	
-	        - ``rdt_enabled``: **Optional[bool]** = *None* 
+	    - ``rdt_enabled``: **Optional[bool]** = *None* 
 	
-	            Enables or disabled support for RDT monitoring.
-	            (defaults to None(auto) based on platform capabilities)
+	        Enables or disabled support for RDT monitoring.
+	        (defaults to None(auto) based on platform capabilities)
 	
-	        - ``gather_hw_mm_topology``: **bool** = *False* 
+	    - ``gather_hw_mm_topology``: **bool** = *False* 
 	
-	            Gather hardware/memory topology based on lshw and ipmctl.
-	            (defaults to False)
+	        Gather hardware/memory topology based on lshw and ipmctl.
+	        (defaults to False)
 	
-	        - ``extra_labels``: **Optional[Dict[Str, Str]]** = *None* 
+	    - ``extra_labels``: **Optional[Dict[Str, Str]]** = *None* 
 	
-	            Additional labels attached to every metrics.
-	            (defaults to empty dict)
+	        Additional labels attached to every metrics.
+	        (defaults to empty dict)
 	
-	        - ``event_names``: **List[str]** = `DEFAULT_EVENTS` 
+	    - ``event_names``: **List[str]** = `DEFAULT_EVENTS` 
 	
-	            Perf counters to monitor.
-	            (defaults to `DEFAULT_EVENTS` what is: instructions, cycles, cache-misses, memstalls)
+	        Perf counters to monitor.
+	        (defaults to `DEFAULT_EVENTS` what is: instructions, cycles, cache-misses, memstalls)
 	
-	        - ``enable_derived_metrics``: **bool** = *False* 
+	    - ``enable_derived_metrics``: **bool** = *False* 
 	
-	            Enable derived metrics ips, ipc and cache_hit_ratio.
-	            (based on enabled_event names, default to False)
+	        Enable derived metrics ips, ipc and cache_hit_ratio.
+	        (based on enabled_event names, default to False)
 	
-	        - ``enable_perf_uncore``: **bool** = *None* 
+	    - ``enable_perf_uncore``: **bool** = *None* 
 	
-	            Enable perf event uncore metrics.
-	            (defaults to None - automatic, if available enable)
+	        Enable perf event uncore metrics.
+	        (defaults to None - automatic, if available enable)
 	
-	        - ``task_label_generators``: **Optional[Dict[str, TaskLabelGenerator]]** = *None* 
+	    - ``task_label_generators``: **Optional[Dict[str, TaskLabelGenerator]]** = *None* 
 	
-	            Component to generate additional labels for tasks.
-	            (optional)
+	        Component to generate additional labels for tasks.
+	        (optional)
 	
-	        - ``allocation_configuration``: **Optional[AllocationConfiguration]** = *None* 
+	    - ``allocation_configuration``: **Optional[AllocationConfiguration]** = *None* 
 	
-	            Allows fine grained control over allocations.
-	            (defaults to AllocationConfiguration() instance)
+	        Allows fine grained control over allocations.
+	        (defaults to AllocationConfiguration() instance)
 	
-	        - ``wss_reset_interval``: **int** = *0* 
+	    - ``wss_reset_interval``: **int** = *0* 
 	
-	            Interval of reseting wss.
-	            (defaults to 0, not measured)
+	        Interval of reseting wss.
+	        (defaults to 0, not measured)
 	
-	        - ``include_optional_labels``: **bool** = *False* 
+	    - ``include_optional_labels``: **bool** = *False* 
 	
-	            Include optional labels like: sockets, cpus, cpu_model
-	            (defaults to False)
+	        Include optional labels like: sockets, cpus, cpu_model
+	        (defaults to False)
 	    
 
 AllocationRunner
@@ -138,13 +137,13 @@ MesosNode
 =========
 .. code-block:: 
 
-	MesosNode(mesos_agent_endpoint:<function Url at 0x7fcd4f923f28>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
+	MesosNode(mesos_agent_endpoint:<function Url at 0x7f02e40b9f28>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
 
 KubernetesNode
 ==============
 .. code-block:: 
 
-	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7fcd4f923f28>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7fcd4f923d08>=None, kubeapi_port:<function Str at 0x7fcd4f923d08>=None, node_ip:<function Str at 0x7fcd4f923d08>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
+	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7f02e40b9f28>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7f02e40b9d08>=None, kubeapi_port:<function Str at 0x7f02e40b9d08>=None, node_ip:<function Str at 0x7f02e40b9d08>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
 
 LogStorage
 ==========
@@ -193,7 +192,7 @@ AllocationConfiguration
 =======================
 .. code-block:: 
 
-	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7fcd4f923d08>=None, default_rdt_mb:<function Str at 0x7fcd4f923d08>=None)
+	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f02e40b9d08>=None, default_rdt_mb:<function Str at 0x7f02e40b9d08>=None)
 
 CgroupDriverType
 ================

@@ -94,70 +94,69 @@ class MeasurementRunner(Runner):
     MeasurementRunner run iterations to collect platform, resource, task measurements
     and store them in metrics_storage component.
 
-    Arguments:
-        - `node`: **type**: 
-            
-            Component used for tasks discovery.
+    - `node`: **type**: 
+        
+        Component used for tasks discovery.
 
-        - ``metrics_storage``: **type** = `DEFAULT_STORAGE` 
+    - ``metrics_storage``: **type** = `DEFAULT_STORAGE` 
 
-            Storage to store platform, internal, resource and task metrics.
-            (defaults to DEFAULT_STORAGE/LogStorage to output for standard error)
+        Storage to store platform, internal, resource and task metrics.
+        (defaults to DEFAULT_STORAGE/LogStorage to output for standard error)
 
-        - ``action_delay``: **Numeric(0,60)** = *1.* 
+    - ``action_delay``: **Numeric(0,60)** = *1.* 
 
-            Iteration duration in seconds (None disables wait and iterations).
-            (defaults to 1 second)
+        Iteration duration in seconds (None disables wait and iterations).
+        (defaults to 1 second)
 
-        - ``rdt_enabled``: **Optional[bool]** = *None* 
+    - ``rdt_enabled``: **Optional[bool]** = *None* 
 
-            Enables or disabled support for RDT monitoring.
-            (defaults to None(auto) based on platform capabilities)
+        Enables or disabled support for RDT monitoring.
+        (defaults to None(auto) based on platform capabilities)
 
-        - ``gather_hw_mm_topology``: **bool** = *False* 
+    - ``gather_hw_mm_topology``: **bool** = *False* 
 
-            Gather hardware/memory topology based on lshw and ipmctl.
-            (defaults to False)
+        Gather hardware/memory topology based on lshw and ipmctl.
+        (defaults to False)
 
-        - ``extra_labels``: **Optional[Dict[Str, Str]]** = *None* 
+    - ``extra_labels``: **Optional[Dict[Str, Str]]** = *None* 
 
-            Additional labels attached to every metrics.
-            (defaults to empty dict)
+        Additional labels attached to every metrics.
+        (defaults to empty dict)
 
-        - ``event_names``: **List[str]** = `DEFAULT_EVENTS` 
+    - ``event_names``: **List[str]** = `DEFAULT_EVENTS` 
 
-            Perf counters to monitor.
-            (defaults to `DEFAULT_EVENTS` what is: instructions, cycles, cache-misses, memstalls)
+        Perf counters to monitor.
+        (defaults to `DEFAULT_EVENTS` what is: instructions, cycles, cache-misses, memstalls)
 
-        - ``enable_derived_metrics``: **bool** = *False* 
+    - ``enable_derived_metrics``: **bool** = *False* 
 
-            Enable derived metrics ips, ipc and cache_hit_ratio.
-            (based on enabled_event names, default to False)
+        Enable derived metrics ips, ipc and cache_hit_ratio.
+        (based on enabled_event names, default to False)
 
-        - ``enable_perf_uncore``: **bool** = *None* 
+    - ``enable_perf_uncore``: **bool** = *None* 
 
-            Enable perf event uncore metrics.
-            (defaults to None - automatic, if available enable)
+        Enable perf event uncore metrics.
+        (defaults to None - automatic, if available enable)
 
-        - ``task_label_generators``: **Optional[Dict[str, TaskLabelGenerator]]** = *None* 
+    - ``task_label_generators``: **Optional[Dict[str, TaskLabelGenerator]]** = *None* 
 
-            Component to generate additional labels for tasks.
-            (optional)
+        Component to generate additional labels for tasks.
+        (optional)
 
-        - ``allocation_configuration``: **Optional[AllocationConfiguration]** = *None* 
+    - ``allocation_configuration``: **Optional[AllocationConfiguration]** = *None* 
 
-            Allows fine grained control over allocations.
-            (defaults to AllocationConfiguration() instance)
+        Allows fine grained control over allocations.
+        (defaults to AllocationConfiguration() instance)
 
-        - ``wss_reset_interval``: **int** = *0* 
+    - ``wss_reset_interval``: **int** = *0* 
 
-            Interval of reseting wss.
-            (defaults to 0, not measured)
+        Interval of reseting wss.
+        (defaults to 0, not measured)
 
-        - ``include_optional_labels``: **bool** = *False* 
+    - ``include_optional_labels``: **bool** = *False* 
 
-            Include optional labels like: sockets, cpus, cpu_model
-            (defaults to False)
+        Include optional labels like: sockets, cpus, cpu_model
+        (defaults to False)
     """
 
     def __init__(
