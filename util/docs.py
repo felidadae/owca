@@ -52,7 +52,7 @@ def prepare_api_docs():
 
         lines = docstring.splitlines(True)
         def remove_trailing_whitespaces(line):
-            s = re.search('[ \t]+(.*)$', line)
+            s = re.search('[ \t]+(.*)', line)
             if s:
                 return s.group(1)
             return line
