@@ -336,11 +336,6 @@ AllocationConfiguration
 
 
 
-CgroupDriverType
-================
-
-	An enumeration.
-
 StaticNode
 ==========
 

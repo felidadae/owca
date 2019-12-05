@@ -18,6 +18,7 @@ import re
 from wca.metrics import METRICS_METADATA, MetricGranularity, MetricName
 from wca.components import REGISTERED_COMPONENTS
 from wca.metrics import DefaultDerivedMetricsGenerator
+from wca.kubernetes import CgroupDriverType
 from wca.perf_uncore import UncoreDerivedMetricsGenerator
 
 API_PATH = 'docs/api.rst'
@@ -38,7 +39,8 @@ class MissingDocstring(Exception):
     pass
 
 SKIPPED_COMPONENTS = [DefaultDerivedMetricsGenerator, 
-                      UncoreDerivedMetricsGenerator]
+                      UncoreDerivedMetricsGenerator, 
+                      CgroupDriverType]
 
 
 def prepare_api_docs():
