@@ -167,7 +167,8 @@ class SetEffectiveRootUid:
 
 @dataclass
 class SSL:
-    """
+    """rst
+
     Common configuration for SSL communication.
 
     - ``server_verify``: **Union[bool, Path(absolute=True, mode=os.R_OK)]** = *True*
