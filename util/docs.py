@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import enum
+import re
 from wca.metrics import METRICS_METADATA, MetricGranularity, MetricName
 from wca.components import REGISTERED_COMPONENTS
 
@@ -50,7 +51,12 @@ def prepare_api_docs():
             raise MissingDocstring(component.__name__)
 
         lines = docstring.splitlines(True)
-        lines = [line.lstrip() for line in lines]
+        def remove_trailing_whitespaces(line):
+            s = re.search('[ \t]+(.*)$', line)
+            if s:
+                return s.group(1)
+            return line
+        lines = [remove_trailing_whitespaces(line) for line in lines]
         if len(lines) == 1:
             docs += '\n\t' + docstring
         else:
