@@ -49,7 +49,24 @@ class NUMAAlgorithm(str, Enum):
 
 @dataclass
 class NUMAAllocator(Allocator):
-    """
+    """rst
+    
+    - algorithm: NUMAAlgorithm = 'fill_biggest_first':
+        Algorithm only cares about sum of already pinned task's memory to each numa node.
+        In each step tries to pin the biggest possible task to numa node, where sum of pinned task is the lowest.
+
+    - algorithm: NUMAAlgorithm = 'fill_biggest_first':
+        Algorithm only cares about sum of already pinned task's memory to each numa node.
+        In each step tries to pin the biggest possible task to numa node, where sum of pinned task is the lowest.
+
+    - algorithm: NUMAAlgorithm = 'fill_biggest_first':
+        Algorithm only cares about sum of already pinned task's memory to each numa node.
+        In each step tries to pin the biggest possible task to numa node, where sum of pinned task is the lowest.
+        
+        
+        
+        
+
     # Algorithm only cares about sum of already pinned task's memory to each numa node.
     # In each step tries to pin the biggest possible task to numa node, where sum of pinned task is the lowest.
     FILL_BIGGEST_FIRST = 'fill_biggest_first'
