@@ -176,7 +176,9 @@ class AnomalyDetector(ABC):
 
 
 class NOPAnomalyDetector(AnomalyDetector):
-    """Dummy detector which does nothing."""
+    """
+    Dummy detector which does nothing.
+    """
 
     def detect(self, platform, tasks_data):
         return [], []

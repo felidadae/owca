@@ -294,12 +294,16 @@ Additionally filters can be provided to filter metrics which will be provided to
 NOPAnomalyDetector
 ==================
 
-	Dummy detector which does nothing.
+Dummy detector which does nothing.
+
+
 
 NOPAllocator
 ============
 
-	Dummy allocator which does nothing.
+Dummy allocator which does nothing.
+
+
 
 AllocationConfiguration
 =======================
