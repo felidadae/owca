@@ -32,7 +32,7 @@ MeasurementRunner
 	        enable_derived_metrics: Enable derived metrics ips, ipc and cache_hit_ratio.
 	            (based on enabled_event names, default to False)
 	        enable_perf_uncore: Enable perf event uncore metrics.
-	            (defaults to True)
+	            (defaults to None - auto)
 	        task_label_generators: Component to generate additional labels for tasks.
 	            (optional)
 	        allocation_configuration: Allows fine grained control over allocations.
@@ -84,13 +84,13 @@ MesosNode
 =========
 .. code-block:: 
 
-	MesosNode(mesos_agent_endpoint:<function Url at 0x7fedd0f7d8c8>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
+	MesosNode(mesos_agent_endpoint:<function Url at 0x7f783a5d3048>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
 
 KubernetesNode
 ==============
 .. code-block:: 
 
-	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7fedd0f7d8c8>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7fedd0f7d6a8>=None, kubeapi_port:<function Str at 0x7fedd0f7d6a8>=None, node_ip:<function Str at 0x7fedd0f7d6a8>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
+	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7f783a5d3048>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7f783a5ced90>=None, kubeapi_port:<function Str at 0x7f783a5ced90>=None, node_ip:<function Str at 0x7f783a5ced90>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
 
 LogStorage
 ==========
@@ -139,7 +139,7 @@ AllocationConfiguration
 =======================
 .. code-block:: 
 
-	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7fedd0f7d6a8>=None, default_rdt_mb:<function Str at 0x7fedd0f7d6a8>=None)
+	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f783a5ced90>=None, default_rdt_mb:<function Str at 0x7f783a5ced90>=None)
 
 CgroupDriverType
 ================
@@ -166,7 +166,42 @@ NUMAAllocator
 =============
 .. code-block:: 
 
-	NUMAAllocator(algorithm:wca.extra.numa_allocator.NUMAAlgorithm=<NUMAAlgorithm.FILL_BIGGEST_FIRST: 'fill_biggest_first'>, loop_min_task_balance:float=0.0, free_space_check:bool=False, migrate_pages:bool=True, migrate_pages_min_task_balance:Union[float, NoneType]=0.95, cgroups_cpus_binding:bool=True, cgroups_memory_binding:bool=False, cgroups_memory_migrate:bool=False, dryrun:bool=False)
+	    # Algorithm only cares about sum of already pinned task's memory to each numa node.
+	    # In each step tries to pin the biggest possible task to numa node, where sum of pinned task is the lowest.
+	    FILL_BIGGEST_FIRST = 'fill_biggest_first'
+	
+	    # Algorithm tries to minimize amount of memory which needs to be remigrated between numa nodes.
+	    # Into consideration takes information: where a task memory is allocated (on which NUMA nodes),
+	    # which are nodes where the sum of pinned memory is the lowest and which are nodes where most free memory is available.
+	    MINIMIZE_MIGRATIONS = 'minimize_migration'
+	    
+	    # By default FILL_BIGGEST_FIRST algorithm is chosen.
+	    algorithm: NUMAAlgorithm = NUMAAlgorithm.FILL_BIGGEST_FIRST
+	
+	    # Minimal value of task_balance so the task is not skipped during rebalancing analysis
+	    # by default turn off, none of tasks are skipped due to this reason
+	    loop_min_task_balance: float = 0.0
+	
+	    # If True, then do not migrate if not enough space on target numa node.
+	    free_space_check: bool = False
+	
+	    # If use syscall "migrate pages" (forced, synchronous migrate pages of a task)
+	    migrate_pages: bool = True
+	
+	    # Works if migrate_pages == True. Then if set tells, when remigrate pages of already pinned task. 
+	    # If not at least migrate_pages_min_task_balance * TASK_TOTAL_SIZE bytes of memory resides on pinned node, then
+	    # tries to remigrate all pages allocated on other nodes to target node.
+	    migrate_pages_min_task_balance: Optional[float] = 0.95
+	
+	    # cgroups based memory migration, cpu and memory pinning
+	    cgroups_cpus_binding: bool = True
+	    cgroups_memory_binding: bool = False
+	    # can be used only when cgroups_memory_binding is set to True
+	    cgroups_memory_migrate: bool = False
+	
+	    # If set to True, do not make any allocations - can be used for debugging.
+	    dryrun: bool = False
+	    
 
 NUMAAlgorithm
 =============

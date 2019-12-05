@@ -49,18 +49,32 @@ class NUMAAlgorithm(str, Enum):
 
 @dataclass
 class NUMAAllocator(Allocator):
+    """
+    # Algorithm only cares about sum of already pinned task's memory to each numa node.
+    # In each step tries to pin the biggest possible task to numa node, where sum of pinned task is the lowest.
+    FILL_BIGGEST_FIRST = 'fill_biggest_first'
+
+    # Algorithm tries to minimize amount of memory which needs to be remigrated between numa nodes.
+    # Into consideration takes information: where a task memory is allocated (on which NUMA nodes),
+    # which are nodes where the sum of pinned memory is the lowest and which are nodes where most free memory is available.
+    MINIMIZE_MIGRATIONS = 'minimize_migration'
+    
+    # By default FILL_BIGGEST_FIRST algorithm is chosen.
     algorithm: NUMAAlgorithm = NUMAAlgorithm.FILL_BIGGEST_FIRST
 
-    # minimal value of task_balance so the task is not skipped during rebalancing analysis
+    # Minimal value of task_balance so the task is not skipped during rebalancing analysis
     # by default turn off, none of tasks are skipped due to this reason
     loop_min_task_balance: float = 0.0
 
     # If True, then do not migrate if not enough space on target numa node.
     free_space_check: bool = False
 
-    # syscall "migrate pages" per process memory migration
+    # If use syscall "migrate pages" (forced, synchronous migrate pages of a task)
     migrate_pages: bool = True
-    # if None re-migration of pages for tasks disabled
+
+    # Works if migrate_pages == True. Then if set tells, when remigrate pages of already pinned task. 
+    # If not at least migrate_pages_min_task_balance * TASK_TOTAL_SIZE bytes of memory resides on pinned node, then
+    # tries to remigrate all pages allocated on other nodes to target node.
     migrate_pages_min_task_balance: Optional[float] = 0.95
 
     # cgroups based memory migration, cpu and memory pinning
@@ -69,7 +83,23 @@ class NUMAAllocator(Allocator):
     # can be used only when cgroups_memory_binding is set to True
     cgroups_memory_migrate: bool = False
 
-    # dry-run (for comparison only)
+    # If set to True, do not make any allocations - can be used for debugging.
+    dryrun: bool = False
+    """
+
+    algorithm: NUMAAlgorithm = NUMAAlgorithm.FILL_BIGGEST_FIRST
+
+    loop_min_task_balance: float = 0.0
+
+    free_space_check: bool = False
+
+    migrate_pages: bool = True
+    migrate_pages_min_task_balance: Optional[float] = 0.95
+
+    cgroups_cpus_binding: bool = True
+    cgroups_memory_binding: bool = False
+    cgroups_memory_migrate: bool = False
+
     dryrun: bool = False
 
     def __post_init__(self):
