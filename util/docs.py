@@ -51,7 +51,7 @@ def prepare_api_docs():
             raise MissingDocstring(component.__name__)
 
         lines = docstring.splitlines(True)
-        lines = [remove_trailing_whitespaces(line) for line in lines]
+        # lines = [remove_trailing_whitespaces(line) for line in lines]
         if len(lines) == 1:
             docs += '\n\t' + docstring
         else:
