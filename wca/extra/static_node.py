@@ -37,6 +37,14 @@ class StaticNode(Node):
     - ``/sys/fs/cgroup/perf_event/(task_name)``
 
     Otherwise, the item is ignored.
+
+    Arguments:
+
+    - ``tasks``: **List[Str]**
+    - ``require_pids``: **bool** = *False*
+    - ``default_labels``: **Dict[Str, Str]** = *{}*
+    - ``default_resources``: **Dict[Str, Union[Str, float, int]]** = *{}*
+    - ``tasks_labels``: **Optional[Dict[str, Dict[str, str]]]** = *None*
     """
 
     # List of task names.

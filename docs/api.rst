@@ -351,6 +351,14 @@ Tasks are returned only if corresponding cgroups exists:
 
 Otherwise, the item is ignored.
 
+Arguments:
+
+- ``tasks``: **List[Str]**
+- ``require_pids``: **bool** = *False*
+- ``default_labels``: **Dict[Str, Str]** = *{}*
+- ``default_resources``: **Dict[Str, Union[Str, float, int]]** = *{}*
+- ``tasks_labels``: **Optional[Dict[str, Dict[str, str]]]** = *None*
+
 
 
 NUMAAllocator
