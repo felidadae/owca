@@ -106,7 +106,7 @@ def _build_allocations_from_rules(tasks_data: TasksData, rules):
 
 @dataclass
 class StaticAllocator(Allocator):
-    """
+    """rst
     Simple allocator based on rules defining relation between task labels
     and allocation definition (set of concrete values).
 

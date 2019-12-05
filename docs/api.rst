@@ -272,7 +272,7 @@ AllocationConfiguration
 =======================
 .. code-block:: 
 
-	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f33352fad08>=None, default_rdt_mb:<function Str at 0x7f33352fad08>=None)
+	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f0a1970fd08>=None, default_rdt_mb:<function Str at 0x7f0a1970fd08>=None)
 
 CgroupDriverType
 ================
@@ -369,7 +369,6 @@ NUMAAlgorithm
 
 StaticAllocator
 ===============
-.. code-block:: 
 
 	    Simple allocator based on rules defining relation between task labels
 	    and allocation definition (set of concrete values).
