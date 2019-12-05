@@ -98,6 +98,7 @@ class Allocator(ABC):
 
 
 class NOPAllocator(Allocator):
+    """Dummy allocator which does nothing."""
 
     def allocate(self, platform, tasks_data):
         return {}, [], []

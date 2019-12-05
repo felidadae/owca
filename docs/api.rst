@@ -137,13 +137,13 @@ MesosNode
 =========
 .. code-block:: 
 
-	MesosNode(mesos_agent_endpoint:<function Url at 0x7f17eb6ecf28>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
+	MesosNode(mesos_agent_endpoint:<function Url at 0x7efd96d4df28>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
 
 KubernetesNode
 ==============
 .. code-block:: 
 
-	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7f17eb6ecf28>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7f17eb6ecd08>=None, kubeapi_port:<function Str at 0x7f17eb6ecd08>=None, node_ip:<function Str at 0x7f17eb6ecd08>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
+	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7efd96d4df28>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7efd96d4dd08>=None, kubeapi_port:<function Str at 0x7efd96d4dd08>=None, node_ip:<function Str at 0x7efd96d4dd08>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
 
 LogStorage
 ==========
@@ -184,27 +184,32 @@ KafkaStorage
 
 FilterStorage
 =============
-.. code-block:: 
 
-	FilterStorage(storages:List[wca.storage.Storage], filter:Union[List[str], NoneType]=None)
+	    Helper class to store metrics in multiple standard storages.
+	    Additionally filters can be provided to filter metrics which will be provided to storages.
+	
+	    - ``storages``: **List[Storage]**
+	    - ``filter``: **Optional[List[str]]** = *None*
+	
+	    
 
 NOPAnomalyDetector
 ==================
 .. code-block:: 
 
-	None
+	Dummy detector which does nothing.
 
 NOPAllocator
 ============
 .. code-block:: 
 
-	None
+	Dummy allocator which does nothing.
 
 AllocationConfiguration
 =======================
 .. code-block:: 
 
-	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f17eb6ecd08>=None, default_rdt_mb:<function Str at 0x7f17eb6ecd08>=None)
+	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7efd96d4dd08>=None, default_rdt_mb:<function Str at 0x7efd96d4dd08>=None)
 
 CgroupDriverType
 ================
