@@ -58,6 +58,33 @@ TasksAllocations = Dict[TaskId, TaskAllocations]
 
 @dataclass
 class AllocationConfiguration:
+    """rst
+
+    - ``cpu_quota_period``: **Numeric** = *1000*
+
+        Default value for cpu.cpu_period [ms] (used as denominator).
+
+    - ``cpu_shares_unit``: **Numeric** = *1000*
+
+        Multiplier of AllocationType.CPU_SHARES allocation value.
+        E.g. setting 'CPU_SHARES' to 2.0 will set 2000 shares effectively
+        in cgroup cpu controller.
+
+    - ``default_rdt_l3``: **Str** = *None*
+
+        Default resource allocation for last level cache (L3)
+        for root RDT group. Root RDT group is used as default group for all tasks,
+        unless explicitly reconfigured by allocator.
+        `None` (the default value) means no limit (effectively set to maximum available value).
+
+    - ``default_rdt_mb``: **Str** = *None*
+
+        Default resource allocation for memory bandwitdh
+        for root RDT group. Root RDT group is used as default group for all tasks,
+        unless explicitly reconfigured by allocator.
+        `None` (the default value) means no limit (effectively set to maximum available value).
+
+    """
     # Default value for cpu.cpu_period [ms] (used as denominator).
     cpu_quota_period: Numeric(1000, 1000000) = 1000
 

@@ -269,9 +269,33 @@ NOPAllocator
 
 AllocationConfiguration
 =======================
-.. code-block:: 
 
-	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f419d884d08>=None, default_rdt_mb:<function Str at 0x7f419d884d08>=None)
+	
+	    - ``cpu_quota_period``: **Numeric** = *1000*
+	
+	        Default value for cpu.cpu_period [ms] (used as denominator).
+	
+	    - ``cpu_shares_unit``: **Numeric** = *1000*
+	
+	        Multiplier of AllocationType.CPU_SHARES allocation value.
+	        E.g. setting 'CPU_SHARES' to 2.0 will set 2000 shares effectively
+	        in cgroup cpu controller.
+	
+	    - ``default_rdt_l3``: **Str** = *None*
+	
+	        Default resource allocation for last level cache (L3)
+	        for root RDT group. Root RDT group is used as default group for all tasks,
+	        unless explicitly reconfigured by allocator.
+	        `None` (the default value) means no limit (effectively set to maximum available value).
+	
+	    - ``default_rdt_mb``: **Str** = *None*
+	
+	        Default resource allocation for memory bandwitdh
+	        for root RDT group. Root RDT group is used as default group for all tasks,
+	        unless explicitly reconfigured by allocator.
+	        `None` (the default value) means no limit (effectively set to maximum available value).
+	
+	    
 
 CgroupDriverType
 ================
