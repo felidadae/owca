@@ -69,11 +69,6 @@ class NUMAAllocator(Allocator):
             Into consideration takes information: where a task memory is allocated (on which NUMA nodes),
             which are nodes where the sum of pinned memory is the lowest and which are nodes where most free memory is available.
 
-    - ``var``: **type** = *default*:
-        
-        text
-
-
     - ``loop_min_task_balance``: **float** = *0.0*:
         
         Minimal value of task_balance so the task is not skipped during rebalancing analysis
