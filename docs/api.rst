@@ -137,13 +137,13 @@ MesosNode
 =========
 .. code-block:: 
 
-	MesosNode(mesos_agent_endpoint:<function Url at 0x7f178dab5f28>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
+	MesosNode(mesos_agent_endpoint:<function Url at 0x7f51a2c19f28>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
 
 KubernetesNode
 ==============
 .. code-block:: 
 
-	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7f178dab5f28>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7f178dab5d08>=None, kubeapi_port:<function Str at 0x7f178dab5d08>=None, node_ip:<function Str at 0x7f178dab5d08>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
+	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7f51a2c19f28>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7f51a2c19d08>=None, kubeapi_port:<function Str at 0x7f51a2c19d08>=None, node_ip:<function Str at 0x7f51a2c19d08>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
 
 LogStorage
 ==========
@@ -192,7 +192,7 @@ AllocationConfiguration
 =======================
 .. code-block:: 
 
-	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f178dab5d08>=None, default_rdt_mb:<function Str at 0x7f178dab5d08>=None)
+	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f51a2c19d08>=None, default_rdt_mb:<function Str at 0x7f51a2c19d08>=None)
 
 CgroupDriverType
 ================
@@ -320,9 +320,9 @@ SSL
 
 	    Common configuration for SSL communication.
 	
-	    * server_verify: Union[bool, Path(absolute=True, mode=os.R_OK)] = True
-	    * client_cert_path: Optional[Path(absolute=True, mode=os.R_OK)] = None
-	    * client_key_path: Optional[Path(absolute=True, mode=os.R_OK)] = None
+	    - ``server_verify``: **Union[bool, Path(absolute=True, mode=os.R_OK)]** = *True*
+	    - ``client_cert_path``: **Optional[Path(absolute=True, mode=os.R_OK)]** = *None*
+	    - ``client_key_path``: **Optional[Path(absolute=True, mode=os.R_OK)]** = *None*
 	
 	    
 
