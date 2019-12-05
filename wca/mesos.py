@@ -96,6 +96,22 @@ def find_cgroup(pid):
 
 @dataclass
 class MesosNode(Node):
+    """rst
+    Class to communicate with orchestrator: Mesos.
+    Derived from abstract Node class providing get_tasks interface.
+
+    - ``mesos_agent_endpoint``: **Url** = *'https://127.0.0.1:5051'*
+
+        By default localhost.
+
+    - ``timeout``: **Numeric(1, 60)** = *5*
+
+        Timeout to access kubernetes agent [seconds].
+
+    - ``ssl``: **Optional[SSL]** = *None*
+        
+        ssl object used to communicate with kubernetes
+    """
     mesos_agent_endpoint: Url = 'https://127.0.0.1:5051'
 
     # Timeout to access mesos agent.

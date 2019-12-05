@@ -135,15 +135,70 @@ DetectionRunner
 
 MesosNode
 =========
-.. code-block:: 
 
-	MesosNode(mesos_agent_endpoint:<function Url at 0x7efd96d4df28>='https://127.0.0.1:5051', timeout:wca.config.Numeric=5.0, ssl:Union[wca.security.SSL, NoneType]=None)
+	    Class to communicate with orchestrator: Mesos.
+	    Derived from abstract Node class providing get_tasks interface.
+	
+	    - ``mesos_agent_endpoint``: **Url** = *'https://127.0.0.1:5051'*
+	
+	        By default localhost.
+	
+	    - ``timeout``: **Numeric(1, 60)** = *5*
+	
+	        Timeout to access kubernetes agent [seconds].
+	
+	    - ``ssl``: **Optional[SSL]** = *None*
+	        
+	        ssl object used to communicate with kubernetes
+	    
 
 KubernetesNode
 ==============
-.. code-block:: 
 
-	KubernetesNode(cgroup_driver:wca.kubernetes.CgroupDriverType=<CgroupDriverType.CGROUPFS: 'cgroupfs'>, ssl:Union[wca.security.SSL, NoneType]=None, client_token_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/token', server_cert_ca_path:Union[wca.config.Path, NoneType]='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', kubelet_enabled:bool=False, kubelet_endpoint:<function Url at 0x7efd96d4df28>='https://127.0.0.1:10250', kubeapi_host:<function Str at 0x7efd96d4dd08>=None, kubeapi_port:<function Str at 0x7efd96d4dd08>=None, node_ip:<function Str at 0x7efd96d4dd08>=None, timeout:wca.config.Numeric=5, monitored_namespaces:List[Str]=<factory>)
+	    Class to communicate with orchestrator: Kubernetes.
+	    Derived from abstract Node class providing get_tasks interface.
+	
+	    - ``cgroup_driver``: **CgroupDriverType** = *CgroupDriverType.CGROUPFS*
+	        
+	        We need to know what cgroup driver is used to properly build cgroup paths for pods.
+	        Reference in source code for kubernetes version stable 1.13: 
+	        https://github.com/kubernetes/kubernetes/blob/v1.13.3/pkg/kubelet/cm/cgroup_manager_linux.go#L207
+	
+	
+	    - ``ssl``: **Optional[SSL]** = *None*
+	        
+	        ssl object used to communicate with kubernetes
+	
+	    - ``client_token_path``: **Optional[Path(absolute=True, mode=os.R_OK)]** = *SERVICE_TOKEN_FILENAME*
+	
+	        Default path is using by pods. You can override it to use wca outside pod.
+	
+	    - ``server_cert_ca_path``: **Optional[Path]** = *SERVICE_CERT_FILENAME*
+	
+	        Default path is using by pods. You can override it to use wca outside pod.
+	
+	    - ``kubelet_enabled``: **bool** = *False*
+	
+	        If true use **kubelet**, otherwise **kubeapi**.
+	
+	    - ``kubelet_endpoint``: **Url** = *'https://127.0.0.1:10250'*
+	
+	        By default use localhost.
+	
+	    - ``kubeapi_host``: **Str** = *None*
+	
+	    - ``kubeapi_port``: **Str** = *None* 
+	
+	    - ``node_ip``: **Str** = *None*
+	
+	    - ``timeout``: **Numeric(1, 60)** = *5*
+	
+	        Timeout to access kubernetes agent [seconds].
+	
+	    - ``monitored_namespaces``: **List[Str]** =  *["default"]*
+	
+	        List of namespaces to monitor pods in.
+	    
 
 LogStorage
 ==========
@@ -209,7 +264,7 @@ AllocationConfiguration
 =======================
 .. code-block:: 
 
-	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7efd96d4dd08>=None, default_rdt_mb:<function Str at 0x7efd96d4dd08>=None)
+	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f091cc6dd08>=None, default_rdt_mb:<function Str at 0x7f091cc6dd08>=None)
 
 CgroupDriverType
 ================

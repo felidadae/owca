@@ -80,18 +80,57 @@ class QosClass(str, Enum):
 
 @dataclass
 class KubernetesNode(Node):
-    # We need to know what cgroup driver is used to properly build cgroup paths for pods.
-    #   Reference in source code for kubernetes version stable 1.13:
-    #   https://github.com/kubernetes/kubernetes/blob/v1.13.3/pkg/kubelet/cm/cgroup_manager_linux.go#L207
-    cgroup_driver: CgroupDriverType = CgroupDriverType.CGROUPFS
+    """rst
+    Class to communicate with orchestrator: Kubernetes.
+    Derived from abstract Node class providing get_tasks interface.
 
+    - ``cgroup_driver``: **CgroupDriverType** = *CgroupDriverType.CGROUPFS*
+        
+        We need to know what cgroup driver is used to properly build cgroup paths for pods.
+        Reference in source code for kubernetes version stable 1.13: 
+        https://github.com/kubernetes/kubernetes/blob/v1.13.3/pkg/kubelet/cm/cgroup_manager_linux.go#L207
+
+
+    - ``ssl``: **Optional[SSL]** = *None*
+        
+        ssl object used to communicate with kubernetes
+
+    - ``client_token_path``: **Optional[Path(absolute=True, mode=os.R_OK)]** = *SERVICE_TOKEN_FILENAME*
+
+        Default path is using by pods. You can override it to use wca outside pod.
+
+    - ``server_cert_ca_path``: **Optional[Path]** = *SERVICE_CERT_FILENAME*
+
+        Default path is using by pods. You can override it to use wca outside pod.
+
+    - ``kubelet_enabled``: **bool** = *False*
+
+        If true use **kubelet**, otherwise **kubeapi**.
+
+    - ``kubelet_endpoint``: **Url** = *'https://127.0.0.1:10250'*
+
+        By default use localhost.
+
+    - ``kubeapi_host``: **Str** = *None*
+
+    - ``kubeapi_port``: **Str** = *None* 
+
+    - ``node_ip``: **Str** = *None*
+
+    - ``timeout``: **Numeric(1, 60)** = *5*
+
+        Timeout to access kubernetes agent [seconds].
+
+    - ``monitored_namespaces``: **List[Str]** =  *["default"]*
+
+        List of namespaces to monitor pods in.
+    """
+    cgroup_driver: CgroupDriverType = CgroupDriverType.CGROUPFS
     ssl: Optional[SSL] = None
 
-    # Default path is using by pods. You can override it to use wca outside pod.
     client_token_path: Optional[Path(absolute=True, mode=os.R_OK)] = SERVICE_TOKEN_FILENAME
     server_cert_ca_path: Optional[Path(absolute=True, mode=os.R_OK)] = SERVICE_CERT_FILENAME
 
-    # By default use localhost, however kubelet may not listen on it.
     kubelet_enabled: bool = False
     kubelet_endpoint: Url = 'https://127.0.0.1:10250'
 
@@ -99,10 +138,8 @@ class KubernetesNode(Node):
     kubeapi_port: Str = None  # Because !Env is String and another type cast might be problematic
     node_ip: Str = None
 
-    # Timeout to access kubernetes agent.
     timeout: Numeric(1, 60) = 5  # [s]
 
-    # List of namespaces to monitor pods in.
     monitored_namespaces: List[Str] = field(default_factory=lambda: ["default"])
 
     def _request_kubeapi(self):
