@@ -14,8 +14,11 @@
 
 import enum
 import re
+
 from wca.metrics import METRICS_METADATA, MetricGranularity, MetricName
 from wca.components import REGISTERED_COMPONENTS
+from wca.metrics import DefaultDerivedMetricsGenerator
+from wca.perf_uncore import UncoreDerivedMetricsGenerator
 
 API_PATH = 'docs/api.rst'
 API_INTRO = """
@@ -34,10 +37,15 @@ Workload Collocation Agent API
 class MissingDocstring(Exception):
     pass
 
+SKIPPED_COMPONENTS = [DefaultDerivedMetricsGenerator, 
+                      UncoreDerivedMetricsGenerator]
+
 
 def prepare_api_docs():
     docs = ''
     for component in REGISTERED_COMPONENTS:
+        if component in SKIPPED_COMPONENTS:
+            continue
         docs += generate_title(component.__name__) + '\n'
 
         try:

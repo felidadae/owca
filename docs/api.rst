@@ -490,13 +490,3 @@ Generate new label value based on other label value.
 
 
 
-DefaultDerivedMetricsGenerator
-==============================
-
-	None
-
-UncoreDerivedMetricsGenerator
-=============================
-
-	None
-
