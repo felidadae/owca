@@ -43,7 +43,8 @@ def prepare_api_docs():
         try:
             docstring = str(component.__doc__)
             if not docstring.startswith('rst'):
-                docs += '.. code-block:: ' + '\n'
+                # docs += '.. code-block:: ' + '\n'
+                pass
             else:
                 docstring = docstring[3:]
         except TypeError:

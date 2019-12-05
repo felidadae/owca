@@ -293,13 +293,11 @@ Additionally filters can be provided to filter metrics which will be provided to
 
 NOPAnomalyDetector
 ==================
-.. code-block:: 
 
 	Dummy detector which does nothing.
 
 NOPAllocator
 ============
-.. code-block:: 
 
 	Dummy allocator which does nothing.
 
@@ -336,7 +334,6 @@ AllocationConfiguration
 
 CgroupDriverType
 ================
-.. code-block:: 
 
 	An enumeration.
 
@@ -424,7 +421,6 @@ Allocator aimed to minimize remote NUMA memory accesses for processes.
 
 NUMAAlgorithm
 =============
-.. code-block:: 
 
 	solve bin packing problem by heuristic which takes the biggest first
 
@@ -470,19 +466,16 @@ Common configuration for SSL communication.
 
 TaskLabelRegexGenerator
 =======================
-.. code-block:: 
 
 	Generate new label value based on other label value.
 
 DefaultDerivedMetricsGenerator
 ==============================
-.. code-block:: 
 
 	None
 
 UncoreDerivedMetricsGenerator
 =============================
-.. code-block:: 
 
 	None
 
