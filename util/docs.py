@@ -50,6 +50,7 @@ def prepare_api_docs():
             raise MissingDocstring(component.__name__)
 
         lines = docstring.splitlines(True)
+        lines = [line.lstrip() for line in lines]
         if len(lines) == 1:
             docs += '\n\t' + docstring
         else:
