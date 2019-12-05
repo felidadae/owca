@@ -38,10 +38,11 @@ def prepare_api_docs():
     docs = ''
     for component in REGISTERED_COMPONENTS:
         docs += generate_title(component.__name__) + '\n'
-        docs += '.. code-block:: ' + '\n'
 
         try:
             docstring = str(component.__doc__)
+            if not docstring.startswith('rst'):
+                docs += '.. code-block:: ' + '\n'
         except TypeError:
             continue  # TODO: Remove after complete doc strings for all components.
             raise MissingDocstring(component.__name__)

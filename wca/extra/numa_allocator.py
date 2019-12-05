@@ -50,58 +50,72 @@ class NUMAAlgorithm(str, Enum):
 @dataclass
 class NUMAAllocator(Allocator):
     """rst
-    
-    - algorithm: NUMAAlgorithm = 'fill_biggest_first':
-        Algorithm only cares about sum of already pinned task's memory to each numa node.
-        In each step tries to pin the biggest possible task to numa node, where sum of pinned task is the lowest.
 
-    - algorithm: NUMAAlgorithm = 'fill_biggest_first':
-        Algorithm only cares about sum of already pinned task's memory to each numa node.
-        In each step tries to pin the biggest possible task to numa node, where sum of pinned task is the lowest.
+    Allocator aimed to minimize remote NUMA memory accesses for processes.
 
-    - algorithm: NUMAAlgorithm = 'fill_biggest_first':
-        Algorithm only cares about sum of already pinned task's memory to each numa node.
-        In each step tries to pin the biggest possible task to numa node, where sum of pinned task is the lowest.
+    - ``algorithm``: **NUMAAlgorithm** = *'fill_biggest_first'*:
+
+        User can choose from options: *'fill_biggest_first'*, *'minimize_migration'* to specify policy
+        determining which task is chosen to be pinned.
+
+        - *'fill_biggest_first'*
+
+            Algorithm only cares about sum of already pinned task's memory to each numa node.
+            In each step tries to pin the biggest possible task to numa node, where sum of pinned task is the lowest.
+
+        - *'minimize_migrations'*
+            
+            Algorithm tries to minimize amount of memory which needs to be remigrated between numa nodes.
+            Into consideration takes information: where a task memory is allocated (on which NUMA nodes),
+            which are nodes where the sum of pinned memory is the lowest and which are nodes where most free memory is available.
+
+    - ``var``: **type** = *default*:
         
+        text
+
+
+    - ``loop_min_task_balance``: **float** = *0.0*:
         
+        Minimal value of task_balance so the task is not skipped during rebalancing analysis
+        by default turn off, none of tasks are skipped due to this reason
+
+
+    - ``free_space_check``: **bool** = *False*:
         
+        If True, then do not migrate if not enough space on target numa node.
+       
+
+    - ``migrate_pages``: **bool** = *True*:
+        
+        If use syscall "migrate pages" (forced, synchronous migrate pages of a task)
+       
+
+    - ``migrate_pages_min_task_balance``: **Optional[float]** = *0.95*:
+        
+        Works if migrate_pages == True. Then if set tells, when remigrate pages of already pinned task. 
+        If not at least migrate_pages_min_task_balance * TASK_TOTAL_SIZE bytes of memory resides on pinned node, then # tries to remigrate all pages allocated on other nodes to target node.
+
+
+    - ``cgroups_cpus_binding``: **bool** = *True*:
+        
+        cgroups based cpu pinning
+       
+
+    - ``cgroups_memory_binding``: **bool** = *False*:
+        
+        cgroups based memory binding
         
 
-    # Algorithm only cares about sum of already pinned task's memory to each numa node.
-    # In each step tries to pin the biggest possible task to numa node, where sum of pinned task is the lowest.
-    FILL_BIGGEST_FIRST = 'fill_biggest_first'
+    - ``cgroups_memory_migrate``: **bool** = *False*:
 
-    # Algorithm tries to minimize amount of memory which needs to be remigrated between numa nodes.
-    # Into consideration takes information: where a task memory is allocated (on which NUMA nodes),
-    # which are nodes where the sum of pinned memory is the lowest and which are nodes where most free memory is available.
-    MINIMIZE_MIGRATIONS = 'minimize_migration'
-    
-    # By default FILL_BIGGEST_FIRST algorithm is chosen.
-    algorithm: NUMAAlgorithm = NUMAAlgorithm.FILL_BIGGEST_FIRST
+        cgroups based memory migrating; can be used only when 
+        cgroups_memory_binding is set to True
 
-    # Minimal value of task_balance so the task is not skipped during rebalancing analysis
-    # by default turn off, none of tasks are skipped due to this reason
-    loop_min_task_balance: float = 0.0
 
-    # If True, then do not migrate if not enough space on target numa node.
-    free_space_check: bool = False
+    - ``dryrun``: **bool** = *False*:
+        
+        If set to True, do not make any allocations - can be used for debugging.
 
-    # If use syscall "migrate pages" (forced, synchronous migrate pages of a task)
-    migrate_pages: bool = True
-
-    # Works if migrate_pages == True. Then if set tells, when remigrate pages of already pinned task. 
-    # If not at least migrate_pages_min_task_balance * TASK_TOTAL_SIZE bytes of memory resides on pinned node, then
-    # tries to remigrate all pages allocated on other nodes to target node.
-    migrate_pages_min_task_balance: Optional[float] = 0.95
-
-    # cgroups based memory migration, cpu and memory pinning
-    cgroups_cpus_binding: bool = True
-    cgroups_memory_binding: bool = False
-    # can be used only when cgroups_memory_binding is set to True
-    cgroups_memory_migrate: bool = False
-
-    # If set to True, do not make any allocations - can be used for debugging.
-    dryrun: bool = False
     """
 
     algorithm: NUMAAlgorithm = NUMAAlgorithm.FILL_BIGGEST_FIRST
