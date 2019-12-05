@@ -467,7 +467,9 @@ Common configuration for SSL communication.
 TaskLabelRegexGenerator
 =======================
 
-	Generate new label value based on other label value.
+Generate new label value based on other label value.
+
+
 
 DefaultDerivedMetricsGenerator
 ==============================

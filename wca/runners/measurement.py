@@ -61,7 +61,9 @@ class TaskLabelGenerator:
 
 @dataclass
 class TaskLabelRegexGenerator(TaskLabelGenerator):
-    """Generate new label value based on other label value."""
+    """
+    Generate new label value based on other label value.
+    """
     pattern: str
     repl: str
     source: str = 'task_name'  # by default use `task_name`
