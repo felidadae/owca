@@ -43,6 +43,8 @@ def prepare_api_docs():
             docstring = str(component.__doc__)
             if not docstring.startswith('rst'):
                 docs += '.. code-block:: ' + '\n'
+            else:
+                docs = docs[3:]
         except TypeError:
             continue  # TODO: Remove after complete doc strings for all components.
             raise MissingDocstring(component.__name__)
