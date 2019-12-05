@@ -210,7 +210,6 @@ KubernetesNode
 
 LogStorage
 ==========
-.. code-block:: 
 
 	    Outputs metrics encoded in Prometheus exposition format
 	    to standard error (default) or provided file (output_filename).
@@ -272,7 +271,7 @@ AllocationConfiguration
 =======================
 .. code-block:: 
 
-	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7ff178812d08>=None, default_rdt_mb:<function Str at 0x7ff178812d08>=None)
+	AllocationConfiguration(cpu_quota_period:wca.config.Numeric=1000, cpu_shares_unit:wca.config.Numeric=1000, default_rdt_l3:<function Str at 0x7f419d884d08>=None, default_rdt_mb:<function Str at 0x7f419d884d08>=None)
 
 CgroupDriverType
 ================
