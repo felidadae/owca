@@ -527,7 +527,12 @@ class FilterStorage(Storage):
     Additionally filters can be provided to filter metrics which will be provided to storages.
 
     - ``storages``: **List[Storage]**
+        
+        list of storages
+
     - ``filter``: **Optional[List[str]]** = *None*
+
+        list of filters
 
     """
     storages: List[Storage]
