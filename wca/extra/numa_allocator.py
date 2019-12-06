@@ -51,6 +51,8 @@ class NUMAAlgorithm(str, Enum):
 class NUMAAllocator(Allocator):
     """rst
 
+    For fuller documentation please refer to **docs/numa_allocator.rst**.
+
     Allocator aimed to minimize remote NUMA memory accesses for processes.
 
     - ``algorithm``: **NUMAAlgorithm** = *'fill_biggest_first'*:
