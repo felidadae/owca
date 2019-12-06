@@ -17,6 +17,7 @@ Assumptions:
 Please use configuration file provided below:
 
 .. code-block:: yaml
+
     loggers:
       "wca.extra.numa_allocator": "debug"
       "wca.cgroups_allocations": "debug"
