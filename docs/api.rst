@@ -364,7 +364,7 @@ NUMAAllocator
 =============
 
 
-For fuller documentation please refer to **docs/numa_allocator.rst**.
+For fuller documentation please refer to `NUMAAllocator documentation <numa_allocator.rst>`_.
 
 Allocator aims to minimize remote NUMA memory accesses for processes.
 
