@@ -366,13 +366,9 @@ NUMAAllocator
 
 For fuller documentation please refer to **docs/numa_allocator.rst**.
 
-Allocator aimed to minimize remote NUMA memory accesses for processes.
+Allocator aims to minimize remote NUMA memory accesses for processes.
 
 - ``algorithm``: **NUMAAlgorithm** = *'fill_biggest_first'*:
-
-    User can choose from options: *'fill_biggest_first'*, *'minimize_migration'*
-    to specify policy determining which task is chosen to be pinned.
-
     - *'fill_biggest_first'*
 
         Algorithm only cares about sum of already pinned task's memory to each numa node.
@@ -389,9 +385,9 @@ Allocator aimed to minimize remote NUMA memory accesses for processes.
 
 - ``loop_min_task_balance``: **float** = *0.0*:
 
+    Useful when autoNUMA used on system.
     Minimal value of task_balance so the task is not skipped during rebalancing analysis
-    by default turn off, none of tasks are skipped due to this reason
-
+    by default turn off, none of tasks are skipped due to this reason. 
 
 - ``free_space_check``: **bool** = *False*:
 
@@ -410,11 +406,6 @@ Allocator aimed to minimize remote NUMA memory accesses for processes.
     If not at least ``migrate_pages_min_task_balance * TASK_TOTAL_SIZE``
     bytes of memory resides on pinned node, then
     tries to remigrate all pages allocated on other nodes to target node.
-
-
-- ``cgroups_cpus_binding``: **bool** = *True*:
-
-    cgroups based cpu pinning
 
 
 - ``cgroups_memory_binding``: **bool** = *False*:
