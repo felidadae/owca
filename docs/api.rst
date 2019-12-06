@@ -391,7 +391,7 @@ Allocator aims to minimize remote NUMA memory accesses for processes.
 
 - ``free_space_check``: **bool** = *False*:
 
-    If True, then do not migrate if not enough space on target numa node.
+    If True, then do not pin task to node where there is not enough free memory.
 
 
 - ``migrate_pages``: **bool** = *True*:
