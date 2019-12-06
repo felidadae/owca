@@ -302,7 +302,7 @@ class NUMAAllocator(Allocator):
                     current_node, 'NUMA nodes balance disturbed')
 
                 allocations.setdefault(task, {})
-                allocations[task][AllocationType.MIGRATE_PAGES] = str(current_node)
+                allocations[task][AllocationType.MIGRATE_PAGES] = current_node
         log.log(TRACE, 'Finished migrating pages of tasks')
 
     def _log_initial(self, platform: Platform, tasks_data: TasksData):

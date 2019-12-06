@@ -136,7 +136,9 @@ class BoxedNumeric(AllocationValue):
                  max_value: Optional[Union[int, float]] = None,
                  value_change_sensitivity: float = VALUE_CHANGE_SENSITIVITY,
                  ):
-        assert isinstance(value, (float, int))
+        if not isinstance(value, (float, int)):
+            assert isinstance(value, (float, int)), \
+                    'should be of type (float, int) but was {}'.format(type(value))
         self.value = value
         self.value_change_sensitivity = value_change_sensitivity
         self.min_value = min_value if min_value is not None else -math.inf
