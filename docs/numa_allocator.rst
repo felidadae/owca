@@ -18,6 +18,8 @@ Please base your configuration on provided below (constructed for mesos cluster)
 
 .. code-block:: yaml
 
+    # numa_allocator_mesos.yaml
+
     loggers:
       "wca.extra.numa_allocator": "debug"
       "wca.cgroups_allocations": "debug"
