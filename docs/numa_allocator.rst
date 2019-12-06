@@ -14,7 +14,7 @@ Assumptions:
 - already installed WCA 
 - already installed python3.6
 
-Please base your configuration on provided below:
+Please base your configuration on provided below (constructed for mesos cluster):
 
 .. code-block:: yaml
 
