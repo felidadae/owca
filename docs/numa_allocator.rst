@@ -99,61 +99,8 @@ We provide two algorithms:
 
 In calculations we use orchestrator assigned memory as task memory (if available).
 
-
 Arguments documentation
 =======================
 
-- ``algorithm``: **NUMAAlgorithm** = *'fill_biggest_first'*:
-        - *'fill_biggest_first'*
-
-            Algorithm only cares about sum of already pinned task's memory to each numa node.
-            In each step tries to pin the biggest possible task to numa node, where sum of
-            pinned task is the lowest.
-
-        - *'minimize_migrations'*
-
-            Algorithm tries to minimize amount of memory which needs to be remigrated
-            between numa nodes.  Into consideration takes information: where a task
-            memory is allocated (on which NUMA nodes), which are nodes where the sum
-            of pinned memory is the lowest and which are nodes where most
-            free memory is available.
-
-    - ``loop_min_task_balance``: **float** = *0.0*:
-
-        Useful when autoNUMA used on system.
-        Minimal value of task_balance so the task is not skipped during rebalancing analysis
-        by default turn off, none of tasks are skipped due to this reason. 
-
-    - ``free_space_check``: **bool** = *False*:
-
-        If True, then do not migrate if not enough space on target numa node.
-
-
-    - ``migrate_pages``: **bool** = *True*:
-
-        If use syscall "migrate pages" (forced, synchronous migrate pages of a task)
-
-
-    - ``migrate_pages_min_task_balance``: **Optional[float]** = *0.95*:
-
-        Works if migrate_pages == True. Then if set tells,
-        when remigrate pages of already pinned task.
-        If not at least ``migrate_pages_min_task_balance * TASK_TOTAL_SIZE``
-        bytes of memory resides on pinned node, then
-        tries to remigrate all pages allocated on other nodes to target node.
-
-
-    - ``cgroups_memory_binding``: **bool** = *False*:
-
-        cgroups based memory binding
-
-
-    - ``cgroups_memory_migrate``: **bool** = *False*:
-
-        cgroups based memory migrating; can be used only when
-        cgroups_memory_binding is set to True
-
-
-    - ``dryrun``: **bool** = *False*:
-
-        If set to True, do not make any allocations - can be used for debugging.
+Please refer to document:
+`NUMAAllocator API doc <https://github.com/felidadae/workload-collocation-agent/blob/sbugaj/numa_allocator_rst_doc/docs/numa_allocator.rst>`
