@@ -311,7 +311,6 @@ class NUMAAllocator(Allocator):
                   ' migrate_pages=%s algorithm=%s tasks=%s', self.dryrun,
                   self.cgroups_memory_binding, self.cgroups_memory_migrate,
                   self.migrate_pages, self.algorithm, len(tasks_data))
-        log.log(TRACE, 'Tasks data %r', tasks_data)
 
 
 def migration_minimizer_core(task: TaskId, most_used_nodes: Set[NumaNodeId],
@@ -545,9 +544,8 @@ def _log_task_basic_info(extra_metrics, tasks_data, task_memory, current_node):
 
 def _log_initial_state(tasks_data, balanced_memory, extra_metrics):
     log.log(TRACE, "Current state of the system, balanced_memory=%s[bytes]" % balanced_memory)
-    log.log(TRACE,
-            "Current task assigments to nodes, expressed "
-            "in sum of memory limits of pinned tasks: %s[bytes]" % {
+    log.debug("Current task assigments to nodes, expressed "
+              "in sum of memory limits of pinned tasks: %s[bytes]" % {
                 node: sum(t[1] for t in tasks) / 2 ** 10 for node, tasks in
                 balanced_memory.items()})
     log.debug("Current task assigments: %s" % {
