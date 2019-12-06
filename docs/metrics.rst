@@ -58,6 +58,7 @@ Task's metrics
 	"task_requested_cpus", "Tasks resources cpus initial requests.", "yes", "numeric",  "gauge", "orchestrator", ""
 	"task_requested_mem_bytes", "Tasks resources memory initial requests.", "yes", "bytes",  "gauge", "orchestrator", ""
 	"task_last_seen", "Time the task was last seen.", "yes", "timestamp",  "counter", "internal", ""
+	"task_up", "Always returns 1.", "yes", "numeric",  "counter", "internal", ""
 
 
 
