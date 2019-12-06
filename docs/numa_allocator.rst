@@ -14,7 +14,7 @@ Assumptions:
 - already installed WCA 
 - already installed python3.6
 
-Please use configuration file provided below:
+Please base your configuration on provided below:
 
 .. code-block:: yaml
 
@@ -22,6 +22,7 @@ Please use configuration file provided below:
       "wca.extra.numa_allocator": "debug"
       "wca.cgroups_allocations": "debug"
       "wca": "info"
+
     runner: !AllocationRunner
       measurement_runner: !MeasurementRunner
         interval: 5
@@ -47,7 +48,8 @@ Please use configuration file provided below:
         output_filename: anomalies.prom
         overwrite: true
 
-Run WCA agent as usually.
+Run WCA agent as usually. Then NUMAAllocator will be run with default values - based on algorithm 
+*'fill_biggest_first'*.
 
 
 Algorithm explanation
