@@ -52,7 +52,7 @@ Run WCA agent as usually. ``NUMAAllocator`` will be run with default values - ba
 Metrics produced by the plugin
 ==============================
 
-The metrics are created to monitor the plugin:
+Metrics created to monitor the plugin are:
 
 - **numa_task_current_node**
     
