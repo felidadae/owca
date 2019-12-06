@@ -23,7 +23,7 @@ from wca import cgroups, wss
 from wca import logger
 from wca import perf
 from wca import resctrl
-from wca.allocators import AllocationConfiguration, TaskAllocations
+from wca.allocators import AllocationConfiguration, TaskAllocations, AllocationType
 from wca.logger import TRACE
 from wca.metrics import Measurements, merge_measurements, \
     DefaultDerivedMetricsGenerator, MetricName
@@ -199,9 +199,37 @@ class ContainerSet(ContainerInterface):
         if self._resgroup and self._platform.rdt_information:
             self._resgroup.remove(self._name)
 
+    def get_subcgroups_cpuset_allocations(self):
+        cpuset_allocations = {}
+
+        subcgroups = self.get_subcgroups()
+        for subcgroup in subcgroups:
+            cpus = subcgroup._get_cpuset_cpus()
+            mems = subcgroup._get_cpuset_mems()
+
+            if AllocationType.CPUSET_CPUS in cpuset_allocations:
+                if cpuset_allocations[AllocationType.CPUSET_CPUS] != cpus:
+                    log.warn(
+                            'Different CPUSET cpus allocation in subcgroups of %s cgroup!',
+                            self._name)
+            else:
+                cpuset_allocations[AllocationType.CPUSET_CPUS] = cpus
+
+            if AllocationType.CPUSET_MEMS in cpuset_allocations:
+                if cpuset_allocations[AllocationType.CPUSET_MEMS] != mems:
+                    log.warn(
+                            'Different CPUSET cpus allocation in subcgroups of %s cgroup!',
+                            self._name)
+            else:
+                cpuset_allocations[AllocationType.CPUSET_MEMS] = mems
+
+        return cpuset_allocations
+
     def get_allocations(self) -> TaskAllocations:
         allocations: TaskAllocations = dict()
         allocations.update(self._cgroup.get_allocations())
+        allocations.update(self.get_subcgroups_cpuset_allocations())
+
         if self._platform.rdt_information and self._platform.rdt_information.is_control_enabled():
             allocations.update(self._resgroup.get_allocations())
 

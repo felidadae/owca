@@ -81,6 +81,7 @@ class ListFormatBasedAllocationValue(AllocationValue):
     def __init__(self, value: str, container: ContainerInterface, common_labels: dict):
         assert isinstance(value, str)
         self.cgroup = container.get_cgroup()
+        self.subcgroups = container.get_subcgroups()
         self.value = value
         self.common_labels = common_labels
         self.labels_updater = LabelsUpdater(common_labels or {})
@@ -144,7 +145,12 @@ class CPUSetCPUSAllocationValue(ListFormatBasedAllocationValue):
 
     def perform_allocations(self):
         cpus = decode_listformat(self.value)
-        self.cgroup.set_cpuset_cpus(cpus)
+
+        if len(self.subcgroups) > 0:
+            for subcgroup in self.subcgroups:
+                subcgroup.set_cpuset_cpus(cpus)
+        else:
+            self.cgroup.set_cpuset_cpus(cpus)
 
 
 class CPUSetMEMSAllocationValue(ListFormatBasedAllocationValue):
@@ -165,7 +171,13 @@ class CPUSetMEMSAllocationValue(ListFormatBasedAllocationValue):
         return metrics
 
     def perform_allocations(self):
-        self.cgroup.set_cpuset_mems(decode_listformat(self.value))
+        mems = decode_listformat(self.value)
+
+        if len(self.subcgroups) > 0:
+            for subcgroup in self.subcgroups:
+                subcgroup.set_cpuset_mems(mems)
+        else:
+            self.cgroup.set_cpuset_mems(mems)
 
 
 class CPUSetMemoryMigrateAllocationValue(BoxedNumeric):

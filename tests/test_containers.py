@@ -253,6 +253,8 @@ def test_container_get_allocations(*mock):
 @patch('wca.containers.ResGroup.get_allocations', return_value={})
 @patch('wca.cgroups.Cgroup.get_allocations', return_value={})
 @patch('wca.containers.ContainerSet', spec=ContainerSet)
+@patch('wca.containers.ContainerSet.get_subcgroups_cpuset_allocations',
+       return_value={})
 def test_containerset_get_allocations(*mock):
     c = container("/t1", ['/t1/s1', '/t1/s2'], rdt_enabled=True, resgroup_name='t1')
     assert c.get_allocations() == {}

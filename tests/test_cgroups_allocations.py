@@ -22,7 +22,7 @@ from wca.allocators import AllocationConfiguration, AllocationType
 from wca.cgroups_allocations import (QuotaAllocationValue, SharesAllocationValue,
                                      CPUSetCPUSAllocationValue, CPUSetMEMSAllocationValue,
                                      MigratePagesAllocationValue)
-from wca.containers import Container
+from wca.containers import Container, ContainerSet
 from wca.metrics import Metric, MetricType
 from wca.platforms import Platform, RDTInformation, is_swap_enabled
 
@@ -122,3 +122,50 @@ def test_migrate_pages_raise_exception_when_swap_is_enabled(*mocks):
             InvalidAllocations,
             match="Swap should be disabled due to possibility of OOM killer occurrence!"):
         migrate_pages.validate()
+
+
+def test_cpuset_for_container_set():
+    rdt_information = RDTInformation(True, True, True, True, '0', '0', 0, 0, 0)
+
+    platform_mock = Mock(
+        spec=Platform,
+        cpus=10,
+        sockets=1,
+        rdt_information=rdt_information,
+        node_cpus={0: [0, 1], 1: [2, 3]},
+        numa_nodes=2,
+        swap_enabled=False,
+    )
+
+    foo_container_set = ContainerSet(
+            cgroup_path='/foo',
+            cgroup_paths=[
+                '/foo/bar-1',
+                '/foo/bar-2',
+                '/foo/bar-3'
+                ],
+            platform=platform_mock,
+            )
+
+    cgroup = foo_container_set.get_cgroup()
+    cgroup.set_cpuset_cpus = Mock()
+    cgroup.set_cpuset_mems = Mock()
+
+    for subcgroup in foo_container_set.get_subcgroups():
+        subcgroup.set_cpuset_cpus = Mock()
+        subcgroup.set_cpuset_mems = Mock()
+
+    cpuset_cpus = CPUSetCPUSAllocationValue('0-2', foo_container_set, {})
+    cpuset_cpus.perform_allocations()
+
+    cpuset_mems = CPUSetMEMSAllocationValue('0-1', foo_container_set, {})
+    cpuset_mems.perform_allocations()
+
+    # Cgroup shouldn't be affected.
+    cgroup.set_cpuset_cpus.assert_not_called()
+    cgroup.set_cpuset_mems.assert_not_called()
+
+    # Subcgroups should change cpuset param.
+    for subcgroup in foo_container_set.get_subcgroups():
+        subcgroup.set_cpuset_cpus.assert_called_once_with({0, 1, 2})
+        subcgroup.set_cpuset_mems.assert_called_once_with({0, 1})
