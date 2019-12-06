@@ -9,11 +9,6 @@ NUMAAllocator documentation
 Fast start
 ==========
 
-Assumptions:
-
-- already installed WCA 
-- already installed python3.6
-
 Please base your configuration on provided below (constructed for mesos cluster):
 
 .. code-block:: yaml
@@ -52,6 +47,20 @@ Please base your configuration on provided below (constructed for mesos cluster)
 
 Run WCA agent as usually. ``NUMAAllocator`` will be run with default values - based on algorithm
 *'fill_biggest_first'*.
+
+
+Metrics produced by the plugin
+==============================
+
+The metrics are created to monitor the plugin:
+
+- **numa_task_current_node**
+    
+    To which NUMA node a task was assigned; if not assigned then value of metric is set to *-1*
+
+- **numa__balanced_memory_tasks**
+
+    Tells how many tasks are already assigned to a NUMA node
 
 
 Algorithm explanation
