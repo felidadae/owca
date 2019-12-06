@@ -16,9 +16,9 @@ spec:
         - record: apm__mutilate_latency
           expr: avg_over_time(apm__mutilate_scan_read_p99[60s]) and apm__mutilate_alive
         - record: apm__memcached_latency  # ms p99
-          expr: ((label_replace(apm__mutilate_latency, "task_name", "$1/memcached-$2", "task_name", "(.*)/mutilate-(.*)")) * on(task_name) group_right() (task__last_seen/task__last_seen)) / 1e3
+          expr: ((label_replace(apm__mutilate_latency, "task_name", "$1/memcached-$2", "task_name", "(.*)/mutilate-(.*)")) * on(task_name) group_right() (task_last_seen/task_last_seen)) / 1e3
         - record: apm__memcached_qps
-          expr: (label_replace(apm__mutilate_qps, "task_name", "$1/memcached-$2", "task_name", "(.*)/mutilate-(.*)")) * on(task_name) group_right() (task__last_seen/task__last_seen)
+          expr: (label_replace(apm__mutilate_qps, "task_name", "$1/memcached-$2", "task_name", "(.*)/mutilate-(.*)")) * on(task_name) group_right() (task_last_seen/task_last_seen)
         # T & L
         - record: apm__throughput
           expr: apm__memcached_qps
@@ -35,9 +35,9 @@ spec:
           expr: avg_over_time(apm__memtier_scan_latency[1m]) and apm__memtier_alive
         # common apm metrics
         - record: apm__redis_latency  # msec latency
-          expr: (label_replace(apm__memtier_latency, "task_name", "$1/redis-$2", "task_name", "(.*)/memtier-(.*)")) * on(task_name) group_right() task__up
+          expr: (label_replace(apm__memtier_latency, "task_name", "$1/redis-$2", "task_name", "(.*)/memtier-(.*)")) * on(task_name) group_right() task_up
         - record: apm__redis_qps
-          expr: (label_replace(apm__memtier_ops, "task_name", "$1/redis-$2", "task_name", "(.*)/memtier-(.*)")) * on(task_name) group_right() task__up
+          expr: (label_replace(apm__memtier_ops, "task_name", "$1/redis-$2", "task_name", "(.*)/memtier-(.*)")) * on(task_name) group_right() task_up
         # T & L per app
         - record: apm__throughput
           expr: apm__redis_qps
@@ -48,7 +48,7 @@ spec:
         - record: apm__stress_bogo_ops
           expr: rate(apm__stress_ng_bogo_ops_counter[90s]) and rate(apm__stress_ng_stdout_lines[15s]) > 0
         - record: apm__stress_bogo_ops_per_task
-          expr: apm__stress_bogo_ops * on(task_name) group_right() task__up
+          expr: apm__stress_bogo_ops * on(task_name) group_right() task_up
           # T & L
         - record: apm__throughput      # bogo/ops (group_right to get labels from tasks)
           expr: apm__stress_bogo_ops_per_task
@@ -61,7 +61,7 @@ spec:
         - record: apm__sysbench_mbps    # MiB/sec
           expr: avg_over_time(apm__sysbench_qps[90s]) and apm__sysbench_alive
         - record: apm__sysbench_mbps_per_task
-          expr: apm__sysbench_mbps  * on(task_name) group_right() task__up
+          expr: apm__sysbench_mbps  * on(task_name) group_right() task_up
           # T & L
         - record: apm__throughput       # MiB/sec (group_right to get labels from tasks)
           expr: apm__sysbench_mbps_per_task

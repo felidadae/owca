@@ -132,7 +132,7 @@ application_hosts:
           timeout: 30
           stressor: stream
           slo: inf
-          number_workers: 2
+          number_workers: 1
           resources:
             cpu: 1
             ram: 2

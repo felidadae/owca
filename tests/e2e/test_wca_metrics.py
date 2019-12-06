@@ -56,6 +56,7 @@ def _build_prometheus_url(prometheus, name, tags=None, window_size=None, event_t
 
     # Build final URL from all the components.
     url = ''.join([url, "{", query_tags_str, "}", time_range])
+    logging.info('Prometheus query: %s', ''.join([url, "{", query_tags_str, "}"]))
 
     return url
 
@@ -67,20 +68,13 @@ def _fetch_metrics(url):
 
 
 @pytest.mark.parametrize('workload_name', [
-    'cassandra_stress',
     'stress_ng',
-    'cassandra_ycsb',
-    'specjbb',
-    'twemcache_rpc_perf',
-    'redis_rpc_perf',
 ])
 def test_wca_metrics(workload_name):
     test_wca(workload_name, ['sli', 'task_cycles'])
 
 
 @pytest.mark.parametrize('workload_name', [
-    'redis-memtier',
-    'sysbench-memory',
     'stress'
 ])
 def test_wca_metrics_kustomize(workload_name):

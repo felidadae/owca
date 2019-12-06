@@ -202,7 +202,7 @@ class NUMAAllocator(Allocator):
 
         if self.migrate_pages and self.migrate_pages_min_task_balance is not None:
             self._remigrate_pages_of_unbalanced_tasks(
-                    allocations, tasks_data, tasks_memory, platform)
+                allocations, tasks_data, tasks_memory, platform)
 
         # 5. Add final metrics and return
 
@@ -282,8 +282,8 @@ class NUMAAllocator(Allocator):
         log.log(TRACE, 'Pages to move: %r', self._pages_to_move)
 
     def _remigrate_pages_of_unbalanced_tasks(self, allocations: TasksAllocations,
-                                             tasks_data: TasksData,
-                                             tasks_memory: TasksMemory, platform: Platform):
+                                             tasks_data: TasksData, tasks_memory: TasksMemory,
+                                             platform: Platform):
         log.log(TRACE, 'Migrating pages of tasks to balance memory between nodes')
 
         tasks_to_balance = []

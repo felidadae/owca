@@ -6,7 +6,7 @@
 # - HOSTNAME - default provided by OS
 
 runner: !MeasurementRunner
-  action_delay: 5.0
+  interval: 5.0
   rdt_enabled: false
   enable_derived_metrics: True
   node: !KubernetesNode

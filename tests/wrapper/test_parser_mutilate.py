@@ -13,13 +13,16 @@
 # limitations under the License.
 
 
+from unittest.mock import patch
+
 from io import StringIO
 
 from wca.metrics import Metric, MetricType
 from wrapper.parser_mutilate import parse
 
 
-def test_parse():
+@patch('builtins.print')
+def test_parse(mock_print):
     data = """#type       avg     std     min     5th    10th    90th    95th    99th
                read      801.9   155.0   304.5   643.7   661.1  1017.8  1128.2  1386.5
                update    804.6   157.8   539.4   643.4   661.2  1026.1  1136.1  1404.3

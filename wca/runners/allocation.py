@@ -299,10 +299,13 @@ class AllocationRunner(Runner):
 
         return True
 
-    def _iterate_body(self,
-                      containers, platform,
-                      tasks_data: TasksData,
-                      common_labels):
+    def _iterate_body(
+            self,
+            containers: Dict[Task, ContainerInterface],
+            platform: platforms.Platform,
+            tasks_data: TasksData,
+            common_labels
+         ):
         """Allocator callback body."""
 
         current_allocations = _get_tasks_allocations(containers)
@@ -391,7 +394,7 @@ class AllocationRunner(Runner):
         allocations_package.send(common_labels)
 
 
-def _get_tasks_allocations(containers) -> TasksAllocations:
+def _get_tasks_allocations(containers: Dict[Task, ContainerInterface]) -> TasksAllocations:
     tasks_allocations = {}
     for task, container in containers.items():
         try:

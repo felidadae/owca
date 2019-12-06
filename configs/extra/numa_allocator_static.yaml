@@ -4,7 +4,7 @@ loggers:
   "wca": "info"
 runner: !AllocationRunner
   measurement_runner: !MeasurementRunner
-    action_delay: 5
+    interval: 5
     node: !StaticNode
       require_pids: true  # This will ignore cgroups without tasks - no more empty measurements.
       default_resources:
@@ -19,23 +19,7 @@ runner: !AllocationRunner
       - specjbb2015/Group7
       - specjbb2015/Group8
 
-    # Disable all measurements based on perf system and resctrl
-    enable_perf_uncore: false
-    gather_hw_mm_topology: false
-    rdt_enabled: false
-    enable_derived_metrics: false
-    wss_reset_interval: 0
-    event_names: []  # if uncommented disables metrics from perf event subsystem
-    # event_names:  # if uncommented disables metrics from perf event subsystem
-    # - instructions
-    # - mem_load_retired_local_dram__rd301
-    # - mem_load_retired_remote_dram__rd302
-    #- cycles
-    #- cache_misses
-  # # - cache_references
-    ## - stalls_mem_load
-    #- mem_inst_retired_all_loads__rd081
-    #- mem_inst_retired_all_stores__rd082
+    enable_derived_metrics: true
 
     task_label_generators:
       aurora_instance: !TaskLabelRegexGenerator

@@ -3,7 +3,7 @@ runner: !AllocationRunner
     node: &tester !IntegrationTester
      config: 'tests/tester/configs/tester_config.yaml'
      command: 'sleep 300' # if task has long time to exit, they are race with delete cgruop and pid
-    action_delay: 5.
+    interval: 5.
     metrics_storage: *tester
     rdt_enabled: True
     event_names:

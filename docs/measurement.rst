@@ -33,7 +33,7 @@ node:
 metrics_storage:
         Storage to store platform, internal, resource and task metrics.
         (defaults to DEFAULT_STORAGE/LogStorage to output for standard error)
-action_delay:
+interval:
         Iteration duration in seconds (None disables wait and iterations).
         (defaults to 1 second)
 rdt_enabled:

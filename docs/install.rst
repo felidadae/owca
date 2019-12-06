@@ -172,7 +172,7 @@ Config ``/etc/wca/wca_config.yml`` must exists. See an `example configuration fi
         node: !MesosNode
           mesos_agent_endpoint: 'http://127.0.0.1:5051'
         timeout: 5
-        action_delay: 1.
+        interval: 1.
         metrics_storage: !LogStorage
           output_filename: '/tmp/output_anomalies.log'    
         extra_labels:

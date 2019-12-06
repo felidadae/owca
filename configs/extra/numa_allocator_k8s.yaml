@@ -4,7 +4,7 @@ loggers:
   "wca": "debug"
 runner: !AllocationRunner
   measurement_runner: !MeasurementRunner
-    action_delay: 5
+    interval: 5
     node: !KubernetesNode
       cgroup_driver: cgroupfs
       ssl: !SSL
@@ -16,21 +16,9 @@ runner: !AllocationRunner
       monitored_namespaces: ["default"]
 
     # Disable all measurements based on perf system and resctrl
-    enable_perf_uncore: true
     enable_derived_metrics: true
     gather_hw_mm_topology: true
-    rdt_enabled: false
-#    event_names: []  # if uncommented disables metrics from perf event subsystem
-    wss_reset_interval: 1
-    #event_names:  # if uncommented disables metrics from perf event subsystem
-    #- instructions
-    #- cycles
-    #- cache_misses
-  # # - cache_references
-    ## - stalls_mem_load
-    #- mem_inst_retired_all_loads__rd081
-    #- mem_inst_retired_all_stores__rd082
-    
+
     # Metrics to files
     metrics_storage: !LogStorage
       output_filename: metrics.prom

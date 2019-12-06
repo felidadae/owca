@@ -119,8 +119,7 @@ class ListFormatBasedAllocationValue(AllocationValue):
                     '{} not in range <{};{}>'.format(self.value, self.min_value,
                                                      self.max_value))
         else:
-            raise InvalidAllocations(
-                '{} is invalid argument! No data provided!'.format(self.value))
+            log.debug('found cpuset/memset set to empty string!')
 
     def __repr__(self):
         return self.value

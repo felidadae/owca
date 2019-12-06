@@ -138,7 +138,7 @@ def test_prepare_tasks_data(*mocks):
             TaskData(
                 t.name, t.task_id, t.cgroup_path, t.subcgroups_paths,
                 t.labels, t.resources,
-                {'task_last_seen': 12345.6, 'task_cpu_usage_seconds': 13}
+                {'task_up': 1, 'task_last_seen': 12345.6, 'task_cpu_usage_seconds': 13}
             )
     }
 

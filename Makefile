@@ -86,13 +86,12 @@ wca_package_in_docker_with_kafka:
 
 wca_docker_devel: WCA_IMAGE ?= wca
 wca_docker_devel: WCA_TAG ?= devel
-wca_docker_devel: REPO ?= 100.64.176.12:80/
 wca_docker_devel:
 	@echo "Preparing development WCA container (only source code without pex)"
-	sudo docker build --network host --target devel -f Dockerfile -t $(REPO)$(WCA_IMAGE):$(WCA_TAG) .
-	@echo WCA image name is: ${REPO}$(WCA_IMAGE):$(WCA_TAG)
-	@echo Push: sudo docker push ${REPO}$(WCA_IMAGE):$(WCA_TAG)
-	@echo Run: sudo docker run --privileged -ti --rm ${REPO}$(WCA_IMAGE):$(WCA_TAG) -0 -c /wca/configs/extra/static_measurements.yaml
+	sudo docker build --network host --target devel -f Dockerfile -t $(WCA_IMAGE):$(WCA_TAG) .
+	@echo WCA image name is: $(WCA_IMAGE):$(WCA_TAG)
+	@echo Push: sudo docker push $(WCA_IMAGE):$(WCA_TAG)
+	@echo Run: sudo docker run --privileged -ti --rm $(WCA_IMAGE):$(WCA_TAG) -0 -c /wca/configs/extra/static_measurements.yaml
 
 
 wca_package:

@@ -3,11 +3,11 @@ pipeline {
     parameters {
       booleanParam defaultValue: true, description: 'Run all pre-checks.', name: 'PRECHECKS'
       booleanParam defaultValue: true, description: 'Build WCA image.', name: 'BUILD_WCA_IMAGE'
-      booleanParam defaultValue: true, description: 'Build workload images.', name: 'BUILD_IMAGES'
+      booleanParam defaultValue: true, description: 'Build wrappers and workload images.', name: 'BUILD_IMAGES'
       booleanParam defaultValue: true, description: 'E2E for Mesos.', name: 'E2E_MESOS'
       booleanParam defaultValue: true, description: 'E2E for Kubernetes.', name: 'E2E_K8S'
       booleanParam defaultValue: true, description: 'E2E for Kubernetes as Daemonset.', name: 'E2E_K8S_DS'
-      string defaultValue: '300', description: 'Sleep time for E2E tests', name: 'SLEEP_TIME'
+      string defaultValue: '121', description: 'Sleep time for E2E tests', name: 'SLEEP_TIME'
     }
     environment {
         DOCKER_REPOSITORY_URL = '100.64.176.12:80'
@@ -25,7 +25,7 @@ pipeline {
             when {expression{return params.PRECHECKS}}
             steps {
                 sh '''
-                  make venv junit
+                  make junit
                 '''
             }
             post {
@@ -42,20 +42,28 @@ pipeline {
                 '''
             }
         }
-        stage("Build WCA pex") {
+        stage("Build WCA pex (in docker and images)") {
             when {expression{return params.BUILD_WCA_IMAGE}}
             steps {
                 sh '''
+                  echo GIT_COMMIT=${GIT_COMMIT}
+                  export WCA_IMAGE=${DOCKER_REPOSITORY_URL}/wca
+                  export WCA_TAG=${GIT_COMMIT}
                   make wca_package_in_docker
+                  docker push $WCA_IMAGE:$WCA_TAG
+                  # Just for completeness (not used later)
                   make wca_docker_devel
                 '''
             }
         }
         stage("Build pex files") {
-            when {expression{return params.BUILD_WCA_IMAGE}}
+            when {expression{return params.BUILD_IMAGES}}
             steps {
                 sh '''
-                  make venv wrapper_package
+                  # speed up pex wrapper build time
+                  # requieres .pex-build already filled with requirments
+                  #export ADDITIONAL_PEX_OPTIONS='--no-index --cache-ttl=604800'
+                  make wrapper_package
                 '''
                 archiveArtifacts(artifacts: "dist/**")
             }
@@ -68,19 +76,6 @@ pipeline {
              '''
              archiveArtifacts(artifacts: "wca-bandit.html, wca-pex-bandit.html")
            }
-        }
-        stage("Build and push Workload Collocation Agent Docker image") {
-            when {expression{return params.BUILD_WCA_IMAGE}}
-            steps {
-                sh '''
-                export WCA_IMAGE=${DOCKER_REPOSITORY_URL}/wca
-                export WCA_TAG=${GIT_COMMIT}
-                echo $WCA_IMAGE
-                echo $WCA_TAG
-                make wca_package_in_docker
-                docker push $WCA_IMAGE:$WCA_TAG
-                '''
-            }
         }
         stage("Building Docker images and do tests in parallel") {
             parallel {
@@ -243,9 +238,12 @@ pipeline {
                 LABELS="{additional_labels: {build_number: \"${BUILD_NUMBER}\", build_node_name: \"${NODE_NAME}\", build_commit: \"${GIT_COMMIT}\"}}"
                 RUN_WORKLOADS_SLEEP_TIME = "${params.SLEEP_TIME}"
                 INVENTORY="tests/e2e/demo_scenarios/common/inventory.yaml"
-                TAGS = "redis_rpc_perf,cassandra_stress,cassandra_ycsb,twemcache_rpc_perf,specjbb,stress_ng"
+                // JUST ONE WORKLOAD
+                TAGS = "stress_ng"
+                // ALL SET OF WORKLOADS
+                // TAGS = "redis_rpc_perf,cassandra_stress,cassandra_ycsb,twemcache_rpc_perf,twemcache_mutilate,specjbb,stress_ng"
             }
-            failFast true
+            failFast false
             parallel {
                 stage('WCA Daemonset E2E for Kubernetes') {
                     when {expression{return params.E2E_K8S_DS}}
@@ -265,6 +263,7 @@ pipeline {
                             print('Cleaning workloads and wca...')
                             sh "kubectl delete -k ${WORKSPACE}/${KUSTOMIZATION_WORKLOAD} --wait=false"
                             sh "kubectl delete -k ${WORKSPACE}/${KUSTOMIZATION_MONITORING} --wait=false"
+                            junit 'unit_results.xml'
                         }
                     }
                 }
@@ -317,6 +316,8 @@ pipeline {
 /* Helper function */
 /*----------------------------------------------------------------------------------------------------------*/
 def wca_and_workloads_check() {
+    print('-wca_and_workloads_check-')
+    sh "echo GIT_COMMIT=$GIT_COMMIT"
     images_check()
     sh "make venv"
     sh "make wca_package_in_docker_with_kafka"
@@ -328,38 +329,53 @@ def wca_and_workloads_check() {
     copy_files("${WORKSPACE}/dist/wca.pex", "/usr/bin/wca.pex", true)
     copy_files("${WORKSPACE}/tests/e2e/demo_scenarios/common/wca.service", "/etc/systemd/system/wca.service", true)
     sh "sudo systemctl daemon-reload"
+    print('Start wca...')
     start_wca()
     copy_files("${WORKSPACE}/${HOST_INVENTORY}", "${WORKSPACE}/${INVENTORY}")
     replace_commit()
+    print('Run workloads...')
     run_workloads("${EXTRA_ANSIBLE_PARAMS}", "${LABELS}")
+    print('Sleeping...')
     sleep RUN_WORKLOADS_SLEEP_TIME
+    print('Test E2E metrics...')
     test_wca_metrics()
 }
 
 def kustomize_wca_and_workloads_check() {
+    print('-kustomize_wca_and_workloads_check-')
+    sh "echo GIT_COMMIT=$GIT_COMMIT"
     print('Configure wca and workloads...')
     kustomize_replace_commit()
+    kustomize_add_labels("memcached-mutilate")
     kustomize_add_labels("redis-memtier")
     kustomize_add_labels("stress")
     kustomize_add_labels("sysbench-memory")
 
+    print('Configure images...')
+    kustomize_set_docker_image("memcached-mutilate", "mutilate")
     kustomize_set_docker_image("redis-memtier", "memtier_benchmark")
     kustomize_set_docker_image("stress", "stress_ng")
     kustomize_set_docker_image("sysbench-memory", "sysbench")
 
+
     print('Starting wca...')
     sh "kubectl apply -k ${WORKSPACE}/${KUSTOMIZATION_MONITORING}"
 
-    print('Starting workloads...')
+    print('Deploy workloads...')
     sh "kubectl apply -k ${WORKSPACE}/${KUSTOMIZATION_WORKLOAD}"
 
-    def list = ["stress-stream-small","redis-small","memtier-small","sysbench-memory-small"]
+    print('Scale up workloads...')
+    // JUST ONE WORKLOAD
+    def list = ["stress-stream-small"]
+    // FULL SET OF WORKLOADS
+    //def list = ["stress-stream-small","redis-small","memtier-small","sysbench-memory-small"]
     for(item in list){
         sh "kubectl scale --replicas=1 statefulset $item"
     }
 
     print('Sleep while workloads are running...')
     sleep RUN_WORKLOADS_SLEEP_TIME
+    print('Test kustomize metrics...')
     test_wca_metrics_kustomize()
 }
 
@@ -406,7 +422,7 @@ def test_wca_metrics_kustomize() {
 }
 
 def images_check() {
-    print('Check if docker images build for this PR')
+    print('Check if docker images build for this PR ${GIT_COMMIT}')
     /* Checking only for rpc_perf */
     check_image = sh(script: 'curl ${DOCKER_REPOSITORY_URL}/v2/wca/rpc_perf/manifests/${BUILD_COMMIT} | jq .name', returnStdout: true).trim()
     if (check_image == 'null') {

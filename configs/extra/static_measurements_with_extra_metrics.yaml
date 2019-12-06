@@ -1,9 +1,9 @@
 runner: !MeasurementRunner
   event_names:
-    - instructions
-    - cycles
-    - cache_references
-    - cache_misses
+    - task_instructions
+    - task_cycles
+    - task_cache_references
+    - task_cache_misses
     - instructionraw__rC000
   enable_derived_metrics: true
   node: !StaticNode

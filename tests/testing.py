@@ -32,7 +32,6 @@ from wca.nodes import TaskId, Task
 from wca.platforms import CPUCodeName, Platform, RDTInformation
 from wca.resctrl import ResGroup
 from wca.runners import Runner
-from wca.runners.measurement import DEFAULT_EVENTS
 
 
 def create_json_fixture_mock(name, path=__file__, status_code=200):
@@ -193,7 +192,7 @@ def container(cgroup_path, subcgroups_paths=None, with_config=False,
                 platform=platform,
                 allocation_configuration=AllocationConfiguration() if with_config else None,
                 resgroup=ResGroup(name=resgroup_name) if rdt_enabled else None,
-                event_names=DEFAULT_EVENTS)
+                event_names=['task_cycles'])
         else:
             platform = Platform(
                 sockets=1,
@@ -217,7 +216,7 @@ def container(cgroup_path, subcgroups_paths=None, with_config=False,
                 platform=platform,
                 allocation_configuration=AllocationConfiguration() if with_config else None,
                 resgroup=ResGroup(name=resgroup_name) if rdt_enabled else None,
-                event_names=DEFAULT_EVENTS
+                event_names=['task_cycles']
             )
 
     if should_patch:

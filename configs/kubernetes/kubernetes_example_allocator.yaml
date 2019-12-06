@@ -18,6 +18,7 @@ runner: !AllocationRunner
 
       # If the kubelet agent does not listen on localhost,
       #   the endpoint must be provided.
+      kubelet_enabled: true
       kubelet_endpoint: "https://$IP:10250"
 
       # List of namespaces to monitor pods in.

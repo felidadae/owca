@@ -15,8 +15,9 @@
 
 import logging
 import pprint
-from abc import ABC, abstractmethod
 from typing import List, Optional, Dict
+
+from abc import ABC, abstractmethod
 
 from wca import cgroups, wss
 from wca import logger
@@ -254,11 +255,8 @@ class Container(ContainerInterface):
             self._perf_counters = None
             self._derived_metrics_generator = None
 
-        def get_measurements(self) -> Measurements:
-            if self._derived_metrics_generator is not None:
-                return self._derived_metrics_generator.get_measurements()
-            else:
-                return self.get_measurements()
+    def __repr__(self):
+        return 'Container(%r)' % self._cgroup_path
 
     def get_subcgroups(self) -> List[cgroups.Cgroup]:
         """Returns empty list as Container class cannot have subcontainers -
@@ -385,8 +383,8 @@ class ContainerManager:
         return container
 
     @profiler.profile_duration('sync_containers_state')
-    def sync_containers_state(self, tasks: List[Task]) -> Dict[
-            Task, ContainerInterface]:
+    def sync_containers_state(
+            self, tasks: List[Task]) -> Dict[Task, ContainerInterface]:
         """Syncs state of ContainerManager with a system by removing orphaned containers,
         and creating containers for newly arrived tasks, and synchronizing containers' state.
 

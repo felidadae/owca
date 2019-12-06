@@ -289,7 +289,7 @@ def test_rdt_initialize(rdt_max_values_mock, cleanup_resctrl_mock,
     runner = AllocationRunner(
         measurement_runner=MeasurementRunner(
             node=Mock(spec=Node),
-            action_delay=1,
+            interval=1,
             rdt_enabled=True,
             metrics_storage=Mock(spec=Storage),
             allocation_configuration=allocation_configuration,

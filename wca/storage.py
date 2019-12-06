@@ -17,16 +17,16 @@
 Module is responsible for exposing functionality of storing labeled metrics
 in durable external storage.
 """
-import abc
 import itertools
 import logging
-import os
 import pathlib
-import re
 import sys
 import time
 from typing import List, Tuple, Dict, Optional
 
+import abc
+import os
+import re
 from dataclasses import dataclass, field
 
 from wca import logger
@@ -107,7 +107,6 @@ class LogStorage(Storage):
             self._output = sys.stderr
 
     def store(self, metrics):
-        log.debug('Storing %d metrics to %s.', len(metrics), self.output_filename)
         log.log(logger.TRACE, 'Dump of metrics: %r', metrics)
 
         is_convertable, error_message = is_convertable_to_prometheus_exposition_format(metrics)
@@ -124,6 +123,8 @@ class LogStorage(Storage):
                 timestamp = None
             msg = convert_to_prometheus_exposition_format(metrics, timestamp, self.filter_labels)
             log.log(logger.TRACE, 'Dump of metrics (text format): %r', msg)
+            log.debug('LogStorage: Storing %d metrics to %s (%s).', len(metrics), len(msg),
+                      self.output_filename or 'None(stderr)')
             if self.overwrite:
                 p = pathlib.Path(self.output_filename)
                 p_tmp = p.with_suffix('.tmp')
@@ -494,7 +495,7 @@ class KafkaStorage(Storage):
                     "Message has failed to be writen to kafka. API error message: {}.".format(
                         error_from_callback__original_ref))
 
-            log.debug('message size=%i with timestamp=%s stored in kafka topic=%r',
+            log.debug('KafkaStorage: Message size=%i with timestamp=%s stored in kafka topic=%r',
                       len(msg), timestamp, self.topic)
 
         return  # the message has been send to kafka
@@ -517,6 +518,7 @@ class MetricPackage:
         if common_labels:
             for metric in self.metrics:
                 metric.labels.update(common_labels)
+        log.debug('storing %s metrics using %r' % (len(self.metrics), self.storage))
         self.storage.store(self.metrics)
 
 

@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import logging
+import re
 import time
+from abc import abstractmethod
 from typing import Dict, List, Optional
 
-import re
 import resource
-from abc import abstractmethod
 from dataclasses import dataclass
 
 from wca import platforms, profiling, perf_const as pc
@@ -44,10 +44,6 @@ from wca.storage import DEFAULT_STORAGE, MetricPackage, Storage
 log = logging.getLogger(__name__)
 
 _INITIALIZE_FAILURE_ERROR_CODE = 1
-
-DEFAULT_EVENTS = [MetricName.TASK_INSTRUCTIONS, MetricName.TASK_CYCLES,
-                  MetricName.TASK_CACHE_MISSES, MetricName.TASK_CACHE_REFERENCES,
-                  MetricName.TASK_STALLED_MEM_LOADS]
 
 
 class TaskLabelGenerator:
@@ -105,7 +101,7 @@ class MeasurementRunner(Runner):
         Storage to store platform, internal, resource and task metrics.
         (defaults to DEFAULT_STORAGE/LogStorage to output for standard error)
 
-    - ``action_delay``: **Numeric(0,60)** = *1.*
+    - ``interval``: **Numeric(0,60)** = *1.*
 
         Iteration duration in seconds (None disables wait and iterations).
         (defaults to 1 second)
@@ -125,10 +121,10 @@ class MeasurementRunner(Runner):
         Additional labels attached to every metrics.
         (defaults to empty dict)
 
-    - ``event_names``: **List[str]** = `DEFAULT_EVENTS`
+    - ``event_names``: **List[str]** = `[]`
 
         Perf counters to monitor.
-        (defaults to `DEFAULT_EVENTS` what is: instructions, cycles, cache-misses, memstalls)
+        (defaults to not collect perf counters - empty list of events)
 
     - ``enable_derived_metrics``: **bool** = *False*
 
@@ -165,11 +161,11 @@ class MeasurementRunner(Runner):
             self,
             node: Node,
             metrics_storage: Storage = DEFAULT_STORAGE,
-            action_delay: Numeric(0, 60) = 1.,
+            interval: Numeric(0, 60) = 1.,
             rdt_enabled: Optional[bool] = None,
             gather_hw_mm_topology: bool = False,
             extra_labels: Optional[Dict[Str, Str]] = None,
-            event_names: List[str] = DEFAULT_EVENTS,
+            event_names: List[str] = [],
             enable_derived_metrics: bool = False,
             enable_perf_uncore: Optional[bool] = None,
             task_label_generators: Optional[Dict[str, TaskLabelGenerator]] = None,
@@ -180,14 +176,14 @@ class MeasurementRunner(Runner):
 
         self._node = node
         self._metrics_storage = metrics_storage
-        self._action_delay = action_delay
+        self._interval = interval
         self._rdt_enabled = rdt_enabled
         self._gather_hw_mm_topology = gather_hw_mm_topology
         self._include_optional_labels = include_optional_labels
 
-        # QUICK FIX for Str from ENV TODO: fix me
         self._extra_labels = {k: str(v) for k, v in
                               extra_labels.items()} if extra_labels else dict()
+        log.debug('Extra labels: %r', self._extra_labels)
         self._finish = False  # Guard to stop iterations.
         self._last_iteration = time.time()  # Used internally by wait function.
         self._allocation_configuration = allocation_configuration
@@ -229,7 +225,7 @@ class MeasurementRunner(Runner):
         now = time.time()
         iteration_duration = now - self._last_iteration
 
-        residual_time = max(0., self._action_delay - iteration_duration)
+        residual_time = max(0., self._interval - iteration_duration)
         time.sleep(residual_time)
         self._last_iteration = time.time()
 
@@ -452,6 +448,7 @@ def _prepare_tasks_data(containers: Dict[Task, Container]) -> TasksData:
     """
     # Prepare empty structure for return all the information.
     tasks_data: TasksData = {}
+    now = time.time()
 
     for task, container in containers.items():
         # Task measurements and measurements based metrics.
@@ -462,9 +459,11 @@ def _prepare_tasks_data(containers: Dict[Task, Container]) -> TasksData:
                         'for container {} - ignoring! '
                         '(because {})'.format(container, e))
             raise
-        # Extra metrics
-        task_measurements[MetricName.TASK_LAST_SEEN.value] = time.time()
-        #
+        # Extra internal metrics
+        task_measurements[MetricName.TASK_UP.value] = 1
+        task_measurements[MetricName.TASK_LAST_SEEN.value] = now
+
+        # Extra metrics from orchestrator about resources
         if TaskResource.CPUS in task.resources:
             task_measurements[MetricName.TASK_REQUESTED_CPUS.value] = task.resources[
                 TaskResource.CPUS.value]
@@ -486,7 +485,7 @@ def _prepare_tasks_data(containers: Dict[Task, Container]) -> TasksData:
 
 
 def _build_tasks_metrics(tasks_data: TasksData) -> List[Metric]:
-    """TODO:  TBD ALSO ADDS PREFIX for name!"""
+    """Build metrics for all tasks."""
     tasks_metrics: List[Metric] = []
 
     for task, data in tasks_data.items():

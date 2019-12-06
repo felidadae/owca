@@ -78,6 +78,7 @@ class MetricName(str, Enum):
 
     # Generic
     TASK_LAST_SEEN = 'task_last_seen'
+    TASK_UP = 'task_up'
 
     # ----------------- Platform ----------------------
     # Static information
@@ -179,10 +180,11 @@ class MetricUnit(str, Enum):
 
 class MetricSource(str, Enum):
     PERF_SUBSYSTEM_WITH_CGROUPS = 'perf subsystem with cgroups'
-    RESCTRL = 'resctrl'
-    CGROUP = 'cgroup'
-    PROCFS = '/proc filesystems'
-    SYSFS = '/sys filesystems'
+    PERF_SUBSYSTEM_UNCORE = 'perf subsystem with dynamic PMUs (uncore)'
+    RESCTRL = 'resctrl filesystem'
+    CGROUP = 'cgroup filesystem'
+    PROCFS = '/proc filesystem'
+    SYSFS = '/sys filesystem'
     INTERNAL = 'internal'
     DERIVED = 'derived'
     ORCHESTRATOR = 'orchestrator'
@@ -221,7 +223,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             MetricSource.PERF_SUBSYSTEM_WITH_CGROUPS,
             MetricGranularity.TASK,
             ['cpu'],
-            'yes (event_names)',
+            'no (event_names)',
         ),
     MetricName.TASK_CYCLES:
         MetricMetadata(
@@ -231,7 +233,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             MetricSource.PERF_SUBSYSTEM_WITH_CGROUPS,
             MetricGranularity.TASK,
             ['cpu'],
-            'yes (event_names)',
+            'no (event_names)',
         ),
     MetricName.TASK_CACHE_MISSES:
         MetricMetadata(
@@ -241,7 +243,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             MetricSource.PERF_SUBSYSTEM_WITH_CGROUPS,
             MetricGranularity.TASK,
             ['cpu'],
-            'yes (event_names)',
+            'no (event_names)',
         ),
     MetricName.TASK_CACHE_REFERENCES:
         MetricMetadata(
@@ -251,7 +253,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             MetricSource.PERF_SUBSYSTEM_WITH_CGROUPS,
             MetricGranularity.TASK,
             ['cpu'],
-            'yes (event_names)',
+            'no (event_names)',
         ),
     MetricName.TASK_STALLED_MEM_LOADS:
         MetricMetadata(
@@ -261,7 +263,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             MetricSource.PERF_SUBSYSTEM_WITH_CGROUPS,
             MetricGranularity.TASK,
             ['cpu'],
-            'yes (event_names)',
+            'no (event_names)',
         ),
     MetricName.TASK_OFFCORE_REQUESTS_L3_MISS_DEMAND_DATA_RD:
         MetricMetadata(
@@ -559,6 +561,16 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             [],
             'yes',
         ),
+    MetricName.TASK_UP:
+        MetricMetadata(
+            'Always returns 1.',
+            MetricType.COUNTER,
+            MetricUnit.NUMERIC,
+            MetricSource.INTERNAL,
+            MetricGranularity.TASK,
+            [],
+            'yes',
+        ),
     # ----------------------- Platform ---------------------------------
     MetricName.PLATFORM_TOPOLOGY_CORES:
         MetricMetadata(
@@ -733,7 +745,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'Persistent memory module number of reads.',
             MetricType.COUNTER,
             MetricUnit.NUMERIC,
-            MetricSource.PERF_SUBSYSTEM_WITH_CGROUPS,
+            MetricSource.PERF_SUBSYSTEM_UNCORE,
             MetricGranularity.PLATFORM,
             ['socket', 'pmu_type'],
             'auto (enable_perf_uncore)',
@@ -743,7 +755,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'Persistent memory module number of writes.',
             MetricType.COUNTER,
             MetricUnit.NUMERIC,
-            MetricSource.PERF_SUBSYSTEM_WITH_CGROUPS,
+            MetricSource.PERF_SUBSYSTEM_UNCORE,
             MetricGranularity.PLATFORM,
             ['socket', 'pmu_type'],
             'auto (enable_perf_uncore)',
@@ -753,7 +765,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'Column adress select number of reads',
             MetricType.COUNTER,
             MetricUnit.NUMERIC,
-            MetricSource.PERF_SUBSYSTEM_WITH_CGROUPS,
+            MetricSource.PERF_SUBSYSTEM_UNCORE,
             MetricGranularity.PLATFORM,
             ['socket', 'pmu_type'],
             'auto (enable_perf_uncore)',
@@ -763,7 +775,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'Column adress select number of writes',
             MetricType.COUNTER,
             MetricUnit.NUMERIC,
-            MetricSource.PERF_SUBSYSTEM_WITH_CGROUPS,
+            MetricSource.PERF_SUBSYSTEM_UNCORE,
             MetricGranularity.PLATFORM,
             ['socket', 'pmu_type'],
             'auto (enable_perf_uncore)',
@@ -773,7 +785,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'TBD',
             MetricType.COUNTER,
             MetricUnit.NUMERIC,
-            MetricSource.PERF_SUBSYSTEM_WITH_CGROUPS,
+            MetricSource.PERF_SUBSYSTEM_UNCORE,
             MetricGranularity.PLATFORM,
             ['socket', 'pmu_type'],
             'auto (enable_perf_uncore)',
@@ -783,7 +795,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'TBD',
             MetricType.COUNTER,
             MetricUnit.NUMERIC,
-            MetricSource.PERF_SUBSYSTEM_WITH_CGROUPS,
+            MetricSource.PERF_SUBSYSTEM_UNCORE,
             MetricGranularity.PLATFORM,
             ['socket', 'pmu_type'],
             'auto (enable_perf_uncore)',

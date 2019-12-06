@@ -13,13 +13,16 @@
 # limitations under the License.
 
 
+from unittest.mock import patch
+
 from io import StringIO
 
 from wca.metrics import Metric, MetricType
 from wrapper.parser_cassandra_stress import parse
 
 
-def test_parse():
+@patch('builtins.print')
+def test_parse(mock_print):
     input_ = StringIO(
         "Results:"
         "Op rate                   :   14,997 op/s  [WRITE: 14,997 op/s]"

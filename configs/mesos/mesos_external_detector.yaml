@@ -10,7 +10,7 @@ runner: !DetectionRunner
         client_cert_path: "$PATH/apiserver-aurora-client.crt"
         client_key_path: "$PATH/apiserver-aurora-client.key"
 
-    action_delay: 1.
+    interval: 1.
 
     metrics_storage: !LogStorage
       output_filename: '/tmp/output_anomalies.log'

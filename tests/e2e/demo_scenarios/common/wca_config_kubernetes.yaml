@@ -9,7 +9,8 @@ runner: !AllocationRunner
       kubelet_endpoint: "https://100.64.176.17:10250"
       kubelet_enabled: True
       monitored_namespaces: ["default"]
-    action_delay: 10.
+    interval: 10.
+    event_names: ['task_cycles']
     metrics_storage: !KafkaStorage
       brokers_ips: ['100.64.176.12:9092']
       topic: "wca_metrics"
@@ -19,9 +20,12 @@ runner: !AllocationRunner
       own_ip: "100.64.176.17"
       build_commit: "BUILD_COMMIT"
       build_number: "BUILD_NUMBER"
-
   anomalies_storage: !KafkaStorage
     brokers_ips: ['100.64.176.12:9092']
     topic: "wca_anomalies"
     max_timeout_in_seconds: 5.
   allocator: !NOPAllocator
+  allocations_storage: !KafkaStorage
+    brokers_ips: ['100.64.176.12:9092']
+    topic: "wca_allocations"
+    max_timeout_in_seconds: 5.

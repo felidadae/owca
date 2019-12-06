@@ -33,7 +33,7 @@ The diagram below puts WCA in context of a cluster and monitoring infrastructure
 
 .. image:: docs/context.png
 
-For context regarding Mesos see `this document <docs/mesos.rst>`_ and for Kubernetes see `this document <docs/kubernetes.rst>`_.
+For context regarding `Mesos see this document <docs/mesos.rst>`_ and for `Kubernetes see this document <docs/kubernetes.rst>`_.
 
 
 See `WCA Architecture 1.7.pdf`_ for further details.
@@ -42,9 +42,8 @@ See `WCA Architecture 1.7.pdf`_ for further details.
 Getting started
 ===============
 
-------------
 
-WCA is targeted at and tested on Centos 7.5.
+WCA is targeted at and tested on Centos 7.6.
 
 *Note*: for full production installation please follow this detailed `installation guide <docs/install.rst>`_.
 
@@ -52,9 +51,8 @@ WCA is targeted at and tested on Centos 7.5.
 
     # Install required software.
     sudo yum install epel-release -y
-    sudo yum install git python36 make which -y
-    python3.6 -m ensurepip --user
-    python3.6 -m pip install --user pipenv
+    sudo yum install git python3 make which python3-pip -y
+    python3 -mpip install --user pipenv
     export PATH=$PATH:~/.local/bin
 
     # Clone the repository & build.
@@ -66,13 +64,16 @@ WCA is targeted at and tested on Centos 7.5.
     make wca_package
 
     # Prepare tasks manually (only cgroups are required)
-    sudo mkdir /sys/fs/cgroup/{cpu,cpuacct,perf_event}/task1
+    sudo mkdir -p /sys/fs/cgroup/{cpu,cpuset,cpuacct,memory,perf_event}/task1
 
     # Example of running agent in measurements-only mode with predefined static list of tasks
     sudo dist/wca.pex --config $PWD/configs/extra/static_measurements.yaml --root
 
     # Example of static allocation with predefined rules on predefined list of tasks.
     sudo dist/wca.pex --config $PWD/configs/extra/static_allocator.yaml --root
+
+    # For development purposes can be also run from sources (requires venv create by pipenv)
+    sudo env PYTHONPATH=. `pipenv --py` wca/main.py --config $PWD/configs/extra/static_allocator.yaml --root
 
 
 Running those commands outputs metrics in Prometheus format to standard error like this:
@@ -156,7 +157,7 @@ Configuration mechanism allows to:
 - Create and configure complex python objects (e.g. ``DetectionRunner``, ``MesosNode``, ``KafkaStorage``) using `YAML tags`_.
 - Inject dependencies (with type checking support) into constructed objects using `dataclasses <https://docs.python.org/3/library/dataclasses.html>`_ annotations.
 - Register external classes using ``-r`` command line argument or by using ``wca.config.register`` decorator API. This allows to extend WCA with new functionalities 
-  (more information `here <docs/extending.rst>`_) and is used to provide external components with e.g. anomaly logic like `Platform Resource Manager <https://github.com/intel/platform-resource-manager/tree/master/prm>`_.
+  (more information `about extending here <docs/extending.rst>`_) and is used to provide external components with e.g. anomaly logic like `Platform Resource Manager <https://github.com/intel/platform-resource-manager/tree/master/prm>`_.
 
 .. _`YAML tags`: http://yaml.org/spec/1.2/spec.html#id2764295
 
@@ -167,7 +168,7 @@ Components
 
 Following built-in components are available (stable API):
 
-- `MesosNode <docs/api.rst#mesosnode>`_ provides workload discovery on Mesos cluster node where `mesos containerizer <http://mesos.apache.org/documentation/latest/mesos-containerizer/>`_ is used (see the docs `here <docs/mesos.rst>`_)
+- `MesosNode <docs/api.rst#mesosnode>`_ provides workload discovery on Mesos cluster node where `mesos containerizer <http://mesos.apache.org/documentation/latest/mesos-containerizer/>`_ is used (see the `Mesos docs here <docs/mesos.rst>`_)
 - `KubernetesNode <docs/api.rst#kubernetesnode>`_ provides workload discovery on Kubernetes cluster node (see the docs `here <docs/kubernetes.rst>`_)
 - `MeasurementRunner <docs/api.rst#measurementrunner>`_ implements simple loop that reads state of the system, encodes this information as metrics and stores them,
 - `DetectionRunner <docs/api.rst#detectionrunner>`_ extends ``MeasurementRunner`` and additionally implements anomaly detection callback and encodes anomalies as metrics to enable alerting and analysis. See `Detection API <docs/detection.rst>`_ for more details.
@@ -176,19 +177,20 @@ Following built-in components are available (stable API):
 - `NOPAllocator <docs/api.rst#nopallocator>`_ dummy "no operation" allocator that returns no metrics, nor anomalies and does not configure resources. See `Detection API <docs/detection.rst>`_ for more details.
 - `KafkaStorage <docs/api.rst#kafkastorage>`_ logs metrics to `Kafka streaming platform <https://kafka.apache.org/>`_ using configurable topics.
 - `LogStorage <docs/api.rst#logstorage>`_ logs metrics to standard error or to a file at configurable location.
-- `SSL <docs/api.rst#ssl>`_ to enabled secure communication with external components (more information `here <docs/ssl.rst>`_).
+- `SSL <docs/api.rst#ssl>`_ to enabled secure communication with external components (more information `about SSL here <docs/ssl.rst>`_).
 
 Following built-in components are available as provisional API:
 
 - `StaticNode <docs/api.rst#staticnode>`_ to support static list of tasks (does not require full orchestration software stack),
 - `StaticAllocator <docs/api.rst#staticallocator>`_ to support simple rules based logic for resource allocation.
+- `NUMAAllocator <docs/api.rst#snumaallocator>`_ to optimize workload placement for NUMA systems
 
 Officially supported third-party components:
 
 - `Intel "Platform Resource Manager" plugin <https://github.com/intel/platform-resource-manager/tree/master/prm>`_ - machine learning based component for both anomaly detection and allocation.
 
 :Warning: Note that, those components are run as ordinary python class, without any isolation and with process's privileges so there is no built-in protection against malicious external components.  
-          For **security** reasons, **please use only built-in and officially supported components**. More about security `here <SECURITY.md>`_.
+          For **security** reasons, **please use only built-in and officially supported components**. More about `security here <SECURITY.md>`_.
 
 
 Workloads
