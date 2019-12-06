@@ -48,34 +48,35 @@ Please base your configuration on provided below:
         output_filename: anomalies.prom
         overwrite: true
 
-Run WCA agent as usually. Then NUMAAllocator will be run with default values - based on algorithm 
+Run WCA agent as usually. Then NUMAAllocator will be run with default values - based on algorithm
 *'fill_biggest_first'*.
 
 
 Algorithm explanation
 =====================
 
-The goal of allocator is to minimise remote memory NUMA nodes accesses by processes.
+The goal of the allocator is to minimise remote memory NUMA nodes accesses by processes.
 
 Further in text, by *task memory being pinned* we mean that at least
 cgroup based cpu pinning was performed on the task; optionally other methods which helps in
 keeping memory on chosen NUMA node might have been performed.
 All available methods supported by the plugin are:
 
-- cgroup based cpu pinning - which results in higher propability that new allocations of memory made a process
-  will be done on NUMA node to which cpus was pinned task; cannot be disabled;
+- cgroup based cpu pinning - which results in higher propability that new allocations of memory
+  made a process will be done on NUMA node to which cpus was pinned task; cannot be disabled;
 
-- cgroup based memory pinning - allow to assure that all new allocations of a task will be done on chosen NUMA node,
-  however it may result in OOM kills of processes, so we do not recommend to use it in most cases; optional;
+- cgroup based memory pinning - allow to assure that all new allocations of a task will be done
+  on chosen NUMA node, however it may result in ""OutOfMemory" kills of processes, so we do not
+  recommend to use it in most cases; optional;
   argument in NUMAAllocator: ``cgroups_memory_binding``
 
-- syscall migrate_pages based method - allow to migrate pages of process from chosen NUMA nodes to a choosen node,
-  in synchronous manner; it may make the service unavailable for the time of migration,
-  however it used only in initialization stage of a task is the most effective; optional
-  argument in NUMAAllocator: ``migrate_pages``
+- syscall migrate_pages based method - allow to migrate pages of process from chosen NUMA nodes
+  to a choosen node, in synchronous manner; it may make the service unavailable for the time
+  of migration, however it used only in initialization stage of a task is the most effective; 
+  optional; argument in NUMAAllocator: ``migrate_pages``
 
-- autoNUMA - kernel method to automatically migrate pages between NUMA nodes, it may be used in parallel to this plugin;
-  please refer to argument in NUMAAllocator ``loop_min_task_balance``
+- autoNUMA - kernel method to automatically migrate pages between NUMA nodes, it may be used in
+  parallel to this plugin; please refer to argument in NUMAAllocator ``loop_min_task_balance``
 
 
 We provide two algorithms:
