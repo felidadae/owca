@@ -74,7 +74,7 @@ class NUMAAllocator(Allocator):
 
         Useful when autoNUMA used on system.
         Minimal value of task_balance so the task is not skipped during rebalancing analysis
-        by default turn off, none of tasks are skipped due to this reason. 
+        by default turn off, none of tasks are skipped due to this reason.
 
     - ``free_space_check``: **bool** = *False*:
 
