@@ -50,7 +50,7 @@ Please base your configuration on provided below (constructed for mesos cluster)
         output_filename: anomalies.prom
         overwrite: true
 
-Run WCA agent as usually. Then NUMAAllocator will be run with default values - based on algorithm
+Run WCA agent as usually. ``NUMAAllocator`` will be run with default values - based on algorithm
 *'fill_biggest_first'*.
 
 
