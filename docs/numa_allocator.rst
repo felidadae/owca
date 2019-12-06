@@ -103,4 +103,4 @@ Arguments documentation
 =======================
 
 Please refer to document:
-`NUMAAllocator API doc <https://github.com/felidadae/workload-collocation-agent/blob/sbugaj/numa_allocator_rst_doc/docs/numa_allocator.rst>`
+`NUMAAllocator API doc <https://github.com/felidadae/workload-collocation-agent/blob/sbugaj/numa_allocator_rst_doc/docs/numa_allocator.rst>`_.
