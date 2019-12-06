@@ -104,5 +104,5 @@ In calculations we use orchestrator assigned memory as task memory (if available
 Arguments documentation
 =======================
 
-Please refer to document:
+For formal documentation of available arguments of the allocator please refer to:
 `NUMAAllocator API doc <https://github.com/felidadae/workload-collocation-agent/blob/sbugaj/numa_allocator_rst_doc/docs/api.rst#numaallocator>`_.
