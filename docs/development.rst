@@ -95,7 +95,6 @@ You can use make to check code style, or build packages:
 
     make flake8
     make wca_package
-    make wrapper_package
 
 Running locally (for development purposes)
 ------------------------------------------

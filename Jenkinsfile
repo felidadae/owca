@@ -51,6 +51,7 @@ pipeline {
                   export WCA_TAG=${GIT_COMMIT}
                   make wca_package_in_docker
                   docker push $WCA_IMAGE:$WCA_TAG
+
                   # Just for completeness (not used later)
                   make wca_docker_devel
                 '''
@@ -63,7 +64,7 @@ pipeline {
                   # speed up pex wrapper build time
                   # requieres .pex-build already filled with requirments
                   #export ADDITIONAL_PEX_OPTIONS='--no-index --cache-ttl=604800'
-                  make wrapper_package
+                  make wrapper_package_in_docker_with_kafka
                 '''
                 archiveArtifacts(artifacts: "dist/**")
             }

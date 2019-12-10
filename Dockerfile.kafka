@@ -15,6 +15,8 @@
 
 # Single staged Dockerfile to build wca as pex file that includes 
 # confluent kafka python library build from sources.
+
+
 FROM centos:7
 
 RUN echo "" && rpm --import https://packages.confluent.io/rpm/5.2/archive.key
@@ -32,11 +34,15 @@ COPY Pipfile.lock Pipfile.lock
 RUN pipenv install --dev --deploy
 
 RUN git clone https://github.com/confluentinc/confluent-kafka-python
-RUN cd confluent-kafka-python && git checkout v1.0.1
+RUN cd confluent-kafka-python && git checkout v1.2.0  # newest version as for 2019-12-10
 
 # Cache will be propably invalidated here.
 COPY . .
 
 RUN git clean -fdx
 ENV OPTIONAL_FEATURES=kafka_storage
-RUN make wca_package
+
+ARG MAKE_WRAPPER_PACKAGE=no
+ARG MAKE_WCA_PACKAGE=yes
+RUN [ "$MAKE_WRAPPER_PACKAGE" == 'yes' ] && make wrapper_package || true
+RUN [ "$MAKE_WCA_PACKAGE" == 'yes' ] && make wca_package || true
