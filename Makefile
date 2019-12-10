@@ -57,7 +57,7 @@ wca_package_in_docker: WCA_TAG ?= $(shell git rev-parse HEAD)
 wca_package_in_docker:
 	@echo Building wca pex file inside docker and copying to ./dist/wca.pex
 	# target: standalone
-	sudo docker build --no-cache --network host --target standalone -f Dockerfile -t $(WCA_IMAGE):$(WCA_TAG) .
+	sudo docker build --network host --target standalone -f Dockerfile -t $(WCA_IMAGE):$(WCA_TAG) .
 	# Extract pex to dist folder
 	rm -rf .cidfile && sudo docker create --cidfile=.cidfile $(WCA_IMAGE):$(WCA_TAG)
 	CID=$$(cat .cidfile); \
