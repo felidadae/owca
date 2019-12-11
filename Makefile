@@ -56,7 +56,7 @@ wca_package_in_docker: WCA_TAG ?= $(shell git rev-parse HEAD)
 wca_package_in_docker:
 	@echo Building wca pex file inside docker and copying to ./dist/wca.pex
 	# target: standalone
-	sudo docker build --network host --target standalone -f Dockerfile -t $(WCA_IMAGE):$(WCA_TAG) .
+	sudo docker build --build-arg MAKE_WCA_PACKAGE=yes --network host --target standalone -f Dockerfile -t $(WCA_IMAGE):$(WCA_TAG) .
 	# Extract pex to dist folder
 	rm -rf .cidfile && sudo docker create --cidfile=.cidfile $(WCA_IMAGE):$(WCA_TAG)
 	CID=$$(cat .cidfile); \
@@ -88,7 +88,7 @@ wca_docker_devel: WCA_IMAGE ?= wca
 wca_docker_devel: WCA_TAG ?= devel
 wca_docker_devel:
 	@echo "Preparing development WCA container (only source code without pex)"
-	sudo docker build --build-arg MAKE_WCA_PACKAGE=yes --network host --target devel -f Dockerfile -t $(WCA_IMAGE):$(WCA_TAG) .
+	sudo docker build --network host --target devel -f Dockerfile -t $(WCA_IMAGE):$(WCA_TAG) .
 	@echo WCA image name is: $(WCA_IMAGE):$(WCA_TAG)
 	@echo Push: sudo docker push $(WCA_IMAGE):$(WCA_TAG)
 	@echo Run: sudo docker run --privileged -ti --rm $(WCA_IMAGE):$(WCA_TAG) -0 -c /wca/configs/extra/static_measurements.yaml
