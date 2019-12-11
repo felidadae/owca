@@ -53,7 +53,7 @@ pipeline {
                   docker push $WCA_IMAGE:$WCA_TAG
 
                   # Just for completeness (not used later)
-                  make wca_docker_devel
+                  make _wca_docker_devel
                 '''
             }
         }

@@ -1,15 +1,15 @@
 # Shell variables which may customize behaviour of this Makefiles:
+# 
 # * ADDITIONAL_PEX_OPTIONS
 # 	additional flags which can be passed to pex tool to be used while building distribution files
+#
 # * OPTIONAL_FEATURES
 # 	space seperated list of optional features to be included in the build of pex files;
 # 	optional features list:
 # 	* kafka_storage
 
-PEX_OPTIONS = -v -R component-licenses --cache-dir=.pex-build $(ADDITIONAL_PEX_OPTIONS)
-ENV_SAFE = env PYTHONPATH=.
-ENV_UNSAFE = env PYTHONPATH=. INCLUDE_UNSAFE_CONFLUENT_KAFKA_WHEEL=yes
 
+PEX_OPTIONS = -v -R component-licenses --cache-dir=.pex-build $(ADDITIONAL_PEX_OPTIONS)
 OPTIONAL_MODULES =
 ifeq ($(OPTIONAL_FEATURES),kafka_storage) 
 	OPTIONAL_MODULES = 'confluent-kafka-python'
@@ -72,9 +72,7 @@ wca_package_in_docker_with_kafka: WCA_IMAGE ?= wca
 wca_package_in_docker_with_kafka: WCA_TAG ?= $(shell git rev-parse HEAD)
 wca_package_in_docker_with_kafka:
 	@echo "Building wca pex (version with Kafka) file inside docker and copying to ./dist/wca.pex"
-	# target: standalone
 	sudo docker build --network host -f Dockerfile.kafka -t $(WCA_IMAGE):$(WCA_TAG) .
-	# Extract pex to dist folder
 	rm -rf .cidfile && sudo docker create --cidfile=.cidfile $(WCA_IMAGE):$(WCA_TAG)
 	CID=$$(cat .cidfile); \
 	mkdir -p dist; \
@@ -83,16 +81,8 @@ wca_package_in_docker_with_kafka:
 	sudo chown -R $$USER:$$USER dist/wca.pex && sudo rm .cidfile
 	@echo WCA image name is: $(WCA_IMAGE):$(WCA_TAG)
 	@echo WCA pex file: dist/wca.pex
-
-# Do not build pex file, just copy python source and install dependencies into docker container.
-wca_docker_devel: WCA_IMAGE ?= wca
-wca_docker_devel: WCA_TAG ?= devel
-wca_docker_devel:
-	@echo "Preparing development WCA container (only source code without pex)"
-	sudo docker build --network host --target devel -f Dockerfile -t $(WCA_IMAGE):$(WCA_TAG) .
-	@echo WCA image name is: $(WCA_IMAGE):$(WCA_TAG)
-	@echo Push: sudo docker push $(WCA_IMAGE):$(WCA_TAG)
-	@echo Run: sudo docker run --privileged -ti --rm $(WCA_IMAGE):$(WCA_TAG) -0 -c /wca/configs/extra/static_measurements.yaml
+	# ---
+	@echo "Please follow docs/kafka_storage.rst to be able to use created wca.pex"
 
 wca_package:
 	@echo Building wca pex file.
@@ -100,14 +90,13 @@ wca_package:
 	-rm -rf .pex-build
 	-rm dist/wca.pex
 	-rm -rf wca.egg-info
-	pipenv run $(ENV_SAFE) pex . $(OPTIONAL_MODULES) $(PEX_OPTIONS) -o dist/wca.pex -m wca.main:main
+	pipenv run env PYTHONPATH=. pex . $(OPTIONAL_MODULES) $(PEX_OPTIONS) -o dist/wca.pex -m wca.main:main
 	./dist/wca.pex --version
 
 wrapper_package_in_docker_with_kafka: WCA_IMAGE ?= wca
 wrapper_package_in_docker_with_kafka: WCA_TAG ?= $(shell git rev-parse HEAD)
 wrapper_package_in_docker_with_kafka:
-	@echo "Building wca pex (version with Kafka) file inside docker and copying to ./dist/wca.pex"
-	# target: standalone
+	@echo "Building wrappers pex (versions with Kafka) file inside docker and copying to ./dist/"
 	sudo docker build --build-arg MAKE_WRAPPER_PACKAGE=yes --network host -f Dockerfile.kafka -t $(WCA_IMAGE):$(WCA_TAG) .
 	# Extract pex to dist folder
 	rm -rf .cidfile && sudo docker create --cidfile=.cidfile $(WCA_IMAGE):$(WCA_TAG)
@@ -118,9 +107,11 @@ wrapper_package_in_docker_with_kafka:
 	sudo chown -R $$USER:$$USER dist/*.pex && sudo rm .cidfile
 	@echo WCA image name is: $(WCA_IMAGE):$(WCA_TAG)
 	@echo WCA pex file: dist/wca.pex
+	# ---
+	@echo "Please follow docs/kafka_storage.rst to be able to use created pex files."
 
 wrapper_package:
-	@echo Building wrappers pex files. To use KafkaStorage please follow docs/kafka_storage.rst
+	@echo "Building wrappers pex files."
 	-sh -c 'rm -f .pex-build/*wrapper.pex'
 	-rm -rf .pex-build
 	pipenv run pex . $(OPTIONAL_MODULES) -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/wrapper.pex -m wrapper.wrapper_main
@@ -134,6 +125,21 @@ wrapper_package:
 	pipenv run pex . $(OPTIONAL_MODULES) -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/memtier_benchmark_wrapper.pex -m wrapper.parser_memtier
 	./dist/wrapper.pex --help >/dev/null
 
+#-----------------------------------------------------------------------------------------------
+# Private or deprecated
+
+# Do not build pex file, just copy python source and install dependencies into docker container.
+_wca_docker_devel: WCA_IMAGE ?= wca
+_wca_docker_devel: WCA_TAG ?= devel
+_wca_docker_devel:
+	@echo "Preparing development WCA container (only source code without pex)"
+	sudo docker build --network host --target devel -f Dockerfile -t $(WCA_IMAGE):$(WCA_TAG) .
+	@echo WCA image name is: $(WCA_IMAGE):$(WCA_TAG)
+	@echo Push: sudo docker push $(WCA_IMAGE):$(WCA_TAG)
+	@echo Run: sudo docker run --privileged -ti --rm $(WCA_IMAGE):$(WCA_TAG) -0 -c /wca/configs/extra/static_measurements.yaml
+
+
+ENV_UNSAFE = env PYTHONPATH=. INCLUDE_UNSAFE_CONFLUENT_KAFKA_WHEEL=yes
 _unsafe_wrapper_package:
 	@echo Building wrappers pex files. Unsafe method, do not use in production environment.
 	-sh -c 'rm -f .pex-build/*wrapper.pex'
@@ -148,6 +154,7 @@ _unsafe_wrapper_package:
 	pipenv run $(ENV_UNSAFE) pex . -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/stress_ng_wrapper.pex -m wrapper.parser_stress_ng
 	pipenv run $(ENV_UNSAFE) pex . -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/memtier_benchmark_wrapper.pex -m wrapper.parser_memtier
 	./dist/wrapper.pex --help >/dev/null
+#-----------------------------------------------------------------------------------------------
 
 check: flake8 bandit unit
 
