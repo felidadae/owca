@@ -8,6 +8,7 @@
 
 PEX_OPTIONS = -v -R component-licenses --cache-dir=.pex-build $(ADDITIONAL_PEX_OPTIONS)
 ENV_SAFE = env PYTHONPATH=.
+ENV_UNSAFE = env PYTHONPATH=. INCLUDE_UNSAFE_CONFLUENT_KAFKA_WHEEL=yes
 
 OPTIONAL_MODULES =
 ifeq ($(OPTIONAL_FEATURES),kafka_storage) 
@@ -119,7 +120,7 @@ wrapper_package_in_docker_with_kafka:
 	@echo WCA pex file: dist/wca.pex
 
 wrapper_package:
-	@echo Building wrappers pex files.
+	@echo Building wrappers pex files. To use KafkaStorage please follow docs/kafka_storage.rst
 	-sh -c 'rm -f .pex-build/*wrapper.pex'
 	-rm -rf .pex-build
 	pipenv run pex . $(OPTIONAL_MODULES) -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/wrapper.pex -m wrapper.wrapper_main
@@ -131,6 +132,21 @@ wrapper_package:
 	pipenv run pex . $(OPTIONAL_MODULES) -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/cassandra_stress_wrapper.pex -m wrapper.parser_cassandra_stress
 	pipenv run pex . $(OPTIONAL_MODULES) -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/stress_ng_wrapper.pex -m wrapper.parser_stress_ng
 	pipenv run pex . $(OPTIONAL_MODULES) -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/memtier_benchmark_wrapper.pex -m wrapper.parser_memtier
+	./dist/wrapper.pex --help >/dev/null
+
+_unsafe_wrapper_package:
+	@echo Building wrappers pex files. Unsafe method, do not use in production environment.
+	-sh -c 'rm -f .pex-build/*wrapper.pex'
+	-rm -rf .pex-build
+	pipenv run $(ENV_UNSAFE) pex . -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/wrapper.pex -m wrapper.wrapper_main
+	pipenv run $(ENV_UNSAFE) pex . -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/example_workload_wrapper.pex -m wrapper.parser_example_workload
+	pipenv run $(ENV_UNSAFE) pex . -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/specjbb_wrapper.pex -m wrapper.parser_specjbb
+	pipenv run $(ENV_UNSAFE) pex . -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/ycsb_wrapper.pex -m wrapper.parser_ycsb
+	pipenv run $(ENV_UNSAFE) pex . -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/rpc_perf_wrapper.pex -m wrapper.parser_rpc_perf
+	pipenv run $(ENV_UNSAFE) pex . -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/mutilate_wrapper.pex -m wrapper.parser_mutilate
+	pipenv run $(ENV_UNSAFE) pex . -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/cassandra_stress_wrapper.pex -m wrapper.parser_cassandra_stress
+	pipenv run $(ENV_UNSAFE) pex . -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/stress_ng_wrapper.pex -m wrapper.parser_stress_ng
+	pipenv run $(ENV_UNSAFE) pex . -D examples/workloads/wrapper $(PEX_OPTIONS) -o dist/memtier_benchmark_wrapper.pex -m wrapper.parser_memtier
 	./dist/wrapper.pex --help >/dev/null
 
 check: flake8 bandit unit

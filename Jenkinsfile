@@ -64,7 +64,7 @@ pipeline {
                   # speed up pex wrapper build time
                   # requieres .pex-build already filled with requirments
                   #export ADDITIONAL_PEX_OPTIONS='--no-index --cache-ttl=604800'
-                  make wrapper_package_in_docker_with_kafka
+                  make _unsafe_wrapper_package
                 '''
                 archiveArtifacts(artifacts: "dist/**")
             }

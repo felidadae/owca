@@ -22,6 +22,10 @@ install_requires = ['%s%s' % (name, spec['version'])
                     for name, spec in
                     json.load(open('Pipfile.lock'))['default'].items()]
 
+if os.environ.get('INCLUDE_UNSAFE_CONFLUENT_KAFKA_WHEEL', 'no') == 'yes':
+    print('Warning: bundling confluent_kafka package with binary libraries, '
+          'some of them are outdated and contains security vulnerabilities.')
+    install_requires.append('confluent_kafka==1.0.0rc1')
 
 packages = ['wca', 'wca.extra', 'wca.runners']
 
