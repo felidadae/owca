@@ -22,6 +22,7 @@ import wca.storage as storage
 
 storage.check_kafka_dependency = lambda: True
 
+
 @pytest.fixture
 def sample_metrics():
     return [
