@@ -13,7 +13,7 @@ To support this feature WCA uses libraries:
 Building executable binary (distribution)
 -----------------------------------------
 
-To build executable binary inside a docker using `Dockerfile <Dockerfile.kafka>`_, run:
+To build executable binary inside a docker (using `Dockerfile <../Dockerfile.kafka>`_), run:
 
 .. code:: shell
 

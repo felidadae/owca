@@ -20,7 +20,7 @@ To build WCA pex distribution file one need:
 Building executable binary (distribution)
 -----------------------------------------
 
-To build pex file inside docker (`Dockerfile <Dockerfile>`_ is used), please run:
+To build pex file inside docker (`Dockerfile <../Dockerfile>`_ is used), please run:
 
 .. code:: shell
 
