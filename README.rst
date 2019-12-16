@@ -49,7 +49,6 @@ WCA is targeted at and tested on Centos 7.6
 
 Steps needed to install WCA dependencies and build WCA pex file:
 
-.. _installing_dependencies_manually:
 .. code-block:: shell
     
     # Install required software.
@@ -82,8 +81,11 @@ Steps to run WCA:
 
 .. code-block:: shell
 
-    # Prepare tasks manually (only cgroups are required)
+    # Configuration files used in below commands requires creating a cgroup with name `task1`.
     sudo mkdir -p /sys/fs/cgroup/{cpu,cpuset,cpuacct,memory,perf_event}/task1
+
+    # Add a process to the cgroup to monitor it using WCA. Might be skipped.
+    echo $PROCESS_PID > /sys/fs/cgroup/{cpu,cpuset,cpuacct,memory,perf_event}/task1/tasks
 
     # Example of running agent in measurements-only mode with predefined static list of tasks
     sudo dist/wca.pex --config $PWD/configs/extra/static_measurements.yaml --root
@@ -91,8 +93,11 @@ Steps to run WCA:
     # Example of static allocation with predefined rules on predefined list of tasks.
     sudo dist/wca.pex --config $PWD/configs/extra/static_allocator.yaml --root
 
+    # The same as 2nd command, but run from source code - does **not** 
+    #   work with docker option of installing dependencies.
+    sudo env PYTHONPATH=. `pipenv --py` wca/main.py --config $PWD/configs/extra/static_allocator.yaml --root
 
-Running those commands outputs metrics in Prometheus format to standard error like this:
+Running these commands outputs metrics in Prometheus format to standard error like this:
 
 .. code-block:: ini
 
@@ -143,11 +148,6 @@ Running those commands outputs metrics in Prometheus format to standard error li
     wca_tasks{host="gklab-126-081"} 1 1575625088768
 
 
-To run WCA agent from source code, please _installing_dependencies_manually.
-
-.. code-block:: ini
-
-    sudo env PYTHONPATH=. `pipenv --py` wca/main.py --config $PWD/configs/extra/static_allocator.yaml --root
 
 When reconfigured, other built-in components allow to:
 
