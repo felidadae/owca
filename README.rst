@@ -47,10 +47,11 @@ WCA is targeted at and tested on Centos 7.6
 
 *Note*: for full production installation please follow this detailed `installation guide <docs/install.rst>`_.
 
-To install WCA dependencies and build WCA pex file:
+Steps needed to install WCA dependencies and build WCA pex file:
 
+.. _installing_dependencies_manually:
 .. code-block:: shell
-
+    
     # Install required software.
     sudo yum install git python3 make which python3-pip -y
     python3 -mpip install --user pipenv
@@ -61,9 +62,23 @@ To install WCA dependencies and build WCA pex file:
     cd workload-collocation-agent
     
     export LC_ALL=en_US.utf8  # required for centos docker image
+    make venv  # creates venv by pipenv
     make wca_package
 
-To run resulting pex file:
+or using docker:
+
+.. code-block:: shell
+
+    # needed only on host, where pex file is run
+    sudo yum install python3
+
+    # needed on host, where pex file is builded
+    sudo yum install make
+
+    # pex file will be copied to ./dist/wca.pex
+    make wca_package_in_docker
+
+Steps to run WCA:
 
 .. code-block:: shell
 
@@ -76,13 +91,6 @@ To run resulting pex file:
     # Example of static allocation with predefined rules on predefined list of tasks.
     sudo dist/wca.pex --config $PWD/configs/extra/static_allocator.yaml --root
 
-
-To run WCA from sources: 
-
-.. code-block:: ini
-
-    make venv  # creates venv by pipenv
-    sudo env PYTHONPATH=. `pipenv --py` wca/main.py --config $PWD/configs/extra/static_allocator.yaml --root
 
 Running those commands outputs metrics in Prometheus format to standard error like this:
 
@@ -134,6 +142,12 @@ Running those commands outputs metrics in Prometheus format to standard error li
     # TYPE wca_tasks gauge
     wca_tasks{host="gklab-126-081"} 1 1575625088768
 
+
+To run WCA agent from source code, please _installing_dependencies_manually.
+
+.. code-block:: ini
+
+    sudo env PYTHONPATH=. `pipenv --py` wca/main.py --config $PWD/configs/extra/static_allocator.yaml --root
 
 When reconfigured, other built-in components allow to:
 
