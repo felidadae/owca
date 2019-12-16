@@ -212,7 +212,7 @@ See `external detector example <docs/external_detector_example.rst>`_ for more d
 Components
 ----------
 
-Following built-in components are available (stable API, refer to `API documentation <api.rst>`_ for full documentation):
+Following built-in components are available (stable API; refer to `API documentation <docs/api.rst>`_ for full documentation):
 
 - `MesosNode <docs/api.rst#mesosnode>`_ provides workload discovery on Mesos cluster node where `mesos containerizer <http://mesos.apache.org/documentation/latest/mesos-containerizer/>`_ is used (see the `Mesos docs here <docs/mesos.rst>`_)
 - `KubernetesNode <docs/api.rst#kubernetesnode>`_ provides workload discovery on Kubernetes cluster node (see the docs `here <docs/kubernetes.rst>`_)
