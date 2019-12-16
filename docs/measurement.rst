@@ -28,4 +28,4 @@ Example of configuration that uses ``MeasurementRunner``:
 Available arguments
 -------------------
 
-Please refer to `API documentation of MeasurementRunner <docs/api.rst#MeasurementRunner>`_.
+Please refer to `API documentation of MeasurementRunner <api.rst#MeasurementRunner>`_.

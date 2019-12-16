@@ -37,7 +37,7 @@ For more information about ``MeasurementRunner`` please refer to `Measurement AP
 All information about existing allocations, detected anomalies or other metrics are stored in
 corresponding storage classes.
 
-Please refer to `API documentation of AllocationRunner <docs/api.rst#AllocationRunner>`_ for full
+Please refer to `API documentation of AllocationRunner <api.rst#AllocationRunner>`_ for full
 list of available parameters of ``AllocationRunner``.
 
 .. code-block:: python
