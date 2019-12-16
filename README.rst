@@ -12,10 +12,10 @@ WCA - Workload Collocation Agent
 Introduction
 ============
 
-Workload Collocation Agent's goal is to reduce interference between collocated tasks and increase tasks density while ensuring the quality of
-service for high priority tasks. Chosen approach allows to enable real-time resource isolation management
-to ensure that high priority jobs meet their Service Level Objective (SLO) and best-effort jobs
-effectively utilize as many idle resources as possible.
+Workload Collocation Agent's goal is to reduce interference between collocated tasks and increase tasks 
+density while ensuring the quality of service for high priority tasks. Chosen approach allows to 
+enable real-time resource isolation management to ensure that high priority jobs meet their 
+Service Level Objective (SLO) and best-effort jobs effectively utilize as many idle resources as possible.
 
 Resource usage can be increased by:
 
