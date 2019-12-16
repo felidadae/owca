@@ -97,6 +97,11 @@ Steps to run WCA:
     #   work with docker option of installing dependencies.
     sudo env PYTHONPATH=. `pipenv --py` wca/main.py --config $PWD/configs/extra/static_allocator.yaml --root
 
+Used configuration files:
+
+- `measurements-only config <configs/extra/static_allocator.yaml>`_,
+- `static allocator with predifined rules <configs/extra/static_allocator.yaml>`_.
+
 Running these commands outputs metrics in Prometheus format to standard error like this:
 
 .. code-block:: ini
