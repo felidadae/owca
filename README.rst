@@ -85,7 +85,7 @@ Steps to run WCA:
     sudo mkdir -p /sys/fs/cgroup/{cpu,cpuset,cpuacct,memory,perf_event}/task1
 
     # Add a process to the cgroup to monitor it using WCA. Might be skipped.
-    echo $PROCESS_PID > /sys/fs/cgroup/{cpu,cpuset,cpuacct,memory,perf_event}/task1/tasks
+    sudo bash -c 'echo $PROCESS_PID > /sys/fs/cgroup/{cpu,cpuset,cpuacct,memory,perf_event}/task1/tasks'
 
     # Example of running agent in measurements-only mode with predefined static list of tasks
     sudo dist/wca.pex --config $PWD/configs/extra/static_measurements.yaml --root
