@@ -101,6 +101,7 @@ Used configuration files:
 
 - `measurements-only config <configs/extra/static_measurements.yaml>`_,
 - `static allocator with predifined rules <configs/extra/static_allocator.yaml>`_.
+    - `predifined rules <configs/extra/static_allocator_config.yaml>`_.
 
 Running these commands outputs metrics in Prometheus format to standard error like this:
 
