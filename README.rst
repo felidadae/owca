@@ -42,15 +42,16 @@ See `WCA Architecture 1.7.pdf`_ for further details.
 Getting started
 ===============
 
-
-WCA is targeted at and tested on Centos 7.6.
+WCA is targeted at and tested on Centos 7.6
+(WCA should work on earlier versions of centos or other Linux distributions, however it is tested only on centos 7.6).
 
 *Note*: for full production installation please follow this detailed `installation guide <docs/install.rst>`_.
+
+To install WCA dependencies and build WCA pex file:
 
 .. code-block:: shell
 
     # Install required software.
-    sudo yum install epel-release -y
     sudo yum install git python3 make which python3-pip -y
     python3 -mpip install --user pipenv
     export PATH=$PATH:~/.local/bin
@@ -59,9 +60,12 @@ WCA is targeted at and tested on Centos 7.6.
     git clone https://github.com/intel/workload-collocation-agent
     cd workload-collocation-agent
     
-    export LC_ALL=en_US.utf8 #required for centos docker image
-    make venv
+    export LC_ALL=en_US.utf8  # required for centos docker image
     make wca_package
+
+To run resulting pex file:
+
+.. code-block:: shell
 
     # Prepare tasks manually (only cgroups are required)
     sudo mkdir -p /sys/fs/cgroup/{cpu,cpuset,cpuacct,memory,perf_event}/task1
@@ -72,9 +76,13 @@ WCA is targeted at and tested on Centos 7.6.
     # Example of static allocation with predefined rules on predefined list of tasks.
     sudo dist/wca.pex --config $PWD/configs/extra/static_allocator.yaml --root
 
-    # For development purposes can be also run from sources (requires venv create by pipenv)
-    sudo env PYTHONPATH=. `pipenv --py` wca/main.py --config $PWD/configs/extra/static_allocator.yaml --root
 
+To run WCA from sources: 
+
+.. code-block:: ini
+
+    make venv  # creates venv by pipenv
+    sudo env PYTHONPATH=. `pipenv --py` wca/main.py --config $PWD/configs/extra/static_allocator.yaml --root
 
 Running those commands outputs metrics in Prometheus format to standard error like this:
 

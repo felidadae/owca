@@ -12,27 +12,25 @@ Building PEX distribution
 Building requirements
 ---------------------
 
-Please follow the instructions from `development guide <development.rst>`_ to prepare
-following items:
+To build WCA pex distribution file one need:
 
-- python 3.6
-- git
-- pip
-- pipenv 
-- make
-- which (required by pipenv)
-- source code of wca
+- GNU make
+- docker
 
 Building executable binary (distribution)
 -----------------------------------------
 
+To build pex file inside docker (`Dockerfile <Dockerfile>`_ is used), please run:
+
 .. code:: shell
 
-   make wca_package
+   make wca_package_in_docker
+
+The command will result in creation of ``dist/wca.pex`` file.
 
 File ``dist/wca.pex`` must be copied to ``/usr/bin/wca.pex``.
 
-To build distribution file with support for storing metrics in Kafka please follow
+To build distribution file with support for storing metrics in `Apache Kafka <https://kafka.apache.org>`_ please follow
 `Building executable binary with KafkaStorage component enabled <kafka_storage.rst>`_ guide.
 
 Running
@@ -41,11 +39,15 @@ Running
 Runtime requirements
 --------------------
 
-- Hardware with `Intel RDT <https://www.intel.com/content/www/us/en/architecture-and-technology/resource-director-technology.html>`_ support.
-- Centos 7.5 with at least 3.10.0-862 kernel with support of `resctrl filesystem <https://www.kernel.org/doc/Documentation/x86/intel_rdt_ui.txt>`_.
-- Python 3.6.x 
+- Centos 7.6 with at least 3.10.0-862 kernel with support of `resctrl filesystem <https://www.kernel.org/doc/Documentation/x86/intel_rdt_ui.txt>`_ 
+  (WCA should work on earlier versions of centos or other Linux distributions, however it is tested only on centos 7.6)
+- Python 3.6.x
 
-All other the software dependencies are bundled using `PEX <https://github.com/pantsbuild/pex>`_.
+All other WCA dependencies are bundled using `PEX <https://github.com/pantsbuild/pex>`_.
+
+For RDT related features:
+
+- Hardware with `Intel RDT <https://www.intel.com/content/www/us/en/architecture-and-technology/resource-director-technology.html>`_ support.
 
 RDT enabling on Skylake processor
 ---------------------------------
@@ -66,32 +68,17 @@ To enable RDT please add kernel boot time parameters ``rdt=cmt,mbmtotal,mbmlocal
 Python 3.6 Centos installation (recommended)
 --------------------------------------------
 
-:Note: For Centos 7.6 Python 3.6 is already available, so you **do not** need to install epel-release.
+.. code:: shell
 
-The recommended way of installing Python 3.6.x is to use `Software Collections <https://www.softwarecollections.org/en/>`_.
-SCL repository is maintained by a CentOS SIG.
-
-Please use `official installation guide <https://www.softwarecollections.org/en/scls/rhscl/rh-python36/>`_ to install Python 3.6 on target hosts.
+    yum install python3  # centos 7.6
 
 Then, verify that Python is installed correctly::
 
-    /usr/bin/scl enable rh-python36 'python --version'
+    python3 --version
 
 Should output::
     
-    Python 3.6.3
-
-Alternative options for Python 3.6 installation 
------------------------------------------------
-
-To simplify python interpreter management (no need to use ``scl`` tool as prefix), 
-you can use Intel Distribution for Python according to `yum-based installation guide <https://software.intel.com/en-us/articles/installing-intel-free-libs-and-python-yum-repo>`_.
-or use community maintained third-party ``epel`` repository and install ``python36`` package from there::
-
-    yum install epel-release
-    yum install python36
-
-CentOS project does not support, nor provide ``epel`` repository.
+    Python 3.6.x
 
 
 Running WCA as non-root user
@@ -149,11 +136,13 @@ Please use following `template <../configs/systemd-unit/wca.service>`_ as system
 
 where:
 
-``$EXTRA_COMPONENT`` should be replaced with name of a class e.g. ``wca.allocators:NOPAllocator``.
+``--register`` flag is needed if external plugin needs to be used. 
+``$EXTRA_COMPONENT`` should be replaced with name of a class e.g. ``your_custom_module.allocators:YourCustomAllocator``.
 Class name must comply with `pkg_resources <https://setuptools.readthedocs.io/en/latest/pkg_resources.html#id2>`_ format.
 All dependencies of the class must be available in currently used `PYTHONPATH`.
 
-You can use ``wca.allocators:NOPAllocator`` that is already bundled within ``dist/wca.pex`` file and does not have to be registered(if you decide to use it remove registration from `wca.service` file).
+You can use ``wca.allocators:NOPAllocator`` that is already bundled within ``dist/wca.pex`` file and does not have to be registered
+(if you decide to use it remove registration from `wca.service` file).
 
 :note: Running wca with dedicated "wca" user is more secure, but requires enabling perf counters to be used by non-root users.
        You need to reconfigure ``perf_event_paranoid`` sysctl paramter like this:
@@ -174,22 +163,15 @@ Config ``/etc/wca/wca_config.yml`` must exists. See an `example configuration fi
         timeout: 5
         interval: 1.
         metrics_storage: !LogStorage
-          output_filename: '/tmp/output_anomalies.log'    
+          output_filename: '/tmp/metrics_storage.log'    
         extra_labels:
           env_id: "$HOST_IP"
-        anomalies_storage: !KafkaStorage
-            brokers_ips: ['$KAFKA_BROKER_IP:9092']
-            topic: wca_anomalies
-            max_timeout_in_seconds: 5.
+        anomalies_storage: !LogStorage
+          output_filename: '/tmp/anomalies_storage.log'    
         allocator: !NOPAllocator
             ...
         ...
             
-
-Apply following changes to the file above:
-
-- ``$KAFKA_BROKER`` must be replaced with IP address of Kafka broker,
-- ``$HOST_IP`` may be replaced with host IP address to tag all metrics originating from WCA process
 
 Following configuration is required in order to use ``MesosNode`` component to discover new tasks:
 
@@ -202,4 +184,3 @@ Following configuration is required in order to use ``MesosNode`` component to d
    - ``cgroups/perf_event``.
 - Mesos agent must expose operator API over `secure socket <http://mesos.apache.org/documentation/latest/ssl/>`_. WCA TLS can be disabled in configuration by modifying ``mesos_agent_endpoint`` property.
 - Mesos agent may be `configured <http://mesos.apache.org/documentation/latest/configuration/agent/#image_providers>`_ to use Docker registry to fetch images. 
-

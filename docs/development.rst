@@ -13,11 +13,9 @@ Preparing developer environment
 
 1. Install `epel-release` repository and basic developer tools:
 
-:Note: For Centos 7.6 Python 3.6 is already available, so you **do not** need to install epel-release.
-
 .. code-block:: shell
 
-    yum install epel-release make git which
+    yum install make git which
 
 Note: that on production system, you should use Python 3.6 as describe `here <install.rst>`_.
 
@@ -25,7 +23,7 @@ Note: that on production system, you should use Python 3.6 as describe `here <in
 
 .. code-block:: shell
 
-    yum install python36
+    yum install python3
 
 Getting source code and preparing python virtualenv
 ---------------------------------------------------
@@ -104,7 +102,7 @@ You can run without building a distribution like this:
 
 .. code-block:: shell
     
-    python3.6 -mpipenv shell
+    python3 -mpipenv shell
     sudo env PYTHONPATH=. `which python` wca/main.py --root -c configs/extra/static_measurements.yaml
 
 
@@ -113,7 +111,7 @@ Using example allocator:
 
 .. code-block:: shell
 
-    python3.6 -mpipenv shell
+    python3 -mpipenv shell
     sudo env PYTHONPATH=. `which python` wca/main.py --root -c configs/extra/static_allocator.yaml
 
 Fast distribution rebuild
