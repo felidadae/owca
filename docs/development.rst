@@ -30,13 +30,7 @@ Getting source code and preparing python virtualenv
 
 WCA uses `pipenv <https://pipenv.readthedocs.io/en/latest/>`_ to create python virtualenv with all tools required to run, validate and build the project.
 
-1. Install pip using 3.6 Python interpreter (available in ``epel`` release and "Software Collections" python collections:
-
-.. code-block:: shell
-
-    python -m ensurepip
-
-2. Install pipenv in user mode:
+1. Install pipenv in user mode:
 
 .. code-block:: shell
 
@@ -48,25 +42,25 @@ See `pragmatic installation of pipenv`_ for more details on installing pipenv.
 
 .. _`pragmatic installation of pipenv`: https://docs.pipenv.org/install/#pragmatic-installation-of-pipenv
 
-3. Clone WCA repository:
+2. Clone WCA repository:
 
 .. code-block:: shell
 
     git clone https://github.com/intel/workload-collocation-agent
 
-4. Further commands should be run from wca root directory:
+3. Further commands should be run from wca root directory:
 
 .. code-block:: shell
 
     cd workload-collocation-agent
 
-5. Prepare virtual environment for WCA:
+4. Prepare virtual environment for WCA:
 
 .. code-block:: shell
 
     pipenv install --dev
 
-6. Start using newly created virtualenv:
+5. Start using newly created virtualenv:
 
 .. code-block:: shell
 
