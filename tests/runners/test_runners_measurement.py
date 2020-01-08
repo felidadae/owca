@@ -68,11 +68,6 @@ def test_measurements_runner(subcgroups):
     assert_metric(got_metrics, MetricName.TASK_CPU_USAGE_SECONDS, dict(task_id=t2.task_id),
                   expected_metric_value=cpu_usage)
 
-    # Test whether application and application_version_name were properly generated using
-    #   default runner._task_label_generators defined in constructor of MeasurementsRunner.
-    assert_metric(got_metrics, MetricName.TASK_CPU_USAGE_SECONDS,
-                  {'application': t1.name, 'application_version_name': ''})
-
 
 @prepare_runner_patches
 @patch('wca.runners.measurement.time.sleep')

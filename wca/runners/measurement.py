@@ -21,7 +21,7 @@ import resource
 from abc import abstractmethod
 from dataclasses import dataclass
 
-from wca import platforms, profiling, perf_const as pc
+from wca import platforms, profiling
 from wca import resctrl
 from wca import security
 from wca.allocators import AllocationConfiguration
@@ -34,10 +34,10 @@ from wca.metrics import Metric, MetricName, MissingMeasurementException, \
     MetricGranularity, MetricMetadata
 from wca.nodes import Node, Task
 from wca.nodes import TaskSynchronizationException
+from wca.perf import check_perf_event_count_limit, filter_out_event_names_for_cpu
 from wca.perf_uncore import UncorePerfCounters, _discover_pmu_uncore_config, \
     UNCORE_IMC_EVENTS, PMUNotAvailable, UncoreDerivedMetricsGenerator, \
     UNCORE_UPI_EVENTS
-from wca.platforms import CPUCodeName
 from wca.profiling import profiler
 from wca.runners import Runner
 from wca.storage import DEFAULT_STORAGE, MetricPackage, Storage
@@ -112,10 +112,10 @@ class MeasurementRunner(Runner):
         Enables or disabled support for RDT monitoring.
         (defaults to None(auto) based on platform capabilities)
 
-    - ``gather_hw_mm_topology``: **bool** = *False*
+    - ``gather_hw_mm_topology``: **Optional[bool]** = *None*
 
         Gather hardware/memory topology based on lshw and ipmctl.
-        (defaults to False)
+        (defaults to None(auto) based on lshw and ipmctl binaries availability)
 
     - ``extra_labels``: **Optional[Dict[Str, Str]]** = *None*
 
@@ -171,7 +171,7 @@ class MeasurementRunner(Runner):
             metrics_storage: Storage = DEFAULT_STORAGE,
             interval: Numeric(0, 60) = 1.,
             rdt_enabled: Optional[bool] = None,
-            gather_hw_mm_topology: bool = False,
+            gather_hw_mm_topology: Optional[bool] = None,
             extra_labels: Optional[Dict[Str, Str]] = None,
             event_names: List[str] = [],
             perf_aggregate_cpus: bool = True,
@@ -197,8 +197,6 @@ class MeasurementRunner(Runner):
         self._last_iteration = time.time()  # Used internally by wait function.
         self._allocation_configuration = allocation_configuration
         self._event_names = event_names
-        log.info('Enabling %i perf events: %s', len(self._event_names),
-                 ', '.join(self._event_names))
         self._perf_aggregate_cpus = perf_aggregate_cpus
 
         # TODO: fix those workarounds for dynamic levels and dynamic perf event metrics.
@@ -219,24 +217,17 @@ class MeasurementRunner(Runner):
         # We had the modify levels for all metrics
         # The set proper levels based on perf_aggregate_cpus value
         if not perf_aggregate_cpus:
-            log.debug('Enabling "cpu" level for PERF_SUBSYSTEM_WITH_CGROUPS metrics.')
+            log.debug('Enabling "cpu" level for PERF_SUBSYSTEM_WITH_CGROUPS and derived metrics.')
             for metric_metadata in METRICS_METADATA.values():
                 if metric_metadata.source == MetricSource.PERF_SUBSYSTEM_WITH_CGROUPS:
+                    metric_metadata.levels = ['cpu']
+                if metric_metadata.source == MetricSource.DERIVED_PERF_WITH_CGROUPS:
                     metric_metadata.levels = ['cpu']
 
         self._enable_derived_metrics = enable_derived_metrics
         self._enable_perf_uncore = enable_perf_uncore
 
-        # Default value for task_labels_generator.
-        if task_label_generators is None:
-            self._task_label_generators = {
-                'application':
-                    TaskLabelRegexGenerator('$', '', 'task_name'),
-                'application_version_name':
-                    TaskLabelRegexGenerator('.*$', '', 'task_name'),
-            }
-        else:
-            self._task_label_generators = task_label_generators
+        self._task_label_generators = task_label_generators or {}
 
         self._wss_reset_interval = wss_reset_interval
 
@@ -306,8 +297,15 @@ class MeasurementRunner(Runner):
         )
         rdt_information = platform.rdt_information
 
-        self._event_names = _filter_out_event_names_for_cpu(
+        self._event_names = filter_out_event_names_for_cpu(
             self._event_names, platform.cpu_codename)
+
+        log.info('Enabling %i perf events (for cgroups).', len(self._event_names))
+        log.debug('Enabling perf events: %s', ', '.join(self._event_names))
+        # Check and assume most popular number of available number of HW counters.
+        if self._event_names:
+            if not check_perf_event_count_limit(self._event_names, platform.cpus, platform.cores):
+                return 1
 
         # We currently do not support RDT without monitoring.
         if self._rdt_enabled and not rdt_information.is_monitoring_enabled():
@@ -551,28 +549,3 @@ def _get_internal_metrics(tasks: List[Task]) -> List[Metric]:
     ]
 
     return metrics
-
-
-def _filter_out_event_names_for_cpu(
-        event_names: List[str], cpu_codename: CPUCodeName) -> List[MetricName]:
-    """Filter out events that cannot be collected on given cpu."""
-
-    filtered_event_names = []
-
-    for event_name in event_names:
-        if event_name in pc.HardwareEventNameMap:
-            # Universal metrics that works on all cpus.
-            filtered_event_names.append(event_name)
-        elif event_name in pc.PREDEFINED_RAW_EVENTS:
-            if cpu_codename in pc.PREDEFINED_RAW_EVENTS[event_name]:
-                filtered_event_names.append(event_name)
-            else:
-                log.warning('Event %r not supported for %s!', event_name, cpu_codename.value)
-                continue
-        elif '__r' in event_name:
-            # Pass all raw events.
-            filtered_event_names.append(event_name)
-        else:
-            raise Exception('Unknown event name %r!' % event_name)
-
-    return filtered_event_names

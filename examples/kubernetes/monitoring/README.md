@@ -3,12 +3,12 @@ Getting started
 
 Files in this folder will deploy:
 
-- **fluentd** for APMs metrics
+- **fluentd** for APM metrics
 - **grafana** for visualization
 - **prometheus** using (prometheus-opearator) with custom rules for metrics collection, storage and 
   evaluation
 - **wca** as daemonset (on nodes marked with label goal=service) - image build instructions [here](wca/README.md)
-- **dashboard** for graphic cluster interface
+- **Kubernetes dashboard** for graphic cluster interface
 
 1. You need to create dedicated namespaces for those applications like this:
 
@@ -48,16 +48,18 @@ You can check progress of deployment using `kubectl get -k .`.
 
 ## Dashboard
 
-After deploy, token for access to Kubernetes Dashboard is available:
+To access Kubernetes Dashboard after deployment token is needed. It can be viewed by using following command:
 
 ```
 kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')
 ```
 
-Using version of Kubernetes Dashbord is v2.0.0-beta4.
+Kubernetes Dashboard version used in this example is v2.0.0-beta4:
+
 https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-beta4/aio/deploy/recommended.yaml
 
-To get token, used this instruction:
+Following instruction was used to get the token:
+
 https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md
 
 # Access
@@ -67,8 +69,13 @@ https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/cre
 **Prometheus** is exposed at: http://worker-node:30900/graph
 
 **Grafana** is exposed at: http://worker-node:32135
+Log in using default credentials:
+``
+user: admin``,
+``password: admin``
+and change password when prompted.
 
-Note that, after deployment remember to add prometheus source in Grafana.
+Note that after deployment you will need to add prometheus source in Grafana.
 
 ```
 URL: http://prometheus.prometheus:9090
@@ -94,15 +101,14 @@ kubectl delete -n grafana `kubectl get pod -n grafana -oname`
 
 ### Configuring Kubernetes-app for Grafana
 
-Manually import dashboards from `grafana/dashboards`.
+When creating Kubernetes cluster in Grafana following parameters should be entered:
 
-### Configuring Kubernetes-app for Grafana
-
-Parameters:
-
-- URL: https://100.64.176.36:6443
+- URL: https://worker-node:6443
+- Acces: Server(Default)
 - TLS Client Auth: checked
 - With CA Cert: checked
+
+After choosing correct checkboxes you need to fill TLS Auth Details:
 
 ```shell
 # CA cert
@@ -117,7 +123,7 @@ kubectl config view --raw -ojsonpath="{@.users[0].user.client-key-data}" | base6
 
 ### Access WCA and fluentd
 
-Both applications are running in **host** network namespace as daemonsets on ports:
+Both applications are running in **host** network namespace as daemonsets:
 
 - **WCA** : http://worker-node:9100
 - **Fluentd** : http://worker-node:24231
@@ -136,7 +142,7 @@ kubectl delete -f namespaces.yaml
 
 ### Remove namespace if stuck in "Terminating" state
 
-**Warning!**: there might be orphaned resources left after that
+**Warning!**: there might be orphaned resources left after
 
 ```shell
 kubectl proxy &
@@ -145,18 +151,18 @@ kubectl get namespace $NS -o json | sed '/kubernetes/d' | curl -k -H "Content-Ty
 done
 ```
 
-### Service Monitor configuration
+### Service Monitor configuration troubleshooting
 
 https://github.com/coreos/prometheus-operator/blob/master/Documentation/troubleshooting.md#L38
 
 ### Missing metrics from node_exporter (e.g. node_cpu)
 
-This setup uses new version of node_exporter (>18.0) and Grafana kubernetes-app is based on old naminch scheme 
+This setup uses new version of node_exporter (>18.0) and Grafana kubernetes-app is based on older scheme 
 from node_exporter v 0.16
-Prometheus rules "16-compatibilit-rules-new-to-old" are used to configured new evaluation rules from backward compatibility.
+Prometheus rules "16-compatibility-rules-new-to-old" are used to configured new evaluation rules from backward compatibility.
 
 
-## Usefull links
+## Useful links
 
 - extra dashboards: https://github.com/coreos/kube-prometheus/blob/master/manifests/grafana-dashboardDefinitions.yaml
 - coreos/kube-prometheus: https://github.com/coreos/kube-prometheus

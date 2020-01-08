@@ -34,8 +34,6 @@ LIBC = ctypes.CDLL('libc.so.6', use_errno=True)
 
 log = logging.getLogger(__name__)
 
-SCALING_RATE_WARNING_THRESHOLD = 1.50
-
 
 def _get_event_config(cpu: CPUCodeName, event_name: str) -> int:
     event, umask, cmask = pc.PREDEFINED_RAW_EVENTS[event_name][cpu]
@@ -84,15 +82,24 @@ def _parse_event_groups(file, event_names, include_scaling_info) -> Measurements
         )
         measurements[event_names[current_event]] = measurement
 
-        scaling_factors.append(scaling_factor)
+        # 0.0 means that process was not running at this CPU at all,
+        # do not take into equation to calculate scaling factor avg/max
+        if scaling_factor != 0.0:
+            scaling_factors.append(scaling_factor)
         # id is unused, but we still need to read the whole struct
         struct.unpack('q', file.read(8))[0]
 
     # we add 2 non-standard metrics based on unpacked values,
     # we need to collect scaling factors here
     if include_scaling_info:
-        measurements[MetricName.TASK_SCALING_FACTOR_AVG] = statistics.mean(scaling_factors)
-        measurements[MetricName.TASK_SCALING_FACTOR_MAX] = max(scaling_factors)
+        if scaling_factors:
+            print(scaling_factors)
+            measurements[MetricName.TASK_SCALING_FACTOR_AVG] = statistics.mean(scaling_factors)
+            measurements[MetricName.TASK_SCALING_FACTOR_MAX] = max(scaling_factors)
+        else:
+            measurements[MetricName.TASK_SCALING_FACTOR_AVG] = 1.0
+            measurements[MetricName.TASK_SCALING_FACTOR_MAX] = 1.0
+
     return measurements
 
 
@@ -122,6 +129,8 @@ def _scale_counter_value(raw_value, time_enabled, time_running) -> (float, float
     according to https://perf.wiki.kernel.org/index.php/Tutorial#multiplexing_and_scaling_events
 
     Return (scaled metric value, scaling factor)
+
+    0 - means that no measurement was performed at all
     """
     # After the start of measurement, first few readings may contain only 0's
     if time_running == 0:
@@ -131,8 +140,6 @@ def _scale_counter_value(raw_value, time_enabled, time_running) -> (float, float
         return 0.0, 0.0
     if time_running != time_enabled:
         scaling_factor = float(time_enabled) / float(time_running)
-        if scaling_factor > SCALING_RATE_WARNING_THRESHOLD:
-            log.debug("Measurement scaling rate: %f", scaling_factor)
         return round(float(raw_value) * scaling_factor), scaling_factor
     else:
         return float(raw_value), 1.0
@@ -219,6 +226,8 @@ def _create_file_from_fd(pfd):
         errno = ctypes.get_errno()
         if errno == INVALID_ARG_ERRNO:
             raise UnableToOpenPerfEvents('Invalid perf event file descriptor: {}, {}. '
+                                         'For cgroup based perf counters it may indicate there is '
+                                         'no enough hardware counters for measure all metrics!'
                                          'If traceback shows problem in perf_uncore '
                                          'it could be problem with PERF_FORMAT_GROUP in'
                                          'perf_event_attr structure for perf_event_open syscall.'
@@ -391,7 +400,8 @@ class PerfCgroupDerivedMetricsGenerator(BaseDerivedMetricsGenerator):
             max_depth = len(METRICS_METADATA[MetricName.TASK_INSTRUCTIONS].levels)
 
             if max_depth == 0:
-                measurements[MetricName.TASK_IPC] = float(inst_delta) / cycles_delta
+                if cycles_delta > 0:
+                    measurements[MetricName.TASK_IPC] = float(inst_delta) / cycles_delta
                 if time_delta > 0:
                     measurements[MetricName.TASK_IPS] = rate(inst_delta)
             else:
@@ -437,3 +447,56 @@ class PerfCgroupDerivedMetricsGenerator(BaseDerivedMetricsGenerator):
                 cache_hit_ratio = _operation_on_leveled_dicts(cache_hits_count, cache_ref_delta,
                                                               truediv, max_depth)
                 measurements[MetricName.TASK_CACHE_HIT_RATIO] = cache_hit_ratio
+
+
+def check_perf_event_count_limit(
+        event_names: List[str], platform_cpus: int, platform_cores: int) -> bool:
+    """Check there is enough perf event programmable counters to schedule all of them
+    at the same time (implementation we used in perf.py)
+
+    Note: Excludes fixed counters from check.
+
+    8 with no HT and 4 for HT excluding fixed counters and check if there is enough
+    counters to measure generic events.
+    Validated for BDX, SKX and CLX (cpuid -1 -l 0xa)
+
+    return False and logs errors if there is a problem.
+    else return True
+    """
+    number_of_events = len([e for e in event_names if e not in
+                            [MetricName.TASK_INSTRUCTIONS, MetricName.TASK_CYCLES]])
+    ht_enabled = (platform_cpus != platform_cores)
+    max_number_of_events = 4 if ht_enabled else 8
+    log.debug('HT state: %s, assuming number of available HW counters: %i (required=%i)',
+              ht_enabled, max_number_of_events, number_of_events)
+    if number_of_events > max_number_of_events:
+        log.error('Not enough hardware counters to measure %i programmable events '
+                  '(available is %s!)', number_of_events, max_number_of_events)
+        return False
+    # Everything is ok
+    return True
+
+
+def filter_out_event_names_for_cpu(
+        event_names: List[str], cpu_codename: CPUCodeName) -> List[MetricName]:
+    """Filter out events that cannot be collected on given cpu."""
+
+    filtered_event_names = []
+
+    for event_name in event_names:
+        if event_name in pc.HardwareEventNameMap:
+            # Universal metrics that works on all cpus.
+            filtered_event_names.append(event_name)
+        elif event_name in pc.PREDEFINED_RAW_EVENTS:
+            if cpu_codename in pc.PREDEFINED_RAW_EVENTS[event_name]:
+                filtered_event_names.append(event_name)
+            else:
+                log.warning('Event %r not supported for %s!', event_name, cpu_codename.value)
+                continue
+        elif '__r' in event_name:
+            # Pass all raw events.
+            filtered_event_names.append(event_name)
+        else:
+            raise Exception('Unknown event name %r!' % event_name)
+
+    return filtered_event_names

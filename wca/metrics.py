@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from operator import sub
 
+
 log = logging.getLogger(__name__)
 
 
@@ -187,7 +188,8 @@ class MetricSource(str, Enum):
     PROCFS = '/proc filesystem'
     SYSFS = '/sys filesystem'
     INTERNAL = 'internal'
-    DERIVED = 'derived'
+    DERIVED_PERF_WITH_CGROUPS = 'derived from perf subsystem with cgroups'
+    DERIVED_PERF_UNCORE = 'derived from perf uncore'
     ORCHESTRATOR = 'orchestrator'
     LSHW_BINARY = 'lshw binary output'
     IPMCTL_BINARY = 'ipmctl binary output'
@@ -383,23 +385,25 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
     # Perf subsystem meta metrics (errors)
     MetricName.TASK_SCALING_FACTOR_AVG:
         MetricMetadata(
-            'Perf subsystem metric scaling factor, max value of all perf per task metrics.',
+            'Perf subsystem metric scaling factor, averaged value of all events and cpus '
+            '(value 1.0 is the best, meaning that there is no scaling at all for any metric).',
             MetricType.GAUGE,
             MetricUnit.NUMERIC,
             MetricSource.PERF_SUBSYSTEM_WITH_CGROUPS,
             MetricGranularity.TASK,
             [],
-            'yes',
+            'auto (depending on event_names)',
         ),
     MetricName.TASK_SCALING_FACTOR_MAX:
         MetricMetadata(
-            'Perf subsystem metric scaling factor, maximum value of all perf per task metrics.',
+            'Perf subsystem metric scaling factor, maximum value of all events and cpus '
+            '(value 1.0 is the best, meaning that there is no scaling at all for any metric).',
             MetricType.GAUGE,
             MetricUnit.NUMERIC,
             MetricSource.PERF_SUBSYSTEM_WITH_CGROUPS,
             MetricGranularity.TASK,
             [],
-            'yes',
+            'auto (depending on event_names)',
         ),
     # perf per task derived
     MetricName.TASK_IPS:
@@ -407,7 +411,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'Instructions per second.',
             MetricType.GAUGE,
             MetricUnit.NUMERIC,
-            MetricSource.DERIVED,
+            MetricSource.DERIVED_PERF_WITH_CGROUPS,
             MetricGranularity.TASK,
             [],
             'no (enable_derived_metrics)',
@@ -417,7 +421,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'Instructions per cycle.',
             MetricType.GAUGE,
             MetricUnit.NUMERIC,
-            MetricSource.DERIVED,
+            MetricSource.DERIVED_PERF_WITH_CGROUPS,
             MetricGranularity.TASK,
             [],
             'no (enable_derived_metrics)',
@@ -427,7 +431,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'Cache hit ratio, based on cache-misses and cache-references.',
             MetricType.GAUGE,
             MetricUnit.NUMERIC,
-            MetricSource.DERIVED,
+            MetricSource.DERIVED_PERF_WITH_CGROUPS,
             MetricGranularity.TASK,
             [],
             'no (enable_derived_metrics)',
@@ -437,7 +441,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'Cache misses per kilo instructions.',
             MetricType.GAUGE,
             MetricUnit.NUMERIC,
-            MetricSource.DERIVED,
+            MetricSource.DERIVED_PERF_WITH_CGROUPS,
             MetricGranularity.TASK,
             [],
             'no (enable_derived_metrics)',
@@ -607,7 +611,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
         ),
     MetricName.TASK_UP:
         MetricMetadata(
-            'Always returns 1.',
+            'Always returns 1 for running task.',
             MetricType.COUNTER,
             MetricUnit.NUMERIC,
             MetricSource.INTERNAL,
@@ -850,7 +854,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'TBD',
             MetricType.GAUGE,
             MetricUnit.NUMERIC,
-            MetricSource.DERIVED,
+            MetricSource.DERIVED_PERF_UNCORE,
             MetricGranularity.PLATFORM,
             ['socket', 'pmu_type'],
             'no (enable_perf_uncore and enable_derived_metrics)',
@@ -860,7 +864,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'TBD',
             MetricType.GAUGE,
             MetricUnit.NUMERIC,
-            MetricSource.DERIVED,
+            MetricSource.DERIVED_PERF_UNCORE,
             MetricGranularity.PLATFORM,
             ['socket', 'pmu_type'],
             'no (enable_perf_uncore and enable_derived_metrics)',
@@ -870,7 +874,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'TBD',
             MetricType.GAUGE,
             MetricUnit.NUMERIC,
-            MetricSource.DERIVED,
+            MetricSource.DERIVED_PERF_UNCORE,
             MetricGranularity.PLATFORM,
             ['socket', 'pmu_type'],
             'no (enable_perf_uncore and enable_derived_metrics)',
@@ -880,7 +884,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'TBD',
             MetricType.GAUGE,
             MetricUnit.NUMERIC,
-            MetricSource.DERIVED,
+            MetricSource.DERIVED_PERF_UNCORE,
             MetricGranularity.PLATFORM,
             ['socket', 'pmu_type'],
             'no (enable_perf_uncore and enable_derived_metrics)',
@@ -890,7 +894,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'TBD',
             MetricType.GAUGE,
             MetricUnit.NUMERIC,
-            MetricSource.DERIVED,
+            MetricSource.DERIVED_PERF_UNCORE,
             MetricGranularity.PLATFORM,
             ['socket', 'pmu_type'],
             'no (enable_perf_uncore and enable_derived_metrics)',
@@ -900,7 +904,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'TBD',
             MetricType.GAUGE,
             MetricUnit.NUMERIC,
-            MetricSource.DERIVED,
+            MetricSource.DERIVED_PERF_UNCORE,
             MetricGranularity.PLATFORM,
             ['socket', 'pmu_type'],
             'no (enable_perf_uncore and enable_derived_metrics)',
@@ -910,7 +914,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'TBD',
             MetricType.GAUGE,
             MetricUnit.NUMERIC,
-            MetricSource.DERIVED,
+            MetricSource.DERIVED_PERF_UNCORE,
             MetricGranularity.PLATFORM,
             ['socket', 'pmu_type'],
             'no (enable_perf_uncore and enable_derived_metrics)',
@@ -920,7 +924,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'TBD',
             MetricType.COUNTER,
             MetricUnit.NUMERIC,
-            MetricSource.DERIVED,
+            MetricSource.DERIVED_PERF_UNCORE,
             MetricGranularity.PLATFORM,
             ['socket', 'pmu_type'],
             'no (enable_perf_uncore and enable_derived_metrics)',
@@ -1115,13 +1119,14 @@ def _operation_on_leveled_metric(aggregated_metric, operation, max_depth,
 def _operation_on_leveled_dicts(a, b, operation, max_depth, depth=0):
     """Performing declared operation on two leveled hierarchical metrics.
     The result will be returned as new object."""
+    from wca.logger import TRACE
     operation_result = {}
     for key, value in a.items():
         if depth == max_depth - 1:
             try:
                 operation_result[key] = operation(a[key], b[key])
             except ZeroDivisionError:
-                log.debug('Division by zero. Ignoring!')
+                log.log(TRACE, 'Merging op Division by zero. Ignoring! for key=%s', key)
         else:
             operation_result[key] = _operation_on_leveled_dicts(
                 a[key], b[key], operation, max_depth, depth + 1)

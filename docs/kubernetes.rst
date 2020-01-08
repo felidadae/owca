@@ -60,7 +60,7 @@ Please refer to `example configuration file for kubernetes <../configs/kubernete
 
 Run wca as DaemonSet on cluster
 ===============================
-Reference configs are in `example configuration file for kubernetes <../example/manifest>`_.
+Reference configs are in `example configuration file for kubernetes <../examples/kubernetes/monitoring>`_.
 
 
 1. Add namespace 'wca'

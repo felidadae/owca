@@ -2,42 +2,6 @@
 Workloads
 =========
 
-**This software is pre-production and should not be deployed to production servers.**
-
-+-----------------------------------------------------------------------------------------------+
-| Sandbox deployment recommendation warning                                                     |
-+===============================================================================================+
-| These workloads definitions and wrapper applications are not                                  |
-| meant to be run as production workloads.                                                      |
-| Workloads definitions are provided only for performance evaluation purposes                   |
-| and should be run only in fully controlled and isolated sandbox environments.                 |
-|                                                                                               |
-| They were build with performance and usability in mind, with following assumption:            |
-|                                                                                               | 
-| - not to be mixed with production workloads, because of lack of resource and access isolation,|
-| - to be run without network isolation,                                                        |
-| - run with privileged account (root account),                                                 |
-| - are based on third-party docker images,                                                     |
-| - to be run by cluster (environment) owner/operator, not by cluster users,                    |
-| - those workloads were tested only in limited specific configuration (Centos 7.5, Mesos 1.2.3,|
-|   Kubernetes 1.13, Docker 18.09.2)                                                            |
-|                                                                                               |
-| Possible implications:                                                                        |
-|                                                                                               |
-| - load generators may cause very resource intensive work, that can interfere with             |
-|   you existing infrastructure on network, storage and compute layer                           |
-| - there are no safety mechanisms so improperly constructed command definition,                |
-|   can causes leak of private sensitive information,                                           |
-|                                                                                               |
-| Please treat these workloads definitions as reference code. For production usage for specific |
-| orchestrator software and configuration, please follow recommendation from                    |
-| official documentation:                                                                       |
-|                                                                                               |
-| - `Kubernetes <https://kubernetes.io/docs/home/>`_                                            |
-| - `Mesos <https://mesos.apache.org/documentation/latest/index.html>`_                         |
-| - `Aurora <http://aurora.apache.org/documentation/>`_                                         |
-+-----------------------------------------------------------------------------------------------+
-
 
 .. contents:: Table of Contents
 

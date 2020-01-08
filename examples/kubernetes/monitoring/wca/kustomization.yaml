@@ -6,7 +6,7 @@ namespace: wca
 images:
   - name: wca
     newName: 100.64.176.12:80/wca
-    newTag: devel
+    newTag: master
 
 resources:
   - daemonset.yaml

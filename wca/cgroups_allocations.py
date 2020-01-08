@@ -14,7 +14,6 @@
 
 import ctypes
 import logging
-import subprocess  # nosec
 import time
 from typing import Dict, Tuple, Optional, List
 
@@ -246,8 +245,8 @@ def _migrate_pages(task_pids, to_node, number_of_nodes):
             _migrate_page_call(pid, number_of_nodes, mask_without_to_node, mask_to_node)
             duration = time.time() - start
             log.log(TRACE, 'Moving pages syscall duration %0.2fs', duration)
-        except subprocess.CalledProcessError as e:
-            log.warning('cannot migrate pages for pid=%s: %s (ignored)', pid, e)
+        except UnableToMigratePages as e:
+            log.warning('Cannot migrate pages for pid={}: {} (ignored)'.format(pid, str(e)))
 
 
 def _migrate_page_call(pid, max_node, old_nodes, new_node) -> int:
@@ -263,6 +262,11 @@ def _migrate_page_call(pid, max_node, old_nodes, new_node) -> int:
 
     if result == -1:
         errno = ctypes.get_errno()
-        log.warning('Migrate page. Error number %d. Problem: %s', errno, os.strerror(errno))
+        raise UnableToMigratePages('Unable to migrate pages: {}, {}.'
+                                   .format(errno, os.strerror(errno)))
     log.log(TRACE, 'Number of not moved pages (return from migrate_pages syscall): %d', result)
     return result
+
+
+class UnableToMigratePages(Exception):
+    pass

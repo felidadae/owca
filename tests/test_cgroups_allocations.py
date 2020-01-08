@@ -11,20 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from unittest.mock import patch, call, Mock
 
+import logging
 import pytest
 
 from tests.testing import allocation_metric
 from wca.allocations import InvalidAllocations
 from wca.allocators import AllocationConfiguration, AllocationType
-from wca.cgroups_allocations import (QuotaAllocationValue, SharesAllocationValue,
-                                     CPUSetCPUSAllocationValue, CPUSetMEMSAllocationValue,
-                                     MigratePagesAllocationValue)
+from wca.cgroups_allocations import (QuotaAllocationValue,
+                                     SharesAllocationValue,
+                                     CPUSetCPUSAllocationValue,
+                                     CPUSetMEMSAllocationValue,
+                                     MigratePagesAllocationValue,
+                                     _migrate_pages, UnableToMigratePages,
+                                     _migrate_page_call)
 from wca.containers import Container, ContainerSet
 from wca.metrics import Metric, MetricType
 from wca.platforms import Platform, RDTInformation, is_swap_enabled
+
+log = logging.getLogger(__name__)
 
 
 @patch('wca.perf.PerfCounters')
@@ -160,7 +166,6 @@ def test_cpuset_for_container_set():
 
     cpuset_mems = CPUSetMEMSAllocationValue('0-1', foo_container_set, {})
     cpuset_mems.perform_allocations()
-
     # Cgroup shouldn't be affected.
     cgroup.set_cpuset_cpus.assert_not_called()
     cgroup.set_cpuset_mems.assert_not_called()
@@ -169,3 +174,54 @@ def test_cpuset_for_container_set():
     for subcgroup in foo_container_set.get_subcgroups():
         subcgroup.set_cpuset_cpus.assert_called_once_with({0, 1, 2})
         subcgroup.set_cpuset_mems.assert_called_once_with({0, 1})
+
+
+@patch('wca.cgroups_allocations.log.log')
+@patch('wca.cgroups_allocations.log.warning')
+@patch('wca.cgroups_allocations._migrate_page_call',
+       side_effect=UnableToMigratePages('Unable to migrate pages'))
+def test_migrate_pages_unsuccessful(migrate_page_call, warning_mock, log_mock):
+    _migrate_pages([1, 2], 1, 2)
+    warning_mock.assert_any_call(
+        'Cannot migrate pages for pid=1: Unable to migrate pages (ignored)')
+    warning_mock.assert_any_call(
+        'Cannot migrate pages for pid=2: Unable to migrate pages (ignored)')
+    # Reached only first log in a loop: pid to node migration
+    assert log_mock.call_count == 2
+    # Exception caught twice
+    assert warning_mock.call_count == 2
+
+
+@patch('wca.cgroups_allocations.log.log')
+@patch('wca.cgroups_allocations.log.warning')
+@patch('wca.cgroups_allocations._migrate_page_call', return_value=0)
+def test_migrate_pages_success(migrate_page_call, warning_mock, log_mock):
+    _migrate_pages([1, 2], 1, 2)
+    # Reached first and second log in a loop: 1)pid to node migration 2)migration duration
+    assert log_mock.call_count == 4
+    # No exception caught
+    warning_mock.assert_not_called()
+
+
+@patch('wca.cgroups_allocations.log.log')
+@patch('wca.cgroups_allocations.LIBC.syscall', return_value=1)
+def test_migrate_page_call_not_moved(syscall_mock, log_mock):
+    _migrate_page_call(1, 2, 1, 2)
+    log_mock.assert_called_once_with(9, 'Number of not moved pages (return '
+                                        'from migrate_pages syscall): %d', 1)
+
+
+@patch('wca.cgroups_allocations.log.log')
+@patch('wca.cgroups_allocations.LIBC.syscall', return_value=0)
+def test_migrate_page_call_success(syscall_mock, log_mock):
+    _migrate_page_call(1, 2, 1, 2)
+    log_mock.assert_called_once_with(9, 'Number of not moved pages (return '
+                                        'from migrate_pages syscall): %d', 0)
+
+
+@patch('wca.cgroups_allocations.log.log')
+@patch('wca.cgroups_allocations.LIBC.syscall', return_value=-1)
+def test_migrate_page_call_failure(syscall_mock, log_mock):
+    with pytest.raises(UnableToMigratePages):
+        _migrate_page_call(1, 2, 1, 2)
+    log_mock.assert_not_called()

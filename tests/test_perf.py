@@ -24,9 +24,9 @@ from wca import metrics
 from wca import perf
 from wca import perf_const as pc
 from wca.metrics import MetricName
-from wca.perf import _parse_raw_event_name, _get_event_config, PerfCgroupDerivedMetricsGenerator
+from wca.perf import _parse_raw_event_name, _get_event_config, PerfCgroupDerivedMetricsGenerator, \
+    filter_out_event_names_for_cpu, check_perf_event_count_limit
 from wca.platforms import CPUCodeName, Platform
-from wca.runners.measurement import _filter_out_event_names_for_cpu
 
 
 @pytest.mark.parametrize("raw_value,time_enabled,time_running,expected_value,expected_factor", [
@@ -85,8 +85,8 @@ def test_parse_online_cpus_string(raw_string, expected):
              b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x4a\x16\x00\x00\x00\x00\x00\x00"),
      [metrics.MetricName.TASK_CYCLES],
      {metrics.MetricName.TASK_CYCLES: 0,
-      metrics.MetricName.TASK_SCALING_FACTOR_AVG: 0,
-      metrics.MetricName.TASK_SCALING_FACTOR_MAX: 0}
+      metrics.MetricName.TASK_SCALING_FACTOR_AVG: 1.0,
+      metrics.MetricName.TASK_SCALING_FACTOR_MAX: 1.0}
      ),
     # case with no scaling
     (BytesIO(b"\x03\x00\x00\x00\x00\x00\x00\x00\x26\xe7\xea\x29\x01\x00\x00\x00\x26\xe7\xea\x29"
@@ -410,7 +410,7 @@ def test_derived_metrics_flat():
       MetricName.TASK_OFFCORE_REQUESTS_OUTSTANDING_L3_MISS_DEMAND_DATA_RD, 'task_instructions']),
 ])
 def test_parse_event_names(event_names, cpu_codename, expected):
-    parsed_event_names = _filter_out_event_names_for_cpu(event_names, cpu_codename)
+    parsed_event_names = filter_out_event_names_for_cpu(event_names, cpu_codename)
     assert set(parsed_event_names) == set(expected)
 
 
@@ -428,4 +428,24 @@ def test_parse_event_names(event_names, cpu_codename, expected):
      CPUCodeName.SKYLAKE)])
 def test_exception_parse_event_names(event_names, cpu_codename):
     with pytest.raises(Exception):
-        _filter_out_event_names_for_cpu(event_names, cpu_codename)
+        filter_out_event_names_for_cpu(event_names, cpu_codename)
+
+
+@pytest.mark.parametrize('event_names, cpus, cores, expected', [
+    # for HT enabled 5 is too much
+    (['e1', 'e2', 'e3', 'e4', 'e5'], 8, 4, False),
+    # for HT disabled 8 is ok
+    (['e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e8'], 16, 16, True),
+    # for HT disabled 9 is too much
+    (['e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e8', 'e9'], 16, 16, False),
+    # fixed counters are not taken into consideration
+    (['task_cycles', 'task_instructions', 'e1', 'e2', 'e3', 'e4'], 4, 8, True),
+    # fixed counters are not taken into consideration
+    (['task_cycles', 'task_instructions', 'e1', 'e2', 'e3', 'e4',
+      'e5', 'e6', 'e7', 'e8'], 8, 8, True),
+    # HD=disabled fixed counters are not taken into consideration
+    (['task_cycles', 'task_instructions', 'e1', 'e2', 'e3', 'e4', 'e5'], 8, 4, False),
+])
+def test_check_out_perf_event_names(event_names, cpus, cores, expected):
+    got = check_perf_event_count_limit(event_names, cpus, cores)
+    assert expected == got

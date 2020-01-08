@@ -71,11 +71,11 @@ FROM devel AS pex
 COPY . .
 RUN make wca_package
 RUN cp /wca/dist/wca.pex /usr/bin/
-ENTRYPOINT /usr/bin/wca.pex
+ENTRYPOINT ["/usr/bin/wca.pex"]
 
 ## ------------------------ standalone ----------------------
 ## Building final container that consists of wca only.
 FROM centos:7 AS standalone
 RUN yum -y update && yum -y install python36
 COPY --from=pex /wca/dist/wca.pex /usr/bin/
-ENTRYPOINT /usr/bin/wca.pex
+ENTRYPOINT ["/usr/bin/wca.pex"]

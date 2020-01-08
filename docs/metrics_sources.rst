@@ -96,7 +96,13 @@ Those metrics to be collected require task to be put in cgroup *perf_event* subs
 .. note::
 
    **Only a few or several hardware events can be collected at the same time, because
-   Processor have a fixed number of registers which can be programmed to gain hardware information!**
+   Processor have a fixed number of registers which can be programmed to gain hardware information!
+   WCA collects above events in transaction without multiplexing for better precision but cannot prevent
+   other applications to use 'perf subsystem' (even other WCA instances). That may lead that
+   all events will be scaled (estimated). The scaling factor can be observed but two dedicated
+   metrics (enabled if any event based metrics are collected): ``task_scaling_factor_avg`` and
+   ``task_scaling_factor_max``. Any values of "scaling" metrics above 1.0 indicate that "hardware
+   counters" are shared and scaling was used to estimate real value.**
 
 Perf subsystem with dynamic PMUs (uncore)
 -----------------------------------------
@@ -133,6 +139,8 @@ cpuacct or memory.
 
 Those metrics cause minimal overhead so cannot be disabled.
 
+Metrics are summed when there are multiple containers in a task.
+
 /proc/ or /sys/ filesystems based
 ---------------------------------------
 
@@ -150,7 +158,7 @@ Derived
 
 Those metrics are calculated by WCA by some equations hardcode in WCA code.
 
-All those metrics and be enabled or disabled by ``enable_derived_metrics`` option.
+All those metrics can be enabled or disabled by ``enable_derived_metrics`` option.
 
 Orchestrator
 ---------------------------------------

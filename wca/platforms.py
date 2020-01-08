@@ -582,7 +582,7 @@ def _collect_rdt_information() -> RDTInformation:
 
 @profiler.profile_duration(name='collect_platform_information')
 def collect_platform_information(rdt_enabled: bool = True,
-                                 gather_hw_mm_topology: bool = False,
+                                 gather_hw_mm_topology: Optional[bool] = False,
                                  extra_platform_measurements: Optional[Measurements] = None,
                                  include_optional_labels: bool = False) -> (
         Platform, List[Metric], Dict[str, str]):
