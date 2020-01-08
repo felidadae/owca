@@ -1,6 +1,7 @@
 from typing import Dict, List, Tuple
 from pprint import pprint
 
+# for testing, temporarily, do not want to bring new dependency
 from numpy.random import normal as np_normal
 
 from wca.allocators import AllocationType
