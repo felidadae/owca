@@ -100,7 +100,7 @@ class Task:
             r = int(np_normal(loc, scale))
             return r if r >= 1 else 1
 
-        r = Resources(normal_random(8,5),
+        r = Resources(normal_random(8, 5),
                       normal_random(10, 8) * GB,
                       normal_random(10, 8) * GB)
         t = Task('stress_ng_{}'.format(i), r)
@@ -215,10 +215,12 @@ def log_state(iteration, symulator):
     pprint("Tasks: ")
     pprint(symulator.tasks)
 
-def single_stress_ng(iteration):
-    return [Task.create_stressng(iteration+1)]
-def random_stress_ng(iteration):
-    return [Task.create_random_stressng(iteration+1)]
+
+def single_stress_ng(index):
+    return [Task.create_stressng(index+1)]
+def random_stress_ng(index):
+    return [Task.create_random_stressng(index+1)]
+
 
 def test_symulator():
     symulator = Symulator(
@@ -246,5 +248,6 @@ def test_symulator():
                 assigned_count = symulator.iterate(delta_time=1, changes=changes)
                 all_assigned_count += assigned_count
                 iteration += 1
+
             print("scheduler: {}, task_creation_fun: {}, assigned_count: {}".format(
                 scheduler, task_creation_fun, all_assigned_count))
