@@ -19,6 +19,11 @@ from wca.scheduler.types import ResourceType, NodeName, Resources, AppName, Apps
 
 class DataProvider(ABC):
     @abstractmethod
+    def update(self):
+        """Re-query external source for the data."""
+        pass
+
+    @abstractmethod
     def get_nodes_capacities(self, resources: Iterable[ResourceType]) -> Dict[NodeName, Resources]:
         """Returns for >>nodes<< maximal capacities for >>resources<<"""
         pass

@@ -13,6 +13,7 @@
 # limitations under the License.
 import logging
 from typing import Tuple, Optional, List, Dict
+import statistics
 
 from wca.logger import TRACE
 from wca.scheduler.algorithms import RescheduleResult
@@ -22,7 +23,7 @@ from wca.scheduler.algorithms.base import (
         get_nodes_used_resources)
 from wca.scheduler.algorithms.fit import app_fits
 from wca.scheduler.data_providers.score import ScoreDataProvider, NodeType, AppsProfile
-from wca.scheduler.types import (AppName, NodeName, ResourceType, TaskName)
+from wca.scheduler.types import (AppName, NodeName, ResourceType, TaskName, Resources)
 
 log = logging.getLogger(__name__)
 
@@ -31,22 +32,6 @@ MIN_APP_PROFILES = 2
 
 RescheduleApps = Dict[AppName, Dict[NodeName, List[TaskName]]]
 ConsiderApps = Dict[AppName, List[TaskName]]
-
-
-def _get_app_node_type(
-        apps_profile: AppsProfile, app_name: AppName,
-        score_target: Optional[float] = None) -> NodeType:
-
-    if len(apps_profile) > MIN_APP_PROFILES:
-        if score_target:
-            if app_name in apps_profile and apps_profile[app_name] >= score_target:
-                return NodeType.PMEM
-        else:
-            sorted_apps_profile = sorted(apps_profile.items(), key=lambda x: x[1], reverse=True)
-            if app_name == sorted_apps_profile[0][0]:
-                return NodeType.PMEM
-
-    return NodeType.DRAM
 
 
 class Score(BaseAlgorithm):
@@ -60,21 +45,6 @@ class Score(BaseAlgorithm):
         super().__init__(data_provider, dimensions, max_node_score, alias)
         self.score_target = score_target
 
-    def app_fit_node_type(self, app_name: AppName, node_name: NodeName) -> Tuple[bool, str]:
-        apps_profile = self.data_provider.get_apps_profile()
-        node_type = self.data_provider.get_node_type(node_name)
-
-        if log.getEffectiveLevel() <= TRACE:
-            log.log(TRACE, '[Filter:PMEM specific] apps_profile: \n%s', str(apps_profile))
-            log.log(TRACE, '[Filter:PMEM specific] node_type: \n%s', str(node_type))
-
-        app_type = _get_app_node_type(apps_profile, app_name, self.score_target)
-
-        if node_type != app_type:
-            return False, '%r not prefered for %r type of node' % (app_name, node_type)
-
-        return True, ''
-
     def app_fit_node(self, node_name: NodeName, app_name: str,
                      data_provider_queried: QueryDataProviderInfo) -> Tuple[bool, str]:
         log.info('Trying to filter node %r for %r ', node_name, app_name)
@@ -86,26 +56,29 @@ class Score(BaseAlgorithm):
 
         self.metrics.extend(metrics)
 
-        # @TODO moved to app_fit_nodes
-        # if fits:
-        #     fits, message = self.app_fit_node_type(app_name, node_name)
-
         return fits, message
 
     def app_fit_nodes(self, node_names: List[NodeName], app_name: str,
-                      data_provider_queried: QueryDataProviderInfo) -> \
-            Tuple[List[NodeName], Dict[NodeName, str]]:
-        """
-        Return accepted and failed nodes.
-        """
+                      data_provider_queried: QueryDataProviderInfo) \
+            -> Tuple[List[NodeName], Dict[NodeName, str]]:
 
-        # @TODO make it generic
-        # if fitting node type and that node type is passed inside node_names
-        if 'node101' in node_names and self.app_fit_node_type(app_name, 'node101')[0]:
-            return ['node101'], {node_name: 'App match PMEM and PMEM available!'
-                                 for node_name in node_names
-                                 if node_name != 'node101'}
+        apps_profile = self.calculate_apps_profile(data_provider_queried)
+        nodes_types: Dict[NodeName, NodeType] = self.data_provider.get_nodes_types()
 
+        if log.getEffectiveLevel() <= TRACE:
+            log.log(TRACE, '[Filter:PMEM specific] apps_profile: %s', str(apps_profile))
+            log.log(TRACE, '[Filter:PMEM specific] nodes_types: %s', str(nodes_types))
+
+        pmem_nodes_names = [node_name for node_name, node_type in nodes_types.items()
+                            if node_type == NodeType.PMEM]
+        dram_nodes_names = [node_name for node_name, node_type in nodes_types.items()
+                            if node_type != NodeType.PMEM]
+
+        if set(pmem_nodes_names).intersection(set(node_names)):
+            if self.app_fit_node_type(app_name, NodeType.PMEM, apps_profile):
+                return pmem_nodes_names, \
+                            {node_name: 'App match PMEM and PMEM available!'
+                             for node_name in dram_nodes_names}
         return node_names, {}
 
     def priority_for_node(self, node_name: str, app_name: str,
@@ -231,3 +204,88 @@ class Score(BaseAlgorithm):
                                     'There is no more space!', task)
 
         return result
+
+    def app_fit_node_type(self, app_name: AppName, node_type: NodeType,
+                          apps_profile: Dict[AppName, float]) -> Tuple[bool, str]:
+
+        app_type = _get_app_node_type(apps_profile, app_name, self.score_target)
+
+        if node_type != app_type:
+            return False, '%r not prefered for %r type of node' % (app_name, node_type)
+
+        return True, ''
+
+    def normalize_capacity_to_memory(self, capacity: Resources):
+        dim_mem_v = capacity['mem']
+        return {dim: dim_v/dim_mem_v for dim, dim_v in capacity.items()}
+
+    def calculate_apps_profile(self, data_provider_queried: QueryDataProviderInfo) \
+            -> Tuple[Dict[AppName, float], Dict[AppName, Resources]]:
+        nodes_capacities, _, apps_spec, _ = data_provider_queried
+
+        # take only PMEM nodes
+        pmem_nodes = ['node101']
+
+        # calculate capacities normalized with mem
+        pmem_normalized = {}
+        for node_name, node_capacity in nodes_capacities.items():
+            if node_name not in pmem_nodes:
+                continue
+            pmem_normalized[node_name] = self.normalize_capacity_to_memory(node_capacity)
+
+        # take average of each dimension
+        for capacity in pmem_normalized.values():
+            assert set(capacity.keys()) == set(self.dimensions)
+
+        def average_per_dim(pmem_normalized, dim):
+            return statistics.mean([capacity[dim] for capacity in pmem_normalized.values()])
+
+        average_pmem_normalized = {dim: average_per_dim(pmem_normalized, dim)
+                                   for dim in self.dimensions}
+
+        apps_scores = {}
+        apps_spec_normalized = {}
+        apps_spec_normalized_2 = {}
+        for app_name in apps_spec:
+
+            # normalize
+            app_spec = apps_spec[app_name]
+            app_spec_normalized = self.normalize_capacity_to_memory(app_spec)
+
+            # normalize2
+            app_spec_normalized_2 = {dim: app_spec_normalized[dim] / average_pmem_normalized[dim]
+                                     for dim in self.dimensions}
+
+            # score
+            score = -1 * max([dim_value for dim, dim_value in app_spec_normalized_2.items()
+                         if dim != 'mem'])
+
+            def round_dict(dict_, precision=1):
+                return {key: round(value, precision) for key, value in dict_.items()}
+
+            # keep for debug purposes
+            apps_scores[app_name] = score
+            apps_spec_normalized[app_name] = round_dict(app_spec_normalized)
+            apps_spec_normalized_2[app_name] = round_dict(app_spec_normalized_2)
+
+        debug_info = sorted([(app, round(apps_scores[app], 2), apps_spec_normalized[app], apps_spec_normalized_2[app]) for app in apps_spec], reverse=True)
+        log.info('[Filter:PMEM specific] (app, normalized, normalize_2): %s', str(debug_info))
+        log.info('[Filter:PMEM specific] average_pmem_normalized: %s', str(average_pmem_normalized))
+
+        return apps_scores
+
+
+def _get_app_node_type(
+        apps_profile: AppsProfile, app_name: AppName,
+        score_target: Optional[float] = None) -> NodeType:
+
+    if len(apps_profile) > MIN_APP_PROFILES:
+        if score_target:
+            if app_name in apps_profile and apps_profile[app_name] >= score_target:
+                return NodeType.PMEM
+        else:
+            sorted_apps_profile = sorted(apps_profile.items(), key=lambda x: x[1], reverse=True)
+            if app_name == sorted_apps_profile[0][0]:
+                return NodeType.PMEM
+
+    return NodeType.DRAM

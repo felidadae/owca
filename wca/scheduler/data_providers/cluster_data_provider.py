@@ -71,6 +71,16 @@ class ClusterDataProvider(DataProvider):
     prometheus: Prometheus
     queries: Optional[Queries] = Queries()
 
+    # @Draft to be accepted/rejected
+    # def __init__(self, dimensions: List[Resources]):
+    #     # Use that parameter to call
+    #     self.dimensions = dimensions
+
+    def update(self):
+        self.nodes_capacities = self.get_nodes_capacities()
+        self.apps_counts = self.get_apps_counts()
+        self.apps_requested_resources = self.get_apps_requested_resources()
+
     def _get_nodes_capacities_from_query(
             self, nodes: List[NodeName],
             resources: List[ResourceType], query: str) -> NodeCapacities:

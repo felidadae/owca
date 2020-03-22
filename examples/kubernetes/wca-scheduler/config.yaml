@@ -6,7 +6,7 @@ kubeapi: &kubeapi !Kubeapi
   port: !Env KUBERNETES_SERVICE_PORT
 # reschedule_interval: 5
 algorithm: !Score
-  score_target: -2.0
+  score_target: -4.0
   max_node_score: 10000.
   dimensions:
     - mem

@@ -75,6 +75,7 @@ class BaseAlgorithm(Algorithm):
 
         extender_filter_result = ExtenderFilterResult()
 
+        # self.data_provider.update()
         data_provider_queried = query_data_provider(self.data_provider, self.dimensions)
         if log.getEffectiveLevel() <= TRACE:
             log.log(TRACE, '[Filter] data_queried: \n%s', str(data_provider_queried))
@@ -109,6 +110,7 @@ class BaseAlgorithm(Algorithm):
         """Extract necessary data from query and gather data from data provider (once)."""
         log.debug('[Prioritize] -> ExtenderArgs: %r' % extender_args)
         app_name, nodes_names, namespace, name = extract_common_input(extender_args)
+        # self.data_provider.update()
         data_provider_queried = query_data_provider(self.data_provider, self.dimensions)
         if log.getEffectiveLevel() <= TRACE:
             log.log(TRACE, '[Filter] data_queried: \n%s', str(data_provider_queried))

@@ -14,8 +14,9 @@
 import pytest
 from tests.scheduler.data_providers.test_cluster_score_data_provider import APPS_PROFILE
 
-from wca.scheduler.algorithms.score import _get_app_node_type
+from wca.scheduler.algorithms.score import _get_app_node_type, Score
 from wca.scheduler.data_providers.score import NodeType
+from wca.scheduler.types import CPU, MEM, MEMBW_READ, MEMBW_WRITE, WSS
 
 SCORE_TARGET = -2.0
 
@@ -52,3 +53,40 @@ def test_get_app_node_type(apps_profile, app_name, score_target, result):
     ])
 def test_reschedule():
     pass
+
+
+def test_normalize_capacity_to_memory():
+    algorithm_instance = Score(None)
+    capacity = {CPU: 40, MEM: 20, MEMBW_WRITE: 40, MEMBW_READ: 40, WSS: 40}
+    expected = {CPU: 2, MEM: 1, MEMBW_WRITE: 2, MEMBW_READ: 2, WSS: 2}
+    assert algorithm_instance.normalize_capacity_to_memory(capacity) == expected
+
+
+def test_calculate_apps_profile():
+    algorithm_instance = Score(None, [CPU, MEM, MEMBW_READ, MEMBW_WRITE, WSS])
+    nodes_capacities = {
+        'node101': {CPU: 72.0, MEM: 1596, MEMBW_READ: 57, MEMBW_WRITE: 16, WSS: 58},
+        'node102': {CPU: 72.0, MEM: 201, MEMBW_READ: 256, MEMBW_WRITE: 256, WSS: 201},
+    }
+    apps_spec = {
+        'memcached-mutilate-small': {CPU: 10, MEM: 26, MEMBW_READ: 2, MEMBW_WRITE: 2, WSS: 5},
+    }
+    data_provider_queried = (nodes_capacities, None, apps_spec, None)
+    apps_scores  = algorithm_instance.calculate_apps_profile(data_provider_queried)
+    assert round(apps_scores['memcached-mutilate-small'], 1) == -8.5
+
+
+def test_calculate_apps_profile_theory():
+    algorithm_instance = Score(None, [CPU, MEM, MEMBW_READ, MEMBW_WRITE, WSS])
+    nodes_capacities = {
+        'node101': {CPU: 60, MEM: 1200, MEMBW_READ: 60, MEMBW_WRITE: 18, WSS: 18},
+        'node102': {CPU: 72.0, MEM: 201, MEMBW_READ: 256, MEMBW_WRITE: 256, WSS: 201},
+    }
+    apps_spec = {
+        'workload_A': {CPU: 2, MEM: 2,  MEMBW_WRITE: 0.6, MEMBW_READ: 2, WSS: 0.6},
+        'workload_B': {CPU: 1, MEM: 20, MEMBW_WRITE: 0.3, MEMBW_READ: 1, WSS: 0.3},
+        'workload_C': {CPU: 1, MEM: 10, MEMBW_WRITE: 0.6, MEMBW_READ: 2, WSS: 0.6},
+    }
+    data_provider_queried = (nodes_capacities, None, apps_spec, None)
+    apps_scores = algorithm_instance.calculate_apps_profile(data_provider_queried)
+    assert apps_scores == {'workload_A': -20.0, 'workload_B': -1.0, 'workload_C': -4.0}
