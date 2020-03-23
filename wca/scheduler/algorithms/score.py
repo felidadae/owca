@@ -41,7 +41,6 @@ class Score(BaseAlgorithm):
                  max_node_score: float = 10.,
                  alias: str = None,
                  score_target: Optional[float] = None,
-                 score_calc_method: str = 'score2'
                  ):
         super().__init__(data_provider, dimensions, max_node_score, alias)
         self.score_target = score_target
@@ -63,13 +62,8 @@ class Score(BaseAlgorithm):
                       data_provider_queried: QueryDataProviderInfo) \
             -> Tuple[List[NodeName], Dict[NodeName, str]]:
 
-        if self.score_calc_method == 'score2':
-            apps_profile = self.calculate_apps_profile(data_provider_queried)
-        elif self.score_calc_method == 'score':
-            apps_profile = self.data_provider.get_apps_profile()
-        else:
-            raise Exception('Unsupported method for calculating score')
-
+        apps_profile = self.calculate_apps_profile(data_provider_queried, nodes_types)
+        apps_profile = self.data_provider_get_apps_profile()
         nodes_types: Dict[NodeName, NodeType] = self.data_provider.get_nodes_types()
 
         if log.getEffectiveLevel() <= TRACE:
@@ -222,16 +216,58 @@ class Score(BaseAlgorithm):
 
         return True, ''
 
+
+def _get_app_node_type(
+        apps_profile: AppsProfile, app_name: AppName,
+        score_target: Optional[float] = None) -> NodeType:
+
+    if len(apps_profile) > MIN_APP_PROFILES:
+        if score_target:
+            if app_name in apps_profile and apps_profile[app_name] >= score_target:
+                return NodeType.PMEM
+        else:
+            sorted_apps_profile = sorted(apps_profile.items(), key=lambda x: x[1], reverse=True)
+            if app_name == sorted_apps_profile[0][0]:
+                return NodeType.PMEM
+
+    return NodeType.DRAM
+
+
+class Score2(Score):
+    def app_fit_nodes(self, node_names: List[NodeName], app_name: str,
+                      data_provider_queried: QueryDataProviderInfo) \
+            -> Tuple[List[NodeName], Dict[NodeName, str]]:
+
+        nodes_types: Dict[NodeName, NodeType] = self.data_provider.get_nodes_types()
+        apps_profile = self.calculate_apps_profile(data_provider_queried, nodes_types)
+
+        if log.getEffectiveLevel() <= TRACE:
+            log.log(TRACE, '[Filter:PMEM specific] apps_profile: %s', str(apps_profile))
+            log.log(TRACE, '[Filter:PMEM specific] nodes_types: %s', str(nodes_types))
+
+        pmem_nodes_names = [node_name for node_name, node_type in nodes_types.items()
+                            if node_type == NodeType.PMEM]
+        dram_nodes_names = [node_name for node_name, node_type in nodes_types.items()
+                            if node_type != NodeType.PMEM]
+
+        if set(pmem_nodes_names).intersection(set(node_names)):
+            if self.app_fit_node_type(app_name, NodeType.PMEM, apps_profile)[0]:
+                return pmem_nodes_names, \
+                            {node_name: 'App match PMEM and PMEM available!'
+                             for node_name in dram_nodes_names}
+        return node_names, {}
+
     def normalize_capacity_to_memory(self, capacity: Resources):
         dim_mem_v = capacity['mem']
         return {dim: dim_v/dim_mem_v for dim, dim_v in capacity.items()}
 
-    def calculate_apps_profile(self, data_provider_queried: QueryDataProviderInfo) \
+    def calculate_apps_profile(self, data_provider_queried: QueryDataProviderInfo,
+                               nodes_types: Dict[NodeName, NodeType]) \
             -> Tuple[Dict[AppName, float], Dict[AppName, Resources]]:
         nodes_capacities, _, apps_spec, _ = data_provider_queried
 
         # take only PMEM nodes
-        pmem_nodes = ['node101']
+        pmem_nodes = [node_name for node_name, node_type in nodes_types if node_type == NodeType.PMEM]
 
         # calculate capacities normalized with mem
         pmem_normalized = {}
@@ -282,19 +318,3 @@ class Score(BaseAlgorithm):
         log.info('[Filter:PMEM specific] average_pmem_normalized: %s', str(average_pmem_normalized))
 
         return apps_scores
-
-
-def _get_app_node_type(
-        apps_profile: AppsProfile, app_name: AppName,
-        score_target: Optional[float] = None) -> NodeType:
-
-    if len(apps_profile) > MIN_APP_PROFILES:
-        if score_target:
-            if app_name in apps_profile and apps_profile[app_name] >= score_target:
-                return NodeType.PMEM
-        else:
-            sorted_apps_profile = sorted(apps_profile.items(), key=lambda x: x[1], reverse=True)
-            if app_name == sorted_apps_profile[0][0]:
-                return NodeType.PMEM
-
-    return NodeType.DRAM

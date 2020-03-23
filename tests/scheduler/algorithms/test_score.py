@@ -14,7 +14,7 @@
 import pytest
 from tests.scheduler.data_providers.test_cluster_score_data_provider import APPS_PROFILE
 
-from wca.scheduler.algorithms.score import _get_app_node_type, Score
+from wca.scheduler.algorithms.score import _get_app_node_type, Score, Score2
 from wca.scheduler.data_providers.score import NodeType
 from wca.scheduler.types import CPU, MEM, MEMBW_READ, MEMBW_WRITE, WSS
 
@@ -56,14 +56,14 @@ def test_reschedule():
 
 
 def test_normalize_capacity_to_memory():
-    algorithm_instance = Score(None)
+    algorithm_instance = Score2(None)
     capacity = {CPU: 40, MEM: 20, MEMBW_WRITE: 40, MEMBW_READ: 40, WSS: 40}
     expected = {CPU: 2, MEM: 1, MEMBW_WRITE: 2, MEMBW_READ: 2, WSS: 2}
     assert algorithm_instance.normalize_capacity_to_memory(capacity) == expected
 
 
 def test_calculate_apps_profile():
-    algorithm_instance = Score(None, [CPU, MEM, MEMBW_READ, MEMBW_WRITE, WSS])
+    algorithm_instance = Score2(None, [CPU, MEM, MEMBW_READ, MEMBW_WRITE, WSS])
     nodes_capacities = {
         'node101': {CPU: 72.0, MEM: 1596, MEMBW_READ: 57, MEMBW_WRITE: 16, WSS: 58},
         'node102': {CPU: 72.0, MEM: 201, MEMBW_READ: 256, MEMBW_WRITE: 256, WSS: 201},
@@ -77,7 +77,7 @@ def test_calculate_apps_profile():
 
 
 def test_calculate_apps_profile_theory():
-    algorithm_instance = Score(None, [CPU, MEM, MEMBW_READ, MEMBW_WRITE, WSS])
+    algorithm_instance = Score2(None, [CPU, MEM, MEMBW_READ, MEMBW_WRITE, WSS])
     nodes_capacities = {
         'node101': {CPU: 60, MEM: 1200, MEMBW_READ: 60, MEMBW_WRITE: 18, WSS: 18},
         'node102': {CPU: 72.0, MEM: 201, MEMBW_READ: 256, MEMBW_WRITE: 256, WSS: 201},
