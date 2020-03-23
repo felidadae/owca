@@ -7,6 +7,7 @@ kubeapi: &kubeapi !Kubeapi
 # reschedule_interval: 5
 algorithm: !Score
   score_target: -4.0
+  score_calc_method: 'score2'
   max_node_score: 10000.
   dimensions:
     - mem
@@ -31,5 +32,5 @@ algorithm: !Score
       MEMBW_CAPACITY_READ: 'ceil(sum(platform_nvdimm_read_bandwidth_bytes_per_second) by (nodename) / 1e9)*0.7'
       MEMBW_CAPACITY_WRITE: 'ceil(sum(platform_nvdimm_write_bandwidth_bytes_per_second) by (nodename) / 1e9)*0.7'
       NODES_PMM_MEMORY_MODE: 'sum(platform_mem_mode_size_bytes) by (nodename) != 0'
-      NODE_CAPACITY_MEM_WSS: '(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (nodename) / 1e9)*0.3'
+      NODE_CAPACITY_MEM_WSS: '(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (nodename) / 1e9)*0.2'
       NODE_CAPACITY_DRAM_MEMBW: 'ceil(platform_dimm_speed_bytes_per_second / 1e9)'

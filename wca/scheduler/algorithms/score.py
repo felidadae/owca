@@ -40,7 +40,8 @@ class Score(BaseAlgorithm):
                  dimensions: List[ResourceType] = DEFAULT_DIMENSIONS,
                  max_node_score: float = 10.,
                  alias: str = None,
-                 score_target: Optional[float] = None
+                 score_target: Optional[float] = None,
+                 score_calc_method: str = 'score2'
                  ):
         super().__init__(data_provider, dimensions, max_node_score, alias)
         self.score_target = score_target
@@ -62,7 +63,13 @@ class Score(BaseAlgorithm):
                       data_provider_queried: QueryDataProviderInfo) \
             -> Tuple[List[NodeName], Dict[NodeName, str]]:
 
-        apps_profile = self.calculate_apps_profile(data_provider_queried)
+        if self.score_calc_method == 'score2':
+            apps_profile = self.calculate_apps_profile(data_provider_queried)
+        elif self.score_calc_method == 'score':
+            apps_profile = self.data_provider.get_apps_profile()
+        else:
+            raise Exception('Unsupported method for calculating score')
+
         nodes_types: Dict[NodeName, NodeType] = self.data_provider.get_nodes_types()
 
         if log.getEffectiveLevel() <= TRACE:
@@ -75,7 +82,7 @@ class Score(BaseAlgorithm):
                             if node_type != NodeType.PMEM]
 
         if set(pmem_nodes_names).intersection(set(node_names)):
-            if self.app_fit_node_type(app_name, NodeType.PMEM, apps_profile):
+            if self.app_fit_node_type(app_name, NodeType.PMEM, apps_profile)[0]:
                 return pmem_nodes_names, \
                             {node_name: 'App match PMEM and PMEM available!'
                              for node_name in dram_nodes_names}
@@ -258,7 +265,7 @@ class Score(BaseAlgorithm):
 
             # score
             score = -1 * max([dim_value for dim, dim_value in app_spec_normalized_2.items()
-                         if dim != 'mem'])
+                              if dim != 'mem'])
 
             def round_dict(dict_, precision=1):
                 return {key: round(value, precision) for key, value in dict_.items()}
@@ -268,8 +275,10 @@ class Score(BaseAlgorithm):
             apps_spec_normalized[app_name] = round_dict(app_spec_normalized)
             apps_spec_normalized_2[app_name] = round_dict(app_spec_normalized_2)
 
-        debug_info = sorted([(app, round(apps_scores[app], 2), apps_spec_normalized[app], apps_spec_normalized_2[app]) for app in apps_spec], reverse=True)
-        log.info('[Filter:PMEM specific] (app, normalized, normalize_2): %s', str(debug_info))
+        debug_info = sorted([(app, apps_scores[app] > self.score_target, round(apps_scores[app], 2),
+                              apps_spec_normalized[app], apps_spec_normalized_2[app])
+                              for app in apps_spec], reverse=True, key=lambda el: el[2])
+        log.info('[Filter:PMEM specific] (app, match_PMEM, normalized, normalize_2): %s', str(debug_info))
         log.info('[Filter:PMEM specific] average_pmem_normalized: %s', str(average_pmem_normalized))
 
         return apps_scores
