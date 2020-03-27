@@ -57,5 +57,12 @@ class ClusterScoreDataProvider(ClusterDataProvider, ScoreDataProvider):
         for single_result in query_result:
             node_type = single_result['metric']['nodetype']
             node_name = single_result['metric']['nodename']
-            nodes_types[node_name] = node_type
+
+            if node_type == NodeType.DRAM:
+                nodes_types[node_name] = NodeType.DRAM
+            elif node_type == NodeType.PMEM:
+                nodes_types[node_name] = NodeType.PMEM
+            else:
+                nodes_types[node_name] = NodeType.UNKNOWN
+
         return nodes_types

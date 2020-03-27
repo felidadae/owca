@@ -45,6 +45,8 @@ class Score(BaseAlgorithm):
         super().__init__(data_provider, dimensions, max_node_score, alias)
         self.score_target = score_target
 
+        log.info("self.score_target=%s", str(self.score_target))
+
     def app_fit_node(self, node_name: NodeName, app_name: str,
                      data_provider_queried: QueryDataProviderInfo) -> Tuple[bool, str]:
         log.info('Trying to filter node %r for %r ', node_name, app_name)
@@ -243,6 +245,8 @@ class Score2(Score):
 
         if log.getEffectiveLevel() <= TRACE:
             log.log(TRACE, '[Filter:PMEM specific] apps_profile: %s', str(apps_profile))
+            apps_with_score_above_target = [(app, score) for app, score in apps_profile.items() if score >= self.score_target]
+            log.log(TRACE, '[Filter:PMEM specific] apps_with_score_above_target(%s): %s', str(self.score_target), str(apps_with_score_above_target))
             log.log(TRACE, '[Filter:PMEM specific] nodes_types: %s', str(nodes_types))
 
         pmem_nodes_names = [node_name for node_name, node_type in nodes_types.items()
@@ -250,11 +254,20 @@ class Score2(Score):
         dram_nodes_names = [node_name for node_name, node_type in nodes_types.items()
                             if node_type != NodeType.PMEM]
 
-        if set(pmem_nodes_names).intersection(set(node_names)):
+        # PMEM nodes which were >>passed<< into function in node_names list.
+        passed_pmem_nodes_names = set(pmem_nodes_names).intersection(set(node_names))
+        if passed_pmem_nodes_names:
+            log.log(TRACE, '[Filter:PMEM specific] PMEM nodes passed to app_fit_nodes: %s', str(passed_pmem_nodes_names))
             if self.app_fit_node_type(app_name, NodeType.PMEM, apps_profile)[0]:
                 return pmem_nodes_names, \
                             {node_name: 'App match PMEM and PMEM available!'
                              for node_name in dram_nodes_names}
+            else:
+                return dram_nodes_names, \
+                            {node_name: 'App does match PMEM (PMEM available)!'
+                             for node_name in pmem_nodes_names}
+
+        log.log(TRACE, '[Filter:PMEM specific] No PMEM nodes passed to app_fit_nodes')
         return node_names, {}
 
     def normalize_capacity_to_memory(self, capacity: Resources):
@@ -267,7 +280,7 @@ class Score2(Score):
         nodes_capacities, _, apps_spec, _ = data_provider_queried
 
         # take only PMEM nodes
-        pmem_nodes = [node_name for node_name, node_type in nodes_types if node_type == NodeType.PMEM]
+        pmem_nodes = [node_name for node_name, node_type in nodes_types.items() if node_type == NodeType.PMEM]
 
         # calculate capacities normalized with mem
         pmem_normalized = {}
@@ -315,6 +328,7 @@ class Score2(Score):
                               apps_spec_normalized[app], apps_spec_normalized_2[app])
                               for app in apps_spec], reverse=True, key=lambda el: el[2])
         log.info('[Filter:PMEM specific] (app, match_PMEM, normalized, normalize_2): %s', str(debug_info))
+        log.info('[Filter:PMEM specific] (app, score): %s', str(debug_info))
         log.info('[Filter:PMEM specific] average_pmem_normalized: %s', str(average_pmem_normalized))
 
         return apps_scores
