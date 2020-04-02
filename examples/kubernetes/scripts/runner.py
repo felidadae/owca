@@ -4,8 +4,11 @@ from typing import List, Dict, Tuple
 from datetime import datetime
 import pprint
 import enum
+import fileinput
+from shutil import copyfile
 import subprocess
 import random
+import re
 import logging
 
 FORMAT = "%(asctime)-15s:%(levelname)s %(module)s %(message)s"
@@ -336,6 +339,31 @@ def tune_stage(workloads, sleep_time):
     scale_down_all_workloads(wait_time=20)
 
 
+def modify_configmap(regexes: List[(str)], experiment_index: int, experiment_root_dir: str):
+    path = '../wca-scheduler/'
+    config_name = 'config.yaml'
+
+    # Replace text in config
+    for regex in regexes:
+        with fileinput.FileInput(path + config_name, inplace=True) as file:
+            for line in file:
+                # regexes[0] - regex_to_search, regexes[1] - replacement_text
+                print(re.sub(regex[0], regex[1], line), end='')
+
+    # Make copy config
+    copyfile(path + config_name,
+             experiment_root_dir + '/' + 'wca_scheduler_config_'
+             + str(experiment_index) + '_' + config_name)
+
+    # Apply changes
+    command = "kubectl apply -k {path_to_kustomize_folder_wca_scheduler} " \
+              "&& sleep {sleep_time}".format(
+                path_to_kustomize_folder_wca_scheduler=path,
+                sleep_time='10s')
+    default_shell_run(command)
+    switch_extender(OnOffState.Off)
+
+
 # -----------------------------------------------------------------------------------------------------
 def experimentset_main(iterations=10, experiment_root_dir='results/tmp', overwrite=False):
     logging.debug("Running experimentset >>main<< with experiment_directory >>{}<<".format(
@@ -350,7 +378,15 @@ def experimentset_main(iterations=10, experiment_root_dir='results/tmp', overwri
     else:
         raise Exception('experiment root directory already exists! {}'.format(experiment_root_dir))
 
+    regex = [
+        [(r'port: \d*', 'port: replacement_text'), (r'timeout: \d*.\d*', 'timeout: 100.0'), ],
+        [(r'text_to_search_second_iteration', 'replacement_text_second_iteration'), ],
+    ]
+
     for i in range(iterations):
+
+        # modify_configmap(regex[i], i, experiment_root_dir)
+
         iterations, workloads, utilization = random_with_total_utilization_specified(
             cpu_limit=(0.25, 0.46), mem_limit=(0.81, 0.9),
             nodes_capacities=NODES_CAPACITIES, workloads_set=WORKLOADS_SET)
