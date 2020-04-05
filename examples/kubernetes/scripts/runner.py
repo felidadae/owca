@@ -1,11 +1,14 @@
 import shutil
 import os
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Union
 from datetime import datetime
 import pprint
 import enum
+import fileinput
+from shutil import copyfile
 import subprocess
 import random
+import re
 import logging
 
 FORMAT = "%(asctime)-15s:%(levelname)s %(module)s %(message)s"
@@ -45,33 +48,81 @@ NODES_CAPACITIES = \
 }
 
 WORKLOADS_SET = \
-{
-    'stress-stream-small': {'mem': 7, 'cpu': 2, 'membw_write': 2, 'membw_read': 1, 'wss': 7},
-    'stress-stream-medium': {'mem': 13, 'cpu': 2, 'membw_write': 2, 'membw_read': 1, 'wss': 13},
-    'stress-stream-big': {'mem': 13, 'cpu': 4, 'membw_write': 6, 'membw_read': 2, 'wss': 13},
+    {
+        'stress-stream-small':
+            {'mem': 7, 'cpu': 2, 'membw_write': 2, 'membw_read': 1, 'wss': 7},
+        'stress-stream-medium':
+            {'mem': 13, 'cpu': 2, 'membw_write': 2, 'membw_read': 1, 'wss': 13},
+        'stress-stream-big':
+            {'mem': 13, 'cpu': 4, 'membw_write': 6, 'membw_read': 2, 'wss': 13},
+
+        'sysbench-memory-medium':
+            {'mem': 4, 'cpu': 3, 'membw_write': 9, 'membw_read': 1, 'wss': 3},
+        'sysbench-memory-small':
+            {'mem': 2, 'cpu': 2, 'membw_write': 4, 'membw_read': 1, 'wss': 2},
+        'sysbench-memory-big':
+            {'mem': 10, 'cpu': 4, 'membw_write': 17, 'membw_read': 1, 'wss': 9},
+
+        'redis-memtier-small':
+            {'mem': 10, 'cpu': 3, 'membw_write': 2, 'membw_read': 2, 'wss': 1},
+        'redis-memtier-medium':
+            {'mem': 11, 'cpu': 3, 'membw_write': 1, 'membw_read': 2, 'wss': 1},
+        'redis-memtier-big':
+            {'mem': 70, 'cpu': 3, 'membw_write': 2, 'membw_read': 3, 'wss': 1},
+        'redis-memtier-big-wss':
+            {'mem': 75, 'cpu': 3, 'membw_write': 3, 'membw_read': 2, 'wss': 1},
+
+        'memcached-mutilate-small':
+            {'mem': 26, 'cpu': 10, 'membw_write': 2, 'membw_read': 2, 'wss': 5},
+        'memcached-mutilate-medium':
+            {'mem': 51, 'cpu': 10, 'membw_write': 2, 'membw_read': 3, 'wss': 8},
+        'memcached-mutilate-big':
+            {'mem': 91, 'cpu': 10, 'membw_write': 3, 'membw_read': 3, 'wss': 3},
+        'memcached-mutilate-big-wss':
+            {'mem': 91, 'cpu': 10, 'membw_write': 2, 'membw_read': 3, 'wss': 10},
+
+        # NOTE: broken not stable among DRAM nodes (wrong configuration)
+        # 'specjbb-preset-big-60':
+        #     {'mem': 66, 'cpu': 24, 'membw_write': 4, 'membw_read': 12, 'wss': 31},
+        # 'specjbb-preset-medium':
+        #     {'mem': 26, 'cpu': 9, 'membw_write': 2, 'membw_read': 5, 'wss': 12},
+        # 'specjbb-preset-small':
+        #     {'mem': 12, 'cpu': 4, 'membw_write': 1, 'membw_read': 1, 'wss': 5},
+        'specjbb-preset-big-120':
+            {'mem': 126, 'cpu': 12, 'membw_write': 1, 'membw_read': 3, 'wss': 11},
+            
+        'mysql-hammerdb-small':
+            {'mem': 52, 'cpu': 4, 'membw_write': 1, 'membw_read': 1, 'wss': 1},
+
+    }
+
+
+WORKLOADS_SET_NAMES_SHORT = [
+    # 'stress-stream-small',
+    'stress-stream-medium',
+    'stress-stream-big',
+    # # ---
+    # 'sysbench-memory-small',
+    'sysbench-memory-medium',
+    'sysbench-memory-big',
+    # # ---
+    'memcached-mutilate-small',
+    'memcached-mutilate-medium',
+    # 'memcached-mutilate-big',
+    # 'memcached-mutilate-big-wss',
     # ---
-    'sysbench-memory-small': {'mem': 2, 'cpu': 2, 'membw_write': 4, 'membw_read': 1, 'wss': 2},
-    'sysbench-memory-medium': {'mem': 4, 'cpu': 3, 'membw_write': 9, 'membw_read': 1, 'wss': 3},
-    'sysbench-memory-big': {'mem': 10, 'cpu': 4, 'membw_write': 17, 'membw_read': 1, 'wss': 9},
+    'redis-memtier-small',
+    'redis-memtier-medium',
+    # 'redis-memtier-big',
+    # 'redis-memtier-big-wss',
     # ---
-    'redis-memtier-small': {'mem': 10, 'cpu': 3, 'membw_write': 2, 'membw_read': 2, 'wss': 1},
-    'redis-memtier-medium': {'mem': 11, 'cpu': 3, 'membw_write': 1, 'membw_read': 2, 'wss': 1},
-    'redis-memtier-big': {'mem': 70, 'cpu': 3, 'membw_write': 2, 'membw_read': 3, 'wss': 1},
-    'redis-memtier-big-wss': {'mem': 75, 'cpu': 3, 'membw_write': 3, 'membw_read': 2, 'wss': 1},
+    'specjbb-preset-big-120',
     # ---
-    'memcached-mutilate-small': {'mem': 26, 'cpu': 10, 'membw_write': 2, 'membw_read': 2, 'wss': 5},
-    'memcached-mutilate-medium': {'mem': 51, 'cpu': 10, 'membw_write': 2, 'membw_read': 3, 'wss': 8},
-    'memcached-mutilate-big': {'mem': 91, 'cpu': 10, 'membw_write': 3, 'membw_read': 3, 'wss': 3}
-    'memcached-mutilate-big-wss': {'mem': 91, 'cpu': 10, 'membw_write': 2, 'membw_read': 3, 'wss': 10},
-    # ---
-    'mysql-hammerdb-small': {'mem': 52, 'cpu': 4, 'membw_write': 1, 'membw_read': 1, 'wss': 1},
-    # ---
-    # NOTE: broken not stable among DRAM nodes (wrong configuration)
-    # 'specjbb-preset-medium': {'mem': 26, 'cpu': 9, 'membw_write': 2, 'membw_read': 5, 'wss': 12},
-    # 'specjbb-preset-small': {'mem': 12, 'cpu': 4, 'membw_write': 1, 'membw_read': 1, 'wss': 5},
-    # 'specjbb-preset-big-60': {'mem': 66, 'cpu': 24, 'membw_write': 4, 'membw_read': 12, 'wss': 31},
-    'specjbb-preset-big-120': {'mem': 126, 'cpu': 12, 'membw_write': 1, 'membw_read': 3, 'wss': 11},
-}
+    'mysql-hammerdb-small',
+]
+# WORKLOADS_SET_NAMES_SHORT = [
+#     'memcached-mutilate-big',
+# ]
 
 
 # Workloads from an experiment from 02.03.2019.
@@ -80,20 +131,22 @@ def static_experiment_1(target_utilization, percentage_matching_aep):
 
 
 def static_all_workloads_count_1():
-    return {workloadname: 1 for workloadname in WORKLOADS_SET}
+    return {workload_name: 1 for workload_name in WORKLOADS_SET}
 
 
 def random_with_total_utilization_specified(cpu_limit: Tuple[float, float],
                                             mem_limit: Tuple[float, float],
                                             nodes_capacities: Dict[str, Dict],
-                                            workloads_set: Dict[str, Dict]) -> Tuple[int, Dict[str, int]]:
-    """Random, but workloads expected usage of CPU and MEMOMORY sums to specified percentage (+- accuracy).
+                                            workloads_set: Dict[str, Dict]
+                                            ) -> Tuple[int, Dict[str, int], Dict[str, float]]:
+    """Random, but workloads expected usage of CPU and MEMORY sums to
+       specified percentage (+- accuracy).
        Returns tuple, first item how many iterations were performed to random proper workloads set,
        second set of workloads."""
     cpu_all, mem_all = 0, 0
-    for nodename, node in nodes_capacities.items():
-        # Only cound DRAM nodes
-        if nodename in AEP_NODES:
+    for node_name, node in nodes_capacities.items():
+        # Only count DRAM nodes
+        if node_name in AEP_NODES:
             continue
         cpu_all += node['cpu']
         mem_all += node['mem']
@@ -101,48 +154,53 @@ def random_with_total_utilization_specified(cpu_limit: Tuple[float, float],
     cpu_target_l, cpu_target_r = cpu_all * cpu_limit[0], cpu_all * cpu_limit[1]
     mem_target_l, mem_target_r = mem_all * mem_limit[0], mem_all * mem_limit[1]
 
-    logging.debug("[randomizing workloads] cpu(all={}, l={}, r={}), mem(all={}, l={}, r={}), N_nodes={})".format(
-        cpu_all, cpu_target_l, cpu_target_r, mem_all, mem_target_l, mem_target_r, len(nodes_capacities)-1))
+    logging.debug("[randomizing workloads] cpu(all={}, l={}, r={}), mem(all={}, "
+                  "l={}, r={}), N_nodes={})".format(cpu_all, cpu_target_l, cpu_target_r,
+                                                    mem_all, mem_target_l, mem_target_r,
+                                                    len(nodes_capacities)-1))
 
     workloads_names = [workload_name for workload_name in workloads_set]
     workloads_list = [workloads_set[workload_name] for workload_name in workloads_names]
     choices_weights = [w['mem']/w['cpu'] for w in workloads_list]
-    # choices_weights = [round(math.log(val+5), 2) for val in choices_weights]
     choices_weights = [round(val+5, 2) for val in choices_weights]
-    logging.debug("[randomizing workloads] weights={}".format(list(zip(workloads_names, choices_weights))))
-
-    best_for_now = (100,1)
+    logging.debug("[randomizing workloads] weights={}".format(list(zip(workloads_names,
+                                                                       choices_weights))))
+    best_for_now = (100, 1)
     found_solution = None
     iteration = 0
     while found_solution is None:
         cpu_curr = 0
         mem_curr = 0
 
-        choosen_workloads = {}
+        chosen_workloads = {}
         while cpu_curr < cpu_target_l or mem_curr < mem_target_l:
-            choosen = random.choices(workloads_names, choices_weights)[0]
-            # choosen = random.choice(workloads_names)
-            if choosen in choosen_workloads:
-                choosen_workloads[choosen] += 1
+            chosen = random.choices(workloads_names, choices_weights)[0]
+            if chosen in chosen_workloads:
+                chosen_workloads[chosen] += 1
             else:
-                choosen_workloads[choosen] = 1
-            cpu_curr += workloads_set[choosen]['cpu']
-            mem_curr += workloads_set[choosen]['mem']
+                chosen_workloads[chosen] = 1
+            cpu_curr += WORKLOADS_SET[chosen]['cpu']
+            mem_curr += WORKLOADS_SET[chosen]['mem']
 
         if cpu_curr <= cpu_target_r and mem_curr <= mem_target_r:
-            found_solution = choosen_workloads
+            found_solution = chosen_workloads
         else:
             if (mem_curr/mem_all)/(cpu_curr/cpu_all) > best_for_now[1]/best_for_now[0]:
                 best_for_now = (round(cpu_curr/cpu_all, 4), round(mem_curr/mem_all, 4))
             iteration += 1
         if iteration > 0 and iteration % 1000 == 0:
-            logging.debug("[randomizing workloads] Trying to find set of workloads already for {} iterations. cpu_limits={} mem_limits={}".format(iteration, cpu_limit, mem_limit))
-            logging.debug("[randomizing workloads] Best for now: (cpu={}, mem={})".format(best_for_now[0], best_for_now[1]))
+            logging.debug("[randomizing workloads] Trying to find set of workloads already for {} "
+                          "iterations. cpu_limits={} mem_limits={}".format(iteration, cpu_limit,
+                                                                           mem_limit))
+            logging.debug("[randomizing workloads] Best for now: (cpu={}, mem={})".format(
+                best_for_now[0], best_for_now[1]))
 
-    logging.debug("[randomizing workloads] choosen solution feature: cpu={} mem={}".format(round(cpu_curr/cpu_all, 2), round(mem_curr/mem_all, 2)))
-    logging.debug("[randomizing workloads] choosen workloads:\n{}".format(pprint.pformat(choosen_workloads, indent=4)))
+    logging.debug("[randomizing workloads] chosen solution feature: cpu={} mem={}".format(
+        round(cpu_curr/cpu_all, 2), round(mem_curr/mem_all, 2)))
+    logging.debug("[randomizing workloads] chosen workloads:\n{}".format(pprint.pformat(
+        chosen_workloads, indent=4)))
     utilization = {'cpu': cpu_curr/cpu_all, 'mem': mem_curr/mem_all}
-    return iteration, choosen_workloads, utilization
+    return iteration, chosen_workloads, utilization
 
 
 class NodesClass(enum.Enum):
@@ -155,10 +213,12 @@ class OnOffState(enum.Enum):
     Off = False
 
 
-def default_shell_run(command):
+def default_shell_run(command, verbose=True):
     """Default way of running commands."""
-    logging.debug('command run in shell >>{}<<'.format(command))
-    r = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if verbose:
+        logging.debug('command run in shell >>{}<<'.format(command))
+    r = subprocess.run(command, shell=True, check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return r.stdout.decode('utf-8'), r.stderr.decode('utf-8')
 
 
@@ -168,13 +228,15 @@ def taint_nodes_class(nodes_class: NodesClass, new_state: OnOffState = OnOffStat
         tweak_value = ''
     else:
         tweak_value = '-'
-    command = "kubectl taint node -l memory={}lm run=taint:NoSchedule{} --overwrite || true".format(str(nodes_class.value), tweak_value)
+    command = "kubectl taint node -l memory={}lm run=taint:NoSchedule{} --overwrite || true".format(
+        str(nodes_class.value), tweak_value)
     default_shell_run(command)
 
 
 def scale_down_all_workloads(wait_time: int):
     """Kill all workloads"""
-    command = "kubectl scale sts --all --replicas=0 && sleep {wait_time}".format(wait_time=wait_time)
+    command = "kubectl scale sts --all --replicas=0 && sleep {wait_time}".format(
+        wait_time=wait_time)
     default_shell_run(command)
 
 
@@ -213,7 +275,7 @@ def get_shuffled_workloads_order(workloads_counts: Dict[str, int]) -> List[str]:
 
 def run_workloads(workloads_run_order: List[str], workloads_counts: Dict[str, int]):
     command = "kubectl scale sts {workload_name} --replicas={replicas} && sleep 5"
-    workloads_run_order_ = workloads_run_order.copy() # we edit the list
+    workloads_run_order_ = workloads_run_order.copy()  # we edit the list
 
     irun = 0
     workloads_counts_run = {workload: 0 for workload in workloads_counts}
@@ -221,11 +283,52 @@ def run_workloads(workloads_run_order: List[str], workloads_counts: Dict[str, in
         workload_name = workloads_run_order_.pop()
         workloads_counts_run[workload_name] += 1
         default_shell_run(command.format(workload_name=workload_name,
-                                          replicas=workloads_counts_run[workload_name]))
+                                         replicas=workloads_counts_run[workload_name]))
         if workloads_counts_run[workload_name] == workloads_counts[workload_name]:
             del workloads_counts_run[workload_name]
         irun += 1
-    assert not workloads_run_order_
+
+
+def run_workloads_equally_per_node(workloads_counts: Dict[str, int]):
+    """Make sure all nodes will end up with the same workloads being run - assumes that
+       extender_scheduler is turned off."""
+    c_scale = "kubectl scale sts {workload} --replicas={replicas}"
+    c_taint = "kubectl taint nodes {node} wca_runner=any:NoSchedule --overwrite"
+    c_untaint = "kubectl taint nodes {node} wca_runner=any:NoSchedule- --overwrite"
+
+    nodes = list(NODES_CAPACITIES.keys())
+
+    workloads_count_all_walker = {workload: 0 for workload in workloads_counts}
+    workloads_run_order = [workload for workload, count in workloads_counts.items()
+                           for i in range(count)]
+
+    for nodename in nodes:
+        try:
+            default_shell_run(c_untaint.format(node=nodename), verbose=False)
+        except Exception:
+            continue
+    sleep(5)
+
+    for nodename in nodes:
+        logging.info("Running workloads on node={}".format(nodename))
+        for nodename_ in nodes:
+            if nodename_ != nodename:
+                default_shell_run(c_taint.format(node=nodename_), verbose=False)
+
+        sleep(5)
+        for workload in workloads_run_order:
+            workloads_count_all_walker[workload] += 1
+            default_shell_run(c_scale.format(workload=workload,
+                                             replicas=workloads_count_all_walker[workload]))
+        sleep(10)
+
+        for nodename_ in nodes:
+            if nodename_ != nodename:
+                default_shell_run(c_untaint.format(node=nodename_), verbose=False)
+        sleep(5)
+
+    workloads_count_all_target = {workload: len(nodes) * count for workload, count in workloads_counts.items()}
+    assert workloads_count_all_walker == workloads_count_all_target
 
 
 def sleep(sleep_duration):
@@ -235,16 +338,19 @@ def sleep(sleep_duration):
 MINUTE = 60  # in seconds
 
 
+class PodNotFoundException(Exception):
+    pass
+
+
 def copy_scheduler_logs(log_file):
     # ...
     stdout, _ = default_shell_run('kubectl get pods -n wca-scheduler')
-    pod_name = None
     for word in stdout.split():
         if 'wca-scheduler-' in word:
             pod_name = word
             break
     else:
-        assert False, 'Should found wca-scheduler pod, but not found'
+        raise PodNotFoundException('wca-scheduler pod not found')
     command = 'kubectl logs -n wca-scheduler {pod_name} wca-scheduler > {log_file}'
     default_shell_run(command.format(pod_name=pod_name, log_file=log_file))
 
@@ -255,7 +361,8 @@ class WaitPeriod:
 
 
 def single_3stage_experiment(experiment_id: str, workloads: Dict[str, int],
-                             wait_periods: Dict[WaitPeriod, int], stages=[True, True, True],
+                             wait_periods: Dict[WaitPeriod, Union[int, Tuple[int, int, int]]],
+                             stages: Tuple[bool, bool, bool] = (True, True, True),
                              experiment_root_dir: str = 'results/tmp'):
     """
     Run three stages experiment:
@@ -265,8 +372,6 @@ def single_3stage_experiment(experiment_id: str, workloads: Dict[str, int],
     """
     events = []
 
-    # @TODO remove this hack;
-    # allows for setting different sleep time for each stage
     if type(wait_periods[WaitPeriod.STABILIZE]) == int:
         wait_periods[WaitPeriod.STABILIZE] = [wait_periods[WaitPeriod.STABILIZE]] * 3
 
@@ -281,7 +386,7 @@ def single_3stage_experiment(experiment_id: str, workloads: Dict[str, int],
         # kubernetes only, 2lm off
         logging.info('Running first stage')
         switch_extender(OnOffState.Off)
-        taint_nodes_class(NodesClass._2LM, OnOffState.Off)
+        taint_nodes_class(NodesClass._2LM)
         run_workloads(workloads_run_order, workloads)
         events.append((datetime.now(), 'first stage: after run workloads'))
         sleep(wait_periods[WaitPeriod.STABILIZE][0])
@@ -316,9 +421,48 @@ def single_3stage_experiment(experiment_id: str, workloads: Dict[str, int],
         fref.write('\n')
         fref.write(str(events))
         fref.write('\n')
+
+    # Just to show on graph end of experiment
+    sleep(100)
+
+
+def single_step1workload_experiment(experiment_id: str, workload: str, count_per_node_list: List[int],
+                                    wait_periods: Dict[WaitPeriod, int],
+                                    experiment_root_dir: str = 'results/tmp'):
+    events = []
+
+    # kubernetes only, 2lm on
+    logging.info('Running experiment >>single-workload step<< for workload {}'.format(workload))
+    switch_extender(OnOffState.Off)
+    taint_nodes_class(NodesClass._2LM, OnOffState.Off)
+    scale_down_all_workloads(wait_time=10)
+
+    w_cpu = WORKLOADS_SET[workload]['cpu']
+    w_mem = WORKLOADS_SET[workload]['mem']
+    min_mem = NODES_CAPACITIES['node37']['mem']
+    min_cpu = NODES_CAPACITIES['node101']['cpu']
+    max_count = min(int(0.9 * min_cpu / w_cpu), int(0.95 * min_mem / w_mem))
+
+    for i, count_per_node in enumerate(count_per_node_list):
+        if count_per_node > max_count:
+            logging.info('Skipping count={}, not enought space on nodes max_count={}'.format(count_per_node, max_count))
+            continue
+        logging.info('Stepping into count={}'.format(count_per_node))
+        run_workloads_equally_per_node({workload: count_per_node})
+        events.append((datetime.now(), '{} stage: after run workloads'.format(i)))
+        sleep(wait_periods[WaitPeriod.STABILIZE])
+        events.append((datetime.now(), '{} stage: before killing workloads'.format(i)))
+        scale_down_all_workloads(wait_time=wait_periods[WaitPeriod.SCALE_DOWN])
+
+    with open(os.path.join(experiment_root_dir, 'events.txt'), 'a') as fref:
+        fref.write(str({workload: count_per_node_list}))
+        fref.write('\n')
+        fref.write(str(events))
+        fref.write('\n')
         
     # Just to show on graph end of experiment
     sleep(100)
+
 
 
 # Last tuning: time: "1584646650", Date: 2020-03-19 19:37:30
@@ -344,18 +488,49 @@ def tune_stage(workloads, sleep_time: int = 25*MINUTE):
         fref.write("Timestamp: {}\n".format(now.timestamp()))
 
 
+def modify_configmap(regexes: List[(str)], experiment_index: int, experiment_root_dir: str):
+    path = '../wca-scheduler/'
+    config_name = 'config.yaml'
+
+    # Replace text in config
+    for regex in regexes:
+        with fileinput.FileInput(path + config_name, inplace=True) as file:
+            for line in file:
+                # regexes[0] - regex_to_search, regexes[1] - replacement_text
+                print(re.sub(regex[0], regex[1], line), end='')
+
+    # Make copy config
+    copyfile(path + config_name,
+             experiment_root_dir + '/' + 'wca_scheduler_config_'
+             + str(experiment_index) + '_' + config_name)
+
+    # Apply changes
+    command = "kubectl apply -k {path_to_kustomize_folder_wca_scheduler} " \
+              "&& sleep {sleep_time}".format(
+                path_to_kustomize_folder_wca_scheduler=path,
+                sleep_time='10s')
+    default_shell_run(command)
+    switch_extender(OnOffState.Off)
+
+
 # -----------------------------------------------------------------------------------------------------
-def experimentset_main(iterations=10, experiment_root_dir='results/tmp', overwrite=False):
+def create_experiment_root_dir(path: str, overwrite: bool):
+    if overwrite and os.path.isdir(path):
+        shutil.rmtree(path)
+    
+    if not os.path.isdir(path):
+        os.makedirs(path)
+    else:
+        raise Exception('experiment root directory already exists! {}'.format(path))
+
+
+def experimentset_main(
+            iterations: int = 10,
+            experiment_root_dir: str = 'results/tmp',
+            overwrite: bool = False):
     logging.debug("Running experimentset >>main<< with experiment_directory >>{}<<".format(experiment_root_dir))
     random.seed(datetime.now())
-
-    if overwrite and os.path.isdir(experiment_root_dir):
-        shutil.rmtree(experiment_root_dir)
-    
-    if not os.path.isdir(experiment_root_dir):
-        os.makedirs(experiment_root_dir)
-    else:
-        raise Exception('experiment root directory already exists! {}'.format(experiment_root_dir))
+    create_experiment_root_dir(experiment_root_dir, overwrite)
 
     for i in range(iterations):
         iterations, workloads, utilization = random_with_total_utilization_specified(
@@ -368,111 +543,28 @@ def experimentset_main(iterations=10, experiment_root_dir='results/tmp', overwri
         experiment_id = str(i)
         single_3stage_experiment(experiment_id=experiment_id,
                                  workloads=workloads,
-                                 wait_periods={WaitPeriod.SCALE_DOWN: 60,
-                                               WaitPeriod.STABILIZE: 60*15},
-                                 stages=[True, True, True],
-                                 experiment_root_dir=experiment_root_dir)
-
-
-def experimentset_main_pepe(iterations=10, experiment_root_dir='results/tmp', overwrite=False):
-    logging.debug("Running experimentset >>main<< with experiment_directory >>{}<<".format(experiment_root_dir))
-    random.seed(datetime.now())
-
-    if overwrite and os.path.isdir(experiment_root_dir):
-        shutil.rmtree(experiment_root_dir)
-    
-    if not os.path.isdir(experiment_root_dir):
-        os.makedirs(experiment_root_dir)
-    else:
-        raise Exception('experiment root directory already exists! {}'.format(experiment_root_dir))
-
-    workloads_set_pepe = \
-    {
-        'memcached-mutilate-big-wss': {'mem': 91, 'cpu': 10, 'membw_write': 2, 'membw_read': 3, 'wss': 10},
-        'stress-stream-big': {'mem': 13, 'cpu': 4, 'membw_write': 6, 'membw_read': 2, 'wss': 13},
-        'memcached-mutilate-big': {'mem': 91, 'cpu': 10, 'membw_write': 3, 'membw_read': 3, 'wss': 3},
-        'sysbench-memory-big': {'mem': 10, 'cpu': 4, 'membw_write': 17, 'membw_read': 1, 'wss': 9},
-    }
-
-    for i in range(iterations):
-        iterations, workloads, utilization = random_with_total_utilization_specified(
-            cpu_limit=(0.25, 0.46), mem_limit=(0.81, 0.9),
-            nodes_capacities=NODES_CAPACITIES, workloads_set=workloads_set_pepe)
-        with open(os.path.join(experiment_root_dir, 'choosen_workloads_utilization.{}.txt'.format(i)), 'a') as fref:
-            fref.write(str(utilization))
-            fref.write('\n')
-
-        experiment_id = str(i)
-        single_3stage_experiment(experiment_id=experiment_id,
-                                 workloads=workloads,
-                                 wait_periods={WaitPeriod.SCALE_DOWN: 60,
-                                               WaitPeriod.STABILIZE: 60*15},
+                                 wait_periods={WaitPeriod.SCALE_DOWN: MINUTE,
+                                               WaitPeriod.STABILIZE: MINUTE*15},
                                  stages=[True, True, True],
                                  experiment_root_dir=experiment_root_dir)
 
 
 def experimentset_single_workload_at_once(
-        experiment_root_dir: str ='results/tmp', overwrite: bool = False,
-        workloads_set: Optional[List[str]] = None):
-
-    logging.debug("Running experimentset >>every workload is single<< with experiment_directory >>{}<<".format(experiment_root_dir))
+            experiment_root_dir: str ='results/tmp',
+            overwrite: bool = False,
+            workloads_set: Optional[List[str]] = None):
+    logging.debug("Running experimentset >>every workload is single<<"
+                  " with experiment_directory >>{}<<".format(experiment_root_dir))
     random.seed(datetime.now())
+    create_experiment_root_dir(experiment_root_dir, overwrite)
 
-    if overwrite and os.path.isdir(experiment_root_dir):
-        shutil.rmtree(experiment_root_dir)
-    
-    if not os.path.isdir(experiment_root_dir):
-        os.makedirs(experiment_root_dir)
-    else:
-        raise Exception('experiment root directory already exists! {}'.format(experiment_root_dir))
-
-    if workloads_set is None:
-        # 5 workloadow, kazdy 3 -- > 15
-        workloads_set = [
-            # 'stress-stream-small',
-            'stress-stream-medium',
-            # 'stress-stream-big',
-            # # ---
-            # 'sysbench-memory-small',
-            # 'sysbench-memory-medium',
-            # 'sysbench-memory-big',
-            # # ---
-            # 'memcached-mutilate-small',
-            # 'memcached-mutilate-medium',
-            'memcached-mutilate-big',
-            # 'memcached-mutilate-big-wss',
-            # # ---
-            # 'redis-memtier-small',
-            # 'redis-memtier-medium',
-            'redis-memtier-big',
-            # 'redis-memtier-big-wss',
-            # ---
-            # 'specjbb-preset-big-60',
-            'specjbb-preset-big-120',
-            # # ---
-            'mysql-hammerdb-small',
-        ]
-
-    i = 0
-    for workload in workloads_set:
-        for per_node_count in range(1, 4):
-            experiment_id = str(i)
-
-            # Run on all active nodes.
-            # workloads = {workload: len(NODES_CAPACITIES)-len(AEP_NODES)}
-            workloads = {workload: per_node_count * len(NODES_CAPACITIES)}
-
-            single_3stage_experiment(experiment_id=experiment_id,
-                                     workloads=workloads,
-                                     wait_periods={WaitPeriod.SCALE_DOWN: 60,
-                                                   # @NOTE:
-                                                   # Just to keep runner_analyzer working, 
-                                                   # keep 2,3 state, but very short.
-                                                   WaitPeriod.STABILIZE: [60, 60 * 10, 60]},
-                                     stages=[False, True, False],
-                                     experiment_root_dir=experiment_root_dir)
-            i += 1
-
+    for i, workload in enumerate(WORKLOADS_SET_NAMES_SHORT):
+        single_step1workload_experiment(
+             experiment_id=str(i),
+             workload=workload, count_per_node_list=[1,2,3,4],
+             wait_periods={WaitPeriod.SCALE_DOWN: MINUTE,
+                           WaitPeriod.STABILIZE: MINUTE * 20},
+             experiment_root_dir=experiment_root_dir)
 
 
 def experimentset_test(experiment_root_dir='results/__test__'):
@@ -488,11 +580,11 @@ def experimentset_test(experiment_root_dir='results/__test__'):
     single_3stage_experiment(experiment_id=0,
                              workloads=workloads,
                              wait_periods={WaitPeriod.SCALE_DOWN: 10,
-                                           WaitPeriod.STABILIZE: 60},
+                                           WaitPeriod.STABILIZE: MINUTE},
                              stages=[False, False, True],
                              experiment_root_dir=experiment_root_dir)
 # -----------------------------------------------------------------------------------------------------
 
 
 if __name__ == "__main__":
-    experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-02__single_all_one-two-three')
+    experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-04__stepping_single_workloads')
