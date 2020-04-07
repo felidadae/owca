@@ -20,7 +20,7 @@ algorithm: !Score
       host: http://100.64.176.36
       port: 30900
       timeout: 5.0
-      time: "1586212811"  # Date: 2020-04-06 22:40:11
+      time: "1586245624"  # Date: 2020-04-07 07:47:04
     queries: !Queries
       APP_REQUESTED_RESOURCES_QUERY_MAP:
             cpu: 'ceil(max(max_over_time(task_requested_cpus[10m])) by (app))'
