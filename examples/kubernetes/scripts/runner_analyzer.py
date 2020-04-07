@@ -22,9 +22,10 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 class ExperimentType(Enum):
     SingleWorkloadsRun = 'SingleWorkloadsRun'
+    SteppingSingleWorkloadsRun = 'SteppingSingleWorkloadsRun'
     ThreeStageStandardRun = 'ThreeStageStandardRun'
 
-WINDOW_LENGTH = 60 * 10
+WINDOW_LENGTH = 60 * 5
 
 @dataclass
 class ExperimentMeta:
@@ -238,8 +239,8 @@ def calculate_task_summaries(tasks: List[Task], workloads_baseline: Dict[str, WS
             # ----
             "T": throughput,
             "T[avg][{}s]".format(WINDOW_LENGTH): throughput,
-            "T[q0.9][{}s]".format(WINDOW_LENGTH): task.get_throughput('q0.1,'),
-            "T[q0.1][{}s]".format(WINDOW_LENGTH): task.get_throughput('q0.9,'),
+            "T[q0.9][{}s]".format(WINDOW_LENGTH): task.get_throughput('q0.9,'),
+            "T[q0.1][{}s]".format(WINDOW_LENGTH): task.get_throughput('q0.1,'),
             "T[stdev][{}s]".format(WINDOW_LENGTH): task.get_throughput('stdev'),
 
             "T[stdev][{}s][%]".format(WINDOW_LENGTH): -1 if task.get_throughput('avg') == 0 else task.get_throughput('stdev')/task.get_throughput('avg') * 100,
@@ -279,13 +280,15 @@ def calculate_task_summaries(tasks: List[Task], workloads_baseline: Dict[str, WS
 class StagesAnalyzer:
     def __init__(self, events, workloads):
         self.events_data = (events, workloads)
+        assert len(self.events_data[0]) % 2 == 0
+        self.stages_count = int(len(self.events_data[0]) / 2)
 
         # @Move to loader
         T_DELTA = os.environ.get('T_DELTA', 0)
 
         self.stages = [] 
-        for i in (0,2,4):
-            self.stages.append(Stage(t_start=events[i][0].timestamp()+T_DELTA, t_end=events[i+1][0].timestamp() + T_DELTA))
+        for i in range(self.stages_count):
+            self.stages.append(Stage(t_start=events[i*2][0].timestamp()+T_DELTA, t_end=events[i*2+1][0].timestamp() + T_DELTA))
 
     def delete_report_files(self, report_root_dir):
         if os.path.isdir(report_root_dir):
@@ -325,7 +328,7 @@ class StagesAnalyzer:
         return workloads_wstats
 
     def get_stages_count(self):
-        return 3
+        return self.stages_count
 
     def aep_report(self, experiment_meta: ExperimentMeta, experiment_index: int):
         """
@@ -380,6 +383,8 @@ class StagesAnalyzer:
             exporter.export_to_txt()
         elif experiment_meta.experiment_type == ExperimentType.SingleWorkloadsRun:
             exporter.export_to_txt_single()
+        elif experiment_meta.experiment_type == ExperimentType.SteppingSingleWorkloadsRun:
+            exporter.export_to_txt_stepping_single()
         else:
             raise Exception('Unsupported experiment type!')
 
@@ -418,6 +423,27 @@ class TxtStagesExporter:
 
             self._fref = None
 
+    def export_to_txt_stepping_single(self):
+        logging.debug("Saving results to {}".format(self.export_file_path))
+
+        runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path, 'runner_analyzer')
+        if not os.path.isdir(runner_analyzer_results_dir):
+            os.mkdir(runner_analyzer_results_dir)
+
+        with open(os.path.join(runner_analyzer_results_dir, 'results.txt'), 'a+') as fref:
+            self._fref = fref
+            self._seperator()
+            self._metadata()
+            self._seperator(ending=True)
+            for stage_index in range(len(self.workloads_summaries)):
+                self._seperator()
+                self._baseline(title="DRAM workload summary", stage_index=stage_index)
+                self._tasks_summaries_in_stage(stage_index=stage_index, title='Task summaries for PMEM:node101', filter_nodes=['node101'])
+                self._tasks_summaries_in_stage(stage_index=stage_index, title='Task summaries for DRAM:node103', filter_nodes=['node103'])
+                self._node_summaries_in_stage(stage_index=stage_index, title='Node summaries for DRAM:node103', filter_nodes=['node103'])
+                self._seperator(ending=True)
+            self._fref = None
+
     def _tasks_summaries_in_stage(self, title: str, stage_index:int, filter_nodes: Optional[List[str]] = None):
         df = self.tasks_summaries[stage_index]  # df == dataframe
         if filter_nodes is not None:
@@ -425,10 +451,16 @@ class TxtStagesExporter:
 
         self._fref.write('\n{}\n'.format(title))
         self._fref.write(df.to_string())
-        self._fref.write('\n\n')
+        self._fref.write('\n')
 
-    def _node_summaries_in_stage(self, stage_index: int, filter_nodes = Optional[List[str]]):
-        self._fref.write(str(self.node_summaries[istage].to_string()))
+    def _node_summaries_in_stage(self, title: str, stage_index: int, filter_nodes = Optional[List[str]]):
+        df = self.node_summaries[stage_index]  # df == dataframe
+        if filter_nodes is not None:
+            df = df[df.name.isin(filter_nodes)]
+
+        self._fref.write('\n{}\n'.format(title))
+        self._fref.write(df.to_string())
+        self._fref.write('\n')
 
     def export_to_txt(self):
         logging.debug("Saving results to {}".format(self.export_file_path))
@@ -451,7 +483,7 @@ class TxtStagesExporter:
     def _seperator(self, ending=False):
         self._fref.write('*' * 90 + '\n')
         if ending:
-            self._fref.write('\n\n\n')
+            self._fref.write('\n\n')
 
     def _metadata(self):
         # self._fref.write("Experiment meta: {}\n\n".format(self.experiment_meta))
@@ -472,10 +504,10 @@ class TxtStagesExporter:
             self._fref.write("Utilization of resources: unknown\n")
 
 
-    def _baseline(self, stage_index=0):
-        self._fref.write("\n***BASELINE(stage_index={})***\n".format(stage_index))
+    def _baseline(self, title="BASELINE", stage_index=0):
+        self._fref.write("***{}(stage_index={})***\n".format(title, stage_index))
         self._fref.write(str(self.workloads_summaries[stage_index].to_string()))
-        self._fref.write('\n\n')
+        self._fref.write('\n')
 
     def _aep_tasks(self):
         for istage, title in (1, "KUBERNETES BASELINE"), (2, "WCA-SCHEDULER"):
@@ -683,7 +715,12 @@ def analyze_3stage_experiment(experiment_meta: ExperimentMeta):
             stages_analyzer.aep_report(experiment_meta, experiment_index=i)
         except Exception:
             logging.error("Skipping the whole 3stage subexperiment number {} due to exception!".format(i))
+            # @TODO remove raise
+            raise
             continue
+
+        # logging.error("@TODO remove this break")
+        # break
 
 
 if __name__ == "__main__":
@@ -794,6 +831,16 @@ if __name__ == "__main__":
             bugs='Drop after specjbb, please merge with results_2020-04-01__single_all__',
             experiment_type=ExperimentType.SingleWorkloadsRun,
             experiment_baseline_index=1,),
+
+        ExperimentMeta(
+            data_path='results/2020-04-04__stepping_single_workloads', 
+            title='Stepping workloads',
+            description='First time, almost all workloads',
+            params={'instances_count': 'up to 4', 'workloads_count': 'almost all', 'stabilize_phase_length [min]': [20]},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
+            experiment_baseline_index=0,),
     ]
 
     # copy data to summary dir with README

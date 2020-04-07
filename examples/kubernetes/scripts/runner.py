@@ -464,16 +464,15 @@ def single_step1workload_experiment(experiment_id: str, workload: str, count_per
     sleep(100)
 
 
-
-# Last tuning: time: "1584646650", Date: 2020-03-19 19:37:30
-def tune_stage(workloads, sleep_time: int = 25*MINUTE):
-    workloads_run_order: List[str] = get_shuffled_workloads_order(workloads)
+def tune_stage(workloads: List[str], sleep_time: int = 25*MINUTE):
+    assert type(workloads) == list
+    workloads_run_order: List[str] = workloads
 
     logging.debug("Running >>tuning<<")
     scale_down_all_workloads(wait_time=20)
     switch_extender(OnOffState.Off)
     taint_nodes_class(NodesClass._2LM)
-    run_workloads(workloads_run_order, workloads)
+    run_workloads(workloads_run_order, {workload: 1 for workload in workloads})
     sleep(sleep_time)
     now = datetime.now()  # Read data just before killing workloads
     sleep(60)             # Additional 60 seconds of sleep, after reading >>now<<
@@ -587,4 +586,7 @@ def experimentset_test(experiment_root_dir='results/__test__'):
 
 
 if __name__ == "__main__":
-    experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-04__stepping_single_workloads')
+    # tune_stage(list(WORKLOADS_SET.keys()))
+    # experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-04__stepping_single_workloads')
+    # experimentset_test()
+    experimentset_main(iterations=10, experiment_root_dir='results/2020-04-06__score2_promrules')
