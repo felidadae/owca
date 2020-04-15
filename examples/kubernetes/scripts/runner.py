@@ -11,128 +11,50 @@ import subprocess
 import random
 import re
 import logging
+import json
+
 
 FORMAT = "%(asctime)-15s:%(levelname)s %(module)s %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
-DRY_RUN=True
+
+DRY_RUN=False
 if DRY_RUN:
     logging.info("[DRY_RUN] Run in DRY_RUN mode!")
 
-# 2020-03-18
-AEP_NODES = ('node101',)
 
+class ClusterInfoLoader:
+    instance = None
 
-# Added on 2020-03-18 from logs from wca-scheduler
-# Date: 2020-03-18 21:13:11.879063 Timestamp: 1584565991
-NODES_CAPACITIES = \
-{
-    # ---
-    # Note: master node
-    # 'node36': {cpu: 72.0, 'mem': 404, 'wss': 404},
-    'node37': {'cpu': 80.0, 'mem': 201, 'membw_read': 256, 'membw_write': 256, 'wss': 201},
-    'node38': {'cpu': 80.0, 'mem': 404, 'membw_read': 256, 'membw_write': 256, 'wss': 404},
-    'node39': {'cpu': 80.0, 'mem': 404, 'membw_read': 256, 'membw_write': 256, 'wss': 404},
-    'node40': {'cpu': 80.0, 'mem': 201, 'membw_read': 256, 'membw_write': 256, 'wss': 201},
-    # ---
-    # Note: AEP
-    'node101': {'cpu': 72.0, 'mem': 1596, 'membw_read': 57, 'membw_write': 16, 'wss': 58},
-    # Note: >>turned off<< node due to performance instability
-    # 'node102': {'cpu': 72.0, 'mem': 404, 'membw_read': 256, 'membw_write': 256, 'wss': 404},
-    'node103': {'cpu': 72.0, 'mem': 201, 'membw_read': 256, 'membw_write': 256, 'wss': 201},
-    'node104': {'cpu': 72.0, 'mem': 201, 'membw_read': 256, 'membw_write': 256, 'wss': 201},
-    'node105': {'cpu': 72.0, 'mem': 201, 'membw_read': 256, 'membw_write': 256, 'wss': 201},
-    # ---
-    'node200': {'cpu': 96.0, 'mem': 201, 'membw_read': 256, 'membw_write': 256, 'wss': 201},
-    # Note: >>turned off<< node due to performance instability (high temperature)
-    # 'node201': {'cpu': 96.0, 'mem': 201, 'membw_read': 256, 'membw_write': 256, 'wss': 201},
-    'node202': {'cpu': 96.0, 'mem': 201, 'membw_read': 256, 'membw_write': 256, 'wss': 201},
-    'node203': {'cpu': 96.0, 'mem': 201, 'membw_read': 256, 'membw_write': 256, 'wss': 201},
-    # ---
-}
+    def __init__(self, nodes_file='nodes.json', workloads_file='workloads.json'):
+        with open(nodes_file) as fref:
+            self.nodes = json.load(fref)
 
-WORKLOADS_SET = \
-    {
-        'stress-stream-small':
-            {'mem': 7, 'cpu': 2, 'membw_write': 2, 'membw_read': 1, 'wss': 7},
-        'stress-stream-medium':
-            {'mem': 13, 'cpu': 2, 'membw_write': 2, 'membw_read': 1, 'wss': 13},
-        'stress-stream-big':
-            {'mem': 13, 'cpu': 4, 'membw_write': 6, 'membw_read': 2, 'wss': 13},
+        with open(workloads_file) as fref:
+            self.workloads = json.load(fref)
 
-        'sysbench-memory-medium':
-            {'mem': 4, 'cpu': 3, 'membw_write': 9, 'membw_read': 1, 'wss': 3},
-        'sysbench-memory-small':
-            {'mem': 2, 'cpu': 2, 'membw_write': 4, 'membw_read': 1, 'wss': 2},
-        'sysbench-memory-big':
-            {'mem': 10, 'cpu': 4, 'membw_write': 17, 'membw_read': 1, 'wss': 9},
+    @staticmethod
+    def build_singleton(nodes_file: str = 'nodes.json', workloads_file: str = 'workloads.json'):
+        ClusterInfoLoader.instance = ClusterInfoLoader()
 
-        'redis-memtier-small':
-            {'mem': 10, 'cpu': 3, 'membw_write': 2, 'membw_read': 2, 'wss': 1},
-        'redis-memtier-medium':
-            {'mem': 11, 'cpu': 3, 'membw_write': 1, 'membw_read': 2, 'wss': 1},
-        'redis-memtier-big':
-            {'mem': 70, 'cpu': 3, 'membw_write': 2, 'membw_read': 3, 'wss': 1},
-        'redis-memtier-big-wss':
-            {'mem': 75, 'cpu': 3, 'membw_write': 3, 'membw_read': 2, 'wss': 1},
+    @staticmethod
+    def get_instance() -> 'ClusterInfoLoader':
+        return ClusterInfoLoader.instance
 
-        'memcached-mutilate-small':
-            {'mem': 26, 'cpu': 10, 'membw_write': 2, 'membw_read': 2, 'wss': 5},
-        'memcached-mutilate-medium':
-            {'mem': 51, 'cpu': 10, 'membw_write': 2, 'membw_read': 3, 'wss': 8},
-        'memcached-mutilate-big':
-            {'mem': 91, 'cpu': 10, 'membw_write': 3, 'membw_read': 3, 'wss': 3},
-        'memcached-mutilate-big-wss':
-            {'mem': 91, 'cpu': 10, 'membw_write': 2, 'membw_read': 3, 'wss': 10},
+    def get_workloads(self) -> List[Dict]:
+        return self.workloads
 
-        # NOTE: broken not stable among DRAM nodes (wrong configuration)
-        # 'specjbb-preset-big-60':
-        #     {'mem': 66, 'cpu': 24, 'membw_write': 4, 'membw_read': 12, 'wss': 31},
-        # 'specjbb-preset-medium':
-        #     {'mem': 26, 'cpu': 9, 'membw_write': 2, 'membw_read': 5, 'wss': 12},
-        # 'specjbb-preset-small':
-        #     {'mem': 12, 'cpu': 4, 'membw_write': 1, 'membw_read': 1, 'wss': 5},
-        'specjbb-preset-big-120':
-            {'mem': 126, 'cpu': 12, 'membw_write': 1, 'membw_read': 3, 'wss': 11},
-            
-        'mysql-hammerdb-small':
-            {'mem': 52, 'cpu': 4, 'membw_write': 1, 'membw_read': 1, 'wss': 1},
+    def get_workloads_names(self) -> List[str]:
+        return list(self.workloads.keys())
 
-    }
+    def get_nodes(self) -> List[Dict]:
+        return self.nodes
 
+    def get_nodes_names(self) -> List[str]:
+        return list(self.nodes.keys())
 
-WORKLOADS_SET_NAMES_SHORT = [
-    # 'stress-stream-small',
-    'stress-stream-medium',
-    'stress-stream-big',
-    # # ---
-    # 'sysbench-memory-small',
-    'sysbench-memory-medium',
-    'sysbench-memory-big',
-    # # ---
-    'memcached-mutilate-small',
-    'memcached-mutilate-medium',
-    # 'memcached-mutilate-big',
-    # 'memcached-mutilate-big-wss',
-    # ---
-    'redis-memtier-small',
-    'redis-memtier-medium',
-    # 'redis-memtier-big',
-    # 'redis-memtier-big-wss',
-    # ---
-    'specjbb-preset-big-120',
-    # ---
-    'mysql-hammerdb-small',
-]
-
-
-# Workloads from an experiment from 02.03.2019.
-def static_experiment_1(target_utilization, percentage_matching_aep):
-    return {'redis-memtier-big': 8, 'redis-memtier-big-wss': 8, 'stress-stream-big': 5, 'sysbench-memory-big': 5}
-
-
-def static_all_workloads_count_1():
-    return {workload_name: 1 for workload_name in WORKLOADS_SET}
+    def get_aep_nodes(self) -> List[str]:
+        return [node for node, capacity in self.nodes.items() if capacity['membw_read'] > capacity['membw_write']]
 
 
 def random_with_total_utilization_specified(cpu_limit: Tuple[float, float],
@@ -180,8 +102,8 @@ def random_with_total_utilization_specified(cpu_limit: Tuple[float, float],
                 chosen_workloads[chosen] += 1
             else:
                 chosen_workloads[chosen] = 1
-            cpu_curr += WORKLOADS_SET[chosen]['cpu']
-            mem_curr += WORKLOADS_SET[chosen]['mem']
+            cpu_curr += ClusterInfoLoader.get_instance().get_workloads()[chosen]['cpu']
+            mem_curr += ClusterInfoLoader.get_instance().get_workloads()[chosen]['mem']
 
         if cpu_curr <= cpu_target_r and mem_curr <= mem_target_r:
             found_solution = chosen_workloads
@@ -218,9 +140,12 @@ def default_shell_run(command, verbose=True):
     """Default way of running commands."""
     if verbose:
         logging.debug('command run in shell >>{}<<'.format(command))
-    r = subprocess.run(command, shell=True, check=True,
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    return r.stdout.decode('utf-8'), r.stderr.decode('utf-8')
+    if not DRY_RUN:
+        r = subprocess.run(command, shell=True, check=True,
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return r.stdout.decode('utf-8'), r.stderr.decode('utf-8')
+    else:
+        return None, None
 
 
 def taint_nodes_class(nodes_class: NodesClass, new_state: OnOffState = OnOffState.On):
@@ -258,6 +183,8 @@ def switch_extender(new_state: OnOffState):
         default_shell_run(command)
 
         stdout, stderr = default_shell_run('kubectl get pods -n wca-scheduler')
+        if DRY_RUN:
+            return
         if new_state == OnOffState.On:
             if '2/2' in stdout and 'Running' in stdout:
                 break
@@ -292,31 +219,33 @@ def run_workloads(workloads_run_order: List[str], workloads_counts: Dict[str, in
 
 def run_workloads_equally_per_node(workloads_counts: Dict[str, int], nodes: Optional[List[str]] = None):
     """Make sure all nodes will end up with the same workloads being run - assumes that
-       extender_scheduler is turned off."""
+       extender_scheduler is turned off. Needs to wait after tainting (5s)."""
     c_scale = "kubectl scale sts {workload} --replicas={replicas}"
-    c_taint = "kubectl taint nodes {node} wca_runner=any:NoSchedule --overwrite"
-    c_untaint = "kubectl taint nodes {node} wca_runner=any:NoSchedule- --overwrite"
+    c_taint = "kubectl taint nodes {node} wca_runner=any:NoSchedule --overwrite"  # add taint
+    c_untaint = "kubectl taint nodes {node} wca_runner=any:NoSchedule- --overwrite"  # remove taint
+
+    all_nodes = ClusterInfoLoader.get_instance().get_nodes_names()
+    # should be equal to all nodes available on cluster
 
     if nodes is None:
-        # All available nodes
-        nodes = list(NODES_CAPACITIES.keys())
+        nodes = all_nodes
 
     workloads_count_all_walker = {workload: 0 for workload in workloads_counts}
     workloads_run_order = [workload for workload, count in workloads_counts.items()
                            for i in range(count)]
 
-    for nodename in nodes:
+    for nodename in all_nodes:
         try:
-            default_shell_run(c_untaint.format(node=nodename), verbose=False)
+            default_shell_run(c_untaint.format(node=nodename), verbose=True)
         except Exception:
             continue
     sleep(5)
 
     for nodename in nodes:
         logging.info("Running workloads on node={}".format(nodename))
-        for nodename_ in nodes:
+        for nodename_ in all_nodes:
             if nodename_ != nodename:
-                default_shell_run(c_taint.format(node=nodename_), verbose=False)
+                default_shell_run(c_taint.format(node=nodename_), verbose=True)
 
         sleep(5)
         for workload in workloads_run_order:
@@ -325,9 +254,9 @@ def run_workloads_equally_per_node(workloads_counts: Dict[str, int], nodes: Opti
                                              replicas=workloads_count_all_walker[workload]))
         sleep(10)
 
-        for nodename_ in nodes:
+        for nodename_ in all_nodes:
             if nodename_ != nodename:
-                default_shell_run(c_untaint.format(node=nodename_), verbose=False)
+                default_shell_run(c_untaint.format(node=nodename_), verbose=True)
         sleep(5)
 
     workloads_count_all_target = {workload: len(nodes) * count for workload, count in workloads_counts.items()}
@@ -348,12 +277,13 @@ class PodNotFoundException(Exception):
 def copy_scheduler_logs(log_file):
     # ...
     stdout, _ = default_shell_run('kubectl get pods -n wca-scheduler')
-    for word in stdout.split():
-        if 'wca-scheduler-' in word:
-            pod_name = word
-            break
-    else:
-        raise PodNotFoundException('wca-scheduler pod not found')
+    if not DRY_RUN:
+        for word in stdout.split():
+            if 'wca-scheduler-' in word:
+                pod_name = word
+                break
+        else:
+            raise PodNotFoundException('wca-scheduler pod not found')
     command = 'kubectl logs -n wca-scheduler {pod_name} wca-scheduler > {log_file}'
     default_shell_run(command.format(pod_name=pod_name, log_file=log_file))
 
@@ -385,9 +315,6 @@ def single_3stage_experiment(experiment_id: str, workloads: Dict[str, int],
     # Before start random order of running workloads, but keep the order among the stages
     workloads_run_order: List[str] = get_shuffled_workloads_order(workloads)
     logging.debug("Workload run order: {}".format(list(reversed(workloads_run_order))))
-
-    if DRY_RUN:
-        return
 
     if stages[0]:
         # kubernetes only, 2lm off
@@ -443,10 +370,10 @@ class RunMode(Enum):
 
 def get_max_count_per_smallest_node(workload: str, nodes: List[str]) -> int:
     """nodes -- nodes from which choose the smallest"""
-    w_cpu = WORKLOADS_SET[workload]['cpu']
-    w_mem = WORKLOADS_SET[workload]['mem']
-    min_mem = min(c['mem'] for n, c in NODES_CAPACITIES.items() if n in nodes)
-    min_cpu = min(c['cpu'] for n, c in NODES_CAPACITIES.items() if n in nodes)
+    w_cpu = ClusterInfoLoader.get_instance().get_workloads()[workload]['cpu']
+    w_mem = ClusterInfoLoader.get_instance().get_workloads()[workload]['mem']
+    min_mem = min(c['mem'] for n, c in ClusterInfoLoader.get_instance().get_nodes().items() if n in nodes)
+    min_cpu = min(c['cpu'] for n, c in ClusterInfoLoader.get_instance().get_nodes().items() if n in nodes)
     max_count = min(int(0.9 * min_cpu / w_cpu), int(0.95 * min_mem / w_mem))
     return max_count
 
@@ -462,10 +389,10 @@ def single_step1workload_experiment(run_mode: RunMode, experiment_id: str, workl
     events = []
 
     if nodes is None:
-        nodes = list(NODES_CAPACITIES.keys())
+        nodes = ClusterInfoLoader.get_instance().get_nodes_names()
 
-    workload_cpu = WORKLOADS_SET[workload]['cpu']
-    workload_mem = WORKLOADS_SET[workload]['mem']
+    workload_cpu = ClusterInfoLoader.get_instance().get_workloads()[workload]['cpu']
+    workload_mem = ClusterInfoLoader.get_instance().get_workloads()[workload]['mem']
 
     if run_mode == RunMode.EQUAL_ON_ALL_NODES:
         max_count = get_max_count_per_smallest_node(workload, nodes)
@@ -475,11 +402,10 @@ def single_step1workload_experiment(run_mode: RunMode, experiment_id: str, workl
             logging.debug("[EQUAL_ON_ALL_NODES] will run experiment for {}(cpu={}, mem={}) with counts {} (possible_max={})".format(
                 workload, workload_cpu, workload_mem, count_per_node_list, max_count))
 
-    if not DRY_RUN:
-        # kubernetes only, 2lm on
-        switch_extender(OnOffState.Off)
-        taint_nodes_class(NodesClass._2LM, OnOffState.Off)
-        scale_down_all_workloads(wait_time=10)
+    # kubernetes only, 2lm on
+    switch_extender(OnOffState.Off)
+    taint_nodes_class(NodesClass._2LM, OnOffState.Off)
+    scale_down_all_workloads(wait_time=10)
 
     for i, count_per_node in enumerate(count_per_node_list):
         logging.info('Stepping into count={}'.format(count_per_node))
@@ -489,7 +415,7 @@ def single_step1workload_experiment(run_mode: RunMode, experiment_id: str, workl
                 logging.info('[EQUAL_ON_ALL_NODES] Skipping count={}, not enough space on nodes max_count={}'.format(count_per_node, max_count))
                 continue
         elif run_mode == RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES:
-            nodes = [node for node, capacity in NODES_CAPACITIES.items() 
+            nodes = [node for node, capacity in ClusterInfoLoader.get_instance().get_nodes().items() 
                      if node in nodes
                      and count_per_node * workload_cpu < capacity['cpu']
                      and count_per_node * workload_mem < capacity['mem']]
@@ -502,17 +428,11 @@ def single_step1workload_experiment(run_mode: RunMode, experiment_id: str, workl
         else:
             raise Exception("Unsupported run_mode={}".format(run_mode))
 
-        if DRY_RUN:
-            continue
-
         run_workloads_equally_per_node({workload: count_per_node}, nodes=nodes)
         events.append((datetime.now(), '{} stage: after run workloads'.format(i)))
         sleep(wait_periods[WaitPeriod.STABILIZE])
         events.append((datetime.now(), '{} stage: before killing workloads'.format(i)))
         scale_down_all_workloads(wait_time=wait_periods[WaitPeriod.SCALE_DOWN])
-
-    if DRY_RUN:
-        return
 
     with open(os.path.join(experiment_root_dir, 'events.txt'), 'a') as fref:
         fref.write(str({workload: count_per_node_list}))
@@ -594,7 +514,7 @@ def experimentset_main(
     for i in range(iterations):
         iterations, workloads, utilization = random_with_total_utilization_specified(
             cpu_limit=(0.25, 0.46), mem_limit=(0.81, 0.9),
-            nodes_capacities=NODES_CAPACITIES, workloads_set=WORKLOADS_SET)
+            nodes_capacities=ClusterInfoLoader.get_instance().get_nodes(), workloads_set=ClusterInfoLoader.get_instance().get_workloads())
         with open(os.path.join(experiment_root_dir, 'choosen_workloads_utilization.{}.txt'.format(i)), 'a') as fref:
             fref.write(str(utilization))
             fref.write('\n')
@@ -651,7 +571,8 @@ def experimentset_test(experiment_root_dir='results/__test__'):
 
     _, workloads, _ = random_with_total_utilization_specified(
         cpu_limit=(0.25, 0.41), mem_limit=(0.65, 0.9),
-        nodes_capacities=NODES_CAPACITIES, workloads_set=WORKLOADS_SET)
+        nodes_capacities=ClusterInfoLoader.get_instance().get_nodes(),
+        workloads_set=ClusterInfoLoader.get_instance().get_workloads_names())
     single_3stage_experiment(experiment_id=0,
                              workloads=workloads,
                              wait_periods={WaitPeriod.SCALE_DOWN: 10,
@@ -662,7 +583,9 @@ def experimentset_test(experiment_root_dir='results/__test__'):
 
 
 if __name__ == "__main__":
+    ClusterInfoLoader.build_singleton()
+
     # experimentset_test()
-    # tune_stage(list(WORKLOADS_SET.keys()))
+    # tune_stage(ClusterInfoLoader.get_instance().get_workloads_names())
     experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-15__stepping_single_workloads')
     # experimentset_main(iterations=10, experiment_root_dir='results/2020-04-06__score2_promrules')
