@@ -4,6 +4,7 @@ from typing import List, Dict, Tuple, Optional, Union
 from datetime import datetime
 import pprint
 import enum
+from enum import Enum
 import fileinput
 from shutil import copyfile
 import subprocess
@@ -120,9 +121,6 @@ WORKLOADS_SET_NAMES_SHORT = [
     # ---
     'mysql-hammerdb-small',
 ]
-# WORKLOADS_SET_NAMES_SHORT = [
-#     'memcached-mutilate-big',
-# ]
 
 
 # Workloads from an experiment from 02.03.2019.
@@ -289,14 +287,16 @@ def run_workloads(workloads_run_order: List[str], workloads_counts: Dict[str, in
         irun += 1
 
 
-def run_workloads_equally_per_node(workloads_counts: Dict[str, int]):
+def run_workloads_equally_per_node(workloads_counts: Dict[str, int], nodes: Optional[List[str]] = None):
     """Make sure all nodes will end up with the same workloads being run - assumes that
        extender_scheduler is turned off."""
     c_scale = "kubectl scale sts {workload} --replicas={replicas}"
     c_taint = "kubectl taint nodes {node} wca_runner=any:NoSchedule --overwrite"
     c_untaint = "kubectl taint nodes {node} wca_runner=any:NoSchedule- --overwrite"
 
-    nodes = list(NODES_CAPACITIES.keys())
+    if nodes is None:
+        # All available nodes
+        nodes = list(NODES_CAPACITIES.keys())
 
     workloads_count_all_walker = {workload: 0 for workload in workloads_counts}
     workloads_run_order = [workload for workload, count in workloads_counts.items()
@@ -426,10 +426,36 @@ def single_3stage_experiment(experiment_id: str, workloads: Dict[str, int],
     sleep(100)
 
 
-def single_step1workload_experiment(experiment_id: str, workload: str, count_per_node_list: List[int],
+def single_step1workload_experiment(experiment_id: str, workload: str,
+                                    count_per_node_list: Optional[List[int]],
                                     wait_periods: Dict[WaitPeriod, int],
+                                    nodes: Optional[List[str]] = None,
                                     experiment_root_dir: str = 'results/tmp'):
+    """nodes - on which nodes run experiments"""
     events = []
+
+    class RunMode(Enum):
+        EQUAL_ON_ALL_NODES = 'equal_on_all_nodes'
+        RUN_ON_NODES_WHERE_ENOUGH_RESOURCES = 'run_on_nodes_where_enough_resources'
+    run_mode = RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES
+
+    if nodes is None:
+        # Run on all nodes.
+        nodes = list(NODES_CAPACITIES.keys())
+
+    w_cpu = WORKLOADS_SET[workload]['cpu']
+    w_mem = WORKLOADS_SET[workload]['mem']
+
+    if count_per_node_list is None and run_mode == RunMode.EQAL_ON_ALL_NODES:
+        # max counts per node (only look at cpu and mem - the same as kubernetes)
+        min_mem = min(c['mem'] for n, c in NODES_CAPACITIES.items() if n in nodes)
+        min_cpu = min(c['cpu'] for n, c in NODES_CAPACITIES.items() if n in nodes)
+
+        max_count = min(int(0.9 * min_cpu / w_cpu), int(0.95 * min_mem / w_mem))
+
+        count_per_node_list = list(range(1, max_count+1, int(max_count/5 + 1)))
+        logging.debug("Will run experiment for {}(cpu={}, mem={}) with counts {} (possible_max={})".format(
+            workload, w_cpu, w_mem, count_per_node_list, max_count))
 
     # kubernetes only, 2lm on
     logging.info('Running experiment >>single-workload step<< for workload {}'.format(workload))
@@ -437,18 +463,30 @@ def single_step1workload_experiment(experiment_id: str, workload: str, count_per
     taint_nodes_class(NodesClass._2LM, OnOffState.Off)
     scale_down_all_workloads(wait_time=10)
 
-    w_cpu = WORKLOADS_SET[workload]['cpu']
-    w_mem = WORKLOADS_SET[workload]['mem']
-    min_mem = NODES_CAPACITIES['node37']['mem']
-    min_cpu = NODES_CAPACITIES['node101']['cpu']
-    max_count = min(int(0.9 * min_cpu / w_cpu), int(0.95 * min_mem / w_mem))
-
     for i, count_per_node in enumerate(count_per_node_list):
-        if count_per_node > max_count:
-            logging.info('Skipping count={}, not enought space on nodes max_count={}'.format(count_per_node, max_count))
-            continue
         logging.info('Stepping into count={}'.format(count_per_node))
-        run_workloads_equally_per_node({workload: count_per_node})
+
+        # run_mode
+        if run_mode == RunMode.EQUAL_ON_ALL_NODES:
+            if count_per_node > max_count:
+                logging.info('Skipping count={}, not enough space on nodes max_count={}'.format(count_per_node, max_count))
+                continue
+        elif run_mode == RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES:
+            nodes = [node for node, capacity in NODES_CAPACITIES.items() 
+                     if node in nodes
+                     and count_per_node * w_cpu < capacity['cpu']
+                     and count_per_node * w_mem < capacity['mem']]
+            # Log.
+            if not nodes:
+                logging.info('Skipping run - cannot be run on any node.')
+                break
+            else:
+                logging.info('Running on nodes {} [RUN_ON_NODES_WHERE_ENOUGH_RESOURCES]'.format(nodes))
+
+        else:
+            raise Exception("Unsupported run_mode={}".format(run_mode))
+
+        run_workloads_equally_per_node({workload: count_per_node}, nodes=nodes)
         events.append((datetime.now(), '{} stage: after run workloads'.format(i)))
         sleep(wait_periods[WaitPeriod.STABILIZE])
         events.append((datetime.now(), '{} stage: before killing workloads'.format(i)))
@@ -557,12 +595,26 @@ def experimentset_single_workload_at_once(
     random.seed(datetime.now())
     create_experiment_root_dir(experiment_root_dir, overwrite)
 
-    for i, workload in enumerate(WORKLOADS_SET_NAMES_SHORT):
+    workloads = [
+        'stress-stream-medium',
+        'memcached-mutilate-medium',
+        'redis-memtier-big',
+    ]
+    count_per_node_list = {
+        # 6,6,6 = 18 --> 9h
+        'stress-stream-medium': [2,3,4,5,6,7],
+        'memcached-mutilate-medium': [3,6,7,8],
+        'redis-memtier-big': [2,3,6,10,20,25],
+    }
+
+    for i, workload in enumerate(workloads):
         single_step1workload_experiment(
              experiment_id=str(i),
-             workload=workload, count_per_node_list=[1,2,3,4],
+             workload=workload,
+             count_per_node_list=count_per_node_list[workload],
              wait_periods={WaitPeriod.SCALE_DOWN: MINUTE,
                            WaitPeriod.STABILIZE: MINUTE * 20},
+             nodes=None,
              experiment_root_dir=experiment_root_dir)
 
 
@@ -587,6 +639,6 @@ def experimentset_test(experiment_root_dir='results/__test__'):
 
 if __name__ == "__main__":
     # tune_stage(list(WORKLOADS_SET.keys()))
-    # experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-04__stepping_single_workloads')
+    experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-14__stepping_single_workloads')
     # experimentset_test()
-    experimentset_main(iterations=10, experiment_root_dir='results/2020-04-06__score2_promrules')
+    # experimentset_main(iterations=10, experiment_root_dir='results/2020-04-06__score2_promrules')
