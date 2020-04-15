@@ -15,6 +15,9 @@ import logging
 FORMAT = "%(asctime)-15s:%(levelname)s %(module)s %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
+DRY_RUN=True
+if DRY_RUN:
+    logging.info("[DRY_RUN] Run in DRY_RUN mode!")
 
 # 2020-03-18
 AEP_NODES = ('node101',)
@@ -370,6 +373,7 @@ def single_3stage_experiment(experiment_id: str, workloads: Dict[str, int],
     2) kubernetes only, 2lm nodes used
     2) scheduler_extender, 2lm nodes used
     """
+    logging.info('Running experiment >>single_3stage_experiment<<')
     events = []
 
     if type(wait_periods[WaitPeriod.STABILIZE]) == int:
@@ -381,6 +385,9 @@ def single_3stage_experiment(experiment_id: str, workloads: Dict[str, int],
     # Before start random order of running workloads, but keep the order among the stages
     workloads_run_order: List[str] = get_shuffled_workloads_order(workloads)
     logging.debug("Workload run order: {}".format(list(reversed(workloads_run_order))))
+
+    if DRY_RUN:
+        return
 
     if stages[0]:
         # kubernetes only, 2lm off
@@ -426,71 +433,86 @@ def single_3stage_experiment(experiment_id: str, workloads: Dict[str, int],
     sleep(100)
 
 
-def single_step1workload_experiment(experiment_id: str, workload: str,
+class RunMode(Enum):
+    """Run maximum number of pods which will fit all nodes"""
+    EQUAL_ON_ALL_NODES = 'equal_on_all_nodes'
+
+    """Run up to given"""
+    RUN_ON_NODES_WHERE_ENOUGH_RESOURCES = 'run_on_nodes_where_enough_resources'
+
+
+def get_max_count_per_smallest_node(workload: str, nodes: List[str]) -> int:
+    """nodes -- nodes from which choose the smallest"""
+    w_cpu = WORKLOADS_SET[workload]['cpu']
+    w_mem = WORKLOADS_SET[workload]['mem']
+    min_mem = min(c['mem'] for n, c in NODES_CAPACITIES.items() if n in nodes)
+    min_cpu = min(c['cpu'] for n, c in NODES_CAPACITIES.items() if n in nodes)
+    max_count = min(int(0.9 * min_cpu / w_cpu), int(0.95 * min_mem / w_mem))
+    return max_count
+
+
+def single_step1workload_experiment(run_mode: RunMode, experiment_id: str, workload: str,
                                     count_per_node_list: Optional[List[int]],
                                     wait_periods: Dict[WaitPeriod, int],
                                     nodes: Optional[List[str]] = None,
                                     experiment_root_dir: str = 'results/tmp'):
     """nodes - on which nodes run experiments"""
+    logging.info('Running experiment >>single_step1workload_experiment<< for workload {}'.format(workload))
+
     events = []
 
-    class RunMode(Enum):
-        EQUAL_ON_ALL_NODES = 'equal_on_all_nodes'
-        RUN_ON_NODES_WHERE_ENOUGH_RESOURCES = 'run_on_nodes_where_enough_resources'
-    run_mode = RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES
-
     if nodes is None:
-        # Run on all nodes.
         nodes = list(NODES_CAPACITIES.keys())
 
-    w_cpu = WORKLOADS_SET[workload]['cpu']
-    w_mem = WORKLOADS_SET[workload]['mem']
+    workload_cpu = WORKLOADS_SET[workload]['cpu']
+    workload_mem = WORKLOADS_SET[workload]['mem']
 
-    if count_per_node_list is None and run_mode == RunMode.EQAL_ON_ALL_NODES:
-        # max counts per node (only look at cpu and mem - the same as kubernetes)
-        min_mem = min(c['mem'] for n, c in NODES_CAPACITIES.items() if n in nodes)
-        min_cpu = min(c['cpu'] for n, c in NODES_CAPACITIES.items() if n in nodes)
+    if run_mode == RunMode.EQUAL_ON_ALL_NODES:
+        max_count = get_max_count_per_smallest_node(workload, nodes)
 
-        max_count = min(int(0.9 * min_cpu / w_cpu), int(0.95 * min_mem / w_mem))
+        if count_per_node_list is None:
+            count_per_node_list = list(range(1, max_count+1, int(max_count/5 + 1)))
+            logging.debug("[EQUAL_ON_ALL_NODES] will run experiment for {}(cpu={}, mem={}) with counts {} (possible_max={})".format(
+                workload, workload_cpu, workload_mem, count_per_node_list, max_count))
 
-        count_per_node_list = list(range(1, max_count+1, int(max_count/5 + 1)))
-        logging.debug("Will run experiment for {}(cpu={}, mem={}) with counts {} (possible_max={})".format(
-            workload, w_cpu, w_mem, count_per_node_list, max_count))
-
-    # kubernetes only, 2lm on
-    logging.info('Running experiment >>single-workload step<< for workload {}'.format(workload))
-    switch_extender(OnOffState.Off)
-    taint_nodes_class(NodesClass._2LM, OnOffState.Off)
-    scale_down_all_workloads(wait_time=10)
+    if not DRY_RUN:
+        # kubernetes only, 2lm on
+        switch_extender(OnOffState.Off)
+        taint_nodes_class(NodesClass._2LM, OnOffState.Off)
+        scale_down_all_workloads(wait_time=10)
 
     for i, count_per_node in enumerate(count_per_node_list):
         logging.info('Stepping into count={}'.format(count_per_node))
 
-        # run_mode
         if run_mode == RunMode.EQUAL_ON_ALL_NODES:
             if count_per_node > max_count:
-                logging.info('Skipping count={}, not enough space on nodes max_count={}'.format(count_per_node, max_count))
+                logging.info('[EQUAL_ON_ALL_NODES] Skipping count={}, not enough space on nodes max_count={}'.format(count_per_node, max_count))
                 continue
         elif run_mode == RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES:
             nodes = [node for node, capacity in NODES_CAPACITIES.items() 
                      if node in nodes
-                     and count_per_node * w_cpu < capacity['cpu']
-                     and count_per_node * w_mem < capacity['mem']]
+                     and count_per_node * workload_cpu < capacity['cpu']
+                     and count_per_node * workload_mem < capacity['mem']]
             # Log.
             if not nodes:
-                logging.info('Skipping run - cannot be run on any node.')
+                logging.info('[RUN_ON_NODES_WHERE_ENOUGH_RESOURCES] Skipping run - cannot be run on any node.')
                 break
             else:
-                logging.info('Running on nodes {} [RUN_ON_NODES_WHERE_ENOUGH_RESOURCES]'.format(nodes))
-
+                logging.info('[RUN_ON_NODES_WHERE_ENOUGH_RESOURCES] Running on nodes {}. Tottaly {} pods'.format(nodes, len(nodes) * count_per_node))
         else:
             raise Exception("Unsupported run_mode={}".format(run_mode))
+
+        if DRY_RUN:
+            continue
 
         run_workloads_equally_per_node({workload: count_per_node}, nodes=nodes)
         events.append((datetime.now(), '{} stage: after run workloads'.format(i)))
         sleep(wait_periods[WaitPeriod.STABILIZE])
         events.append((datetime.now(), '{} stage: before killing workloads'.format(i)))
         scale_down_all_workloads(wait_time=wait_periods[WaitPeriod.SCALE_DOWN])
+
+    if DRY_RUN:
+        return
 
     with open(os.path.join(experiment_root_dir, 'events.txt'), 'a') as fref:
         fref.write(str({workload: count_per_node_list}))
@@ -590,6 +612,7 @@ def experimentset_single_workload_at_once(
             experiment_root_dir: str ='results/tmp',
             overwrite: bool = False,
             workloads_set: Optional[List[str]] = None):
+
     logging.debug("Running experimentset >>every workload is single<<"
                   " with experiment_directory >>{}<<".format(experiment_root_dir))
     random.seed(datetime.now())
@@ -609,6 +632,7 @@ def experimentset_single_workload_at_once(
 
     for i, workload in enumerate(workloads):
         single_step1workload_experiment(
+            run_mode = RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES,
              experiment_id=str(i),
              workload=workload,
              count_per_node_list=count_per_node_list[workload],
@@ -638,7 +662,7 @@ def experimentset_test(experiment_root_dir='results/__test__'):
 
 
 if __name__ == "__main__":
-    # tune_stage(list(WORKLOADS_SET.keys()))
-    experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-14__stepping_single_workloads')
     # experimentset_test()
+    # tune_stage(list(WORKLOADS_SET.keys()))
+    experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-15__stepping_single_workloads')
     # experimentset_main(iterations=10, experiment_root_dir='results/2020-04-06__score2_promrules')
