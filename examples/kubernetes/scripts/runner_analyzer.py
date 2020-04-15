@@ -37,6 +37,7 @@ class ExperimentMeta:
     bugs: str
     experiment_type: ExperimentType = ExperimentType.ThreeStageStandardRun
     experiment_baseline_index: int = 0
+    commit_hash: str = 'unknown'
 
     def data_path_(self):
         return os.path.basename(self.data_path)
@@ -841,6 +842,27 @@ if __name__ == "__main__":
             bugs='',
             experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
             experiment_baseline_index=0,),
+
+        ExperimentMeta(
+            data_path='results/2020-04-13__stepping_single_workloads', 
+            title='Stepping workloads',
+            description='4 workloads, one to max (with varying step size)',
+            params={'instances_count': 'up to max', 'workloads_count': '4', 'stabilize_phase_length [min]': [20]},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
+            experiment_baseline_index=0,),
+
+        ExperimentMeta(
+            data_path='results/2020-04-14__stepping_single_workloads', 
+            title='Stepping workloads',
+            description='4 workloads, one to max',
+            params={'instances_count': 'up to max', 'workloads_count': '4', 'stabilize_phase_length [min]': [20]},
+            changelog='better resolution for the workloads (if only possible to run on pmem, run there)',
+            bugs='',
+            experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
+            experiment_baseline_index=0,
+            commit_hash='a47a0d669',
     ]
 
     # copy data to summary dir with README
