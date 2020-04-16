@@ -69,6 +69,8 @@ kubectl get pods -o wide | grep node101  # node 101
 Make sure you didnt changed any crucial things in runner.py by using git diff (length of experiment, DRY_RUN mode turned off, etc).
 Give proper name keeping to standard given in the example: $date__$name
 
+MAKE SURE YOU RUN THE SCRIPTS FROM TMUX - best option it would be to run it on a cluster node.
+
 For 3-stage wca_scheduler main experiment use:
 
 ```python
@@ -81,7 +83,9 @@ For stepping-workloads experiment use:
 experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-16__stepping_single_workloads')
 ```
 
-6. Tuning.
+6. Possible add new entry to runner_analyzer.py describing new experiment to having changelog.
+
+7. Tuning.
 To simplify experiments wca-scheduler use given in the config timestamp to make queries to prometheus
 (so we always get the same values for workloads requirements, etc).
 If applications have changed or one changed way how to calculate any resource requirements, or nodes
@@ -91,7 +95,7 @@ capacities have changed (hp enabled, less RAM or similar) one should perform tun
 tune_stage(ClusterInfoLoader.get_instance().get_workloads_names())
 ```
 
-On stdout You will be given after 20 minutes new timestamp. You should insert this timestamp in wca_scheduler
+After 20 minutes on stdout You will be given  new timestamp. You should insert this timestamp in wca_scheduler
 configuration file. Whats more You should update info about nodes and workloads in files
 nodes.json workloads.json.
 

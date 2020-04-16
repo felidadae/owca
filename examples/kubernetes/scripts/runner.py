@@ -492,7 +492,6 @@ def modify_configmap(regexes: List[(str)], experiment_index: int, experiment_roo
     switch_extender(OnOffState.Off)
 
 
-# -----------------------------------------------------------------------------------------------------
 def create_experiment_root_dir(path: str, overwrite: bool):
     if overwrite and os.path.isdir(path):
         shutil.rmtree(path)
@@ -503,17 +502,19 @@ def create_experiment_root_dir(path: str, overwrite: bool):
         raise Exception('experiment root directory already exists! {}'.format(path))
 
 
+# -----------------------------------------------------------------------------------------------------
 def experimentset_main(
             iterations: int = 10,
             experiment_root_dir: str = 'results/tmp',
             overwrite: bool = False):
+    """3 stage experiment: our classic way of benchmarking the wca_scheduler."""
     logging.debug("Running experimentset >>main<< with experiment_directory >>{}<<".format(experiment_root_dir))
     random.seed(datetime.now())
     create_experiment_root_dir(experiment_root_dir, overwrite)
 
     for i in range(iterations):
         iterations, workloads, utilization = random_with_total_utilization_specified(
-            cpu_limit=(0.25, 0.46), mem_limit=(0.81, 0.9),
+            cpu_limit=(0.25, 0.46), mem_limit=(0.81, 0.9),  # total cluster cpu/mem usage
             nodes_capacities=ClusterInfoLoader.get_instance().get_nodes(), workloads_set=ClusterInfoLoader.get_instance().get_workloads())
         with open(os.path.join(experiment_root_dir, 'choosen_workloads_utilization.{}.txt'.format(i)), 'a') as fref:
             fref.write(str(utilization))
@@ -529,7 +530,7 @@ def experimentset_main(
 
 
 def experimentset_single_workload_at_once(
-            experiment_root_dir: str ='results/tmp',
+            experiment_root_dir: str = 'results/tmp',
             overwrite: bool = False,
             workloads_set: Optional[List[str]] = None):
 
@@ -538,6 +539,8 @@ def experimentset_single_workload_at_once(
     random.seed(datetime.now())
     create_experiment_root_dir(experiment_root_dir, overwrite)
 
+    # Experiment params, could be passed 
+    run_mode: RunMode = RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES,
     workloads = [
         'stress-stream-medium',
         'memcached-mutilate-medium',
@@ -552,7 +555,7 @@ def experimentset_single_workload_at_once(
 
     for i, workload in enumerate(workloads):
         single_step1workload_experiment(
-            run_mode = RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES,
+             run_mode = RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES,
              experiment_id=str(i),
              workload=workload,
              count_per_node_list=count_per_node_list[workload],

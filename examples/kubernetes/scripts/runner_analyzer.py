@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import pprint
 
-from runner import AEP_NODES, NODES_CAPACITIES
+from runner import ClusterInfoLoader
 import logging
 
 FORMAT = "%(asctime)-15s:%(levelname)s %(module)s %(message)s"
@@ -120,7 +120,7 @@ class Task:
     performance_metrics: Dict[str, float] = field(default_factory=lambda: {})
 
     def if_aep(self):
-        return self.node in AEP_NODES
+        return self.node in ClusterInfoLoader.get_instance().get_aep_nodes()
 
     def get_throughput(self, subvalue) -> Optional[float]:
         if Metric.TASK_THROUGHPUT in self.performance_metrics:
@@ -359,7 +359,8 @@ class StagesAnalyzer:
             tasks_summaries = calculate_task_summaries(tasks, workloads_baseline)
             tasks_summaries__per_stage.append(tasks_summaries)
             # ---
-            nodes_summaries = [self.stages[stage_index].nodes[node].to_dict(NODES_CAPACITIES) for node in self.get_all_nodes_in_stage(stage_index)]
+            nodes_capacities = ClusterInfoLoader.get_instance().get_nodes()
+            nodes_summaries = [self.stages[stage_index].nodes[node].to_dict(nodes_capacities) for node in self.get_all_nodes_in_stage(stage_index)]
             nodes_summaries = [s for s in nodes_summaries if list(s.keys())]
             node_summaries__per_stage.append(nodes_summaries)
 
@@ -725,6 +726,7 @@ def analyze_3stage_experiment(experiment_meta: ExperimentMeta):
 
 
 if __name__ == "__main__":
+    ClusterInfoLoader.build_singleton()
 
     experiments_meta = [
         ExperimentMeta(
@@ -854,15 +856,15 @@ if __name__ == "__main__":
             experiment_baseline_index=0,),
 
         ExperimentMeta(
-            data_path='results/2020-04-14__stepping_single_workloads', 
+            data_path='results/2020-04-15__stepping_single_workloads', 
             title='Stepping workloads',
-            description='4 workloads, one to max',
+            description='3 workloads, one to max',
             params={'instances_count': 'up to max', 'workloads_count': '4', 'stabilize_phase_length [min]': [20]},
             changelog='better resolution for the workloads (if only possible to run on pmem, run there)',
             bugs='',
             experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
             experiment_baseline_index=0,
-            commit_hash='a47a0d669',
+            commit_hash='35a1216a516b',)
     ]
 
     # copy data to summary dir with README
@@ -879,12 +881,11 @@ if __name__ == "__main__":
 
     # for each experiment
     for iem, experiment_meta in enumerate(experiments_meta):
+
+        # Run only for last experiment
         if iem < len(experiments_meta) - 1:
             logging.debug('Skipping experiment {}'.format(experiment_meta.data_path))
             continue
-
-        # if experiment_meta.data_path != 'results/2020-03-26__score2_pepe_limited':
-        #     continue
 
         analyze_3stage_experiment(experiment_meta)
         copyfile(os.path.join(experiment_meta.data_path, 'runner_analyzer', 'results.txt'),
