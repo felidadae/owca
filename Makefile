@@ -57,15 +57,19 @@ check_outdated:
 	$(call execute_in_venv, pip list --outdated | tee /dev/stderr | if [[ $$(wc -l) != 0 ]]; then echo "WARNING! Some of packageges are outdated. Consider updating the dependencies."; fi)
 
 unit:
-	@echo Running unit tests.
+	@echo "Running unit tests (not ssl and not long)."
+	$(call execute_in_venv, env PYTHONPATH=.:examples/workloads/wrapper pytest --cov-report term-missing --cov=wca tests --ignore=tests/e2e/test_wca_metrics.py -m "not long and not ssl")
+
+unit_not_long:
+	@echo "Running unit tests (not long)."
+	$(call execute_in_venv, env PYTHONPATH=.:examples/workloads/wrapper pytest --cov-report term-missing --cov=wca tests --ignore=tests/e2e/test_wca_metrics.py -m "not long")
+
+unit_all:
+	@echo "Running unit tests (all)."
 	$(call execute_in_venv, env PYTHONPATH=.:examples/workloads/wrapper pytest --cov-report term-missing --cov=wca tests --ignore=tests/e2e/test_wca_metrics.py)
 
-unit_no_ssl:
-	@echo Running unit tests.
-	$(call execute_in_venv, env PYTHONPATH=.:examples/workloads/wrapper pytest --cov-report term-missing --cov=wca tests --ignore=tests/e2e/test_wca_metrics.py --ignore=tests/ssl/test_ssl.py)
-
 junit:
-	@echo Running unit tests.
+	@echo "Running unit tests."
 	$(call execute_in_venv, env PYTHONPATH=.:examples/workloads/wrapper pytest --cov-report term-missing --cov=wca tests --junitxml=unit_results.xml -vvv -s --ignore=tests/e2e/test_wca_metrics.py)
 
 wca_package_in_docker: DOCKER_OPTIONS ?=

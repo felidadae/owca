@@ -1,0 +1,6 @@
+runner: !MeasurementRunner
+  interval: 5.0
+  node: !StaticNode
+    tasks: []
+    # Will look for tasks in /sys/fs/cgroup/cpu/docker/[task_ids]
+    directory: docker

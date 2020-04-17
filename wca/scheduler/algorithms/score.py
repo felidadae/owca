@@ -17,9 +17,9 @@ from typing import Tuple, Optional, List, Dict
 from wca.logger import TRACE
 from wca.scheduler.algorithms import RescheduleResult
 from wca.scheduler.algorithms.base import (
-        QueryDataProviderInfo, DEFAULT_DIMENSIONS, subtract_resources,
-        sum_resources, calculate_read_write_ratio, enough_resources_on_node,
-        get_nodes_used_resources)
+    QueryDataProviderInfo, DEFAULT_DIMENSIONS, subtract_resources,
+    sum_resources, calculate_read_write_ratio, enough_resources_on_node,
+    get_nodes_used_resources)
 from wca.scheduler.algorithms.dram_hit_ratio_provision import DramHitRatioProvision
 from wca.scheduler.algorithms.fit import Fit
 from wca.scheduler.data_providers import AppsOnNode
@@ -27,7 +27,6 @@ from wca.scheduler.data_providers.score import ScoreDataProvider, NodeType, Apps
 from wca.scheduler.types import (AppName, NodeName, ResourceType, TaskName)
 
 log = logging.getLogger(__name__)
-
 
 MIN_APP_PROFILES = 2
 
@@ -38,7 +37,6 @@ ConsiderApps = Dict[AppName, List[TaskName]]
 def _get_app_node_type(
         apps_profile: AppsProfile, app_name: AppName,
         score_target: Optional[float] = None) -> NodeType:
-
     if len(apps_profile) > MIN_APP_PROFILES:
         if score_target:
             if app_name in apps_profile and apps_profile[app_name] >= score_target:
@@ -168,13 +166,13 @@ class Score(Fit, DramHitRatioProvision):
         apps_spec = self.data_provider.get_apps_requested_resources(self.dimensions)
 
         apps_on_pmem_nodes = {
-                node: apps
-                for node, apps in apps_on_node.items()
-                if self.nodes_type[node] == NodeType.PMEM
-                }
+            node: apps
+            for node, apps in apps_on_node.items()
+            if self.nodes_type[node] == NodeType.PMEM
+        }
 
         pmem_nodes_used_resources = get_nodes_used_resources(
-                self.dimensions, apps_on_pmem_nodes, apps_spec)
+            self.dimensions, apps_on_pmem_nodes, apps_spec)
 
         # Free PMEM nodes resources.
         for app in reschedule:
@@ -182,11 +180,10 @@ class Score(Fit, DramHitRatioProvision):
 
                 if node in pmem_nodes_used_resources:
                     for task in reschedule[app][node]:
-
-                        pmem_nodes_used_resources[node] =\
+                        pmem_nodes_used_resources[node] = \
                             subtract_resources(
-                                    pmem_nodes_used_resources[node],
-                                    apps_spec[app])
+                                pmem_nodes_used_resources[node],
+                                apps_spec[app])
 
                         result.append(task)
                 else:
@@ -205,14 +202,14 @@ class Score(Fit, DramHitRatioProvision):
 
         nodes_capacities = self.data_provider.get_nodes_capacities(self.dimensions)
         pmem_nodes_capacities = {
-                node: capacities
-                for node, capacities in nodes_capacities.items()
-                if self.nodes_type[node] == NodeType.PMEM
+            node: capacities
+            for node, capacities in nodes_capacities.items()
+            if self.nodes_type[node] == NodeType.PMEM
         }
 
         pmem_nodes_membw_ratio = {
-                node: calculate_read_write_ratio(capacities)
-                for node, capacities in pmem_nodes_capacities.items()
+            node: calculate_read_write_ratio(capacities)
+            for node, capacities in pmem_nodes_capacities.items()
         }
 
         for app, _ in sorted_apps_profile:
@@ -222,12 +219,12 @@ class Score(Fit, DramHitRatioProvision):
                     for node in pmem_nodes_used_resources:
                         # If app fit on add task to reschedule and continue with next.
                         requested_and_used = sum_resources(
-                                pmem_nodes_used_resources[node], apps_spec[app])
+                            pmem_nodes_used_resources[node], apps_spec[app])
 
                         enough_resources, _, _ = enough_resources_on_node(
-                                nodes_capacities[node],
-                                requested_and_used,
-                                pmem_nodes_membw_ratio[node])
+                            nodes_capacities[node],
+                            requested_and_used,
+                            pmem_nodes_membw_ratio[node])
 
                         if enough_resources:
                             can_be_rescheduled = True

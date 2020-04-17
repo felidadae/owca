@@ -137,6 +137,7 @@ Platform's metrics
 	"platform_dram_total_bytes_per_second", "TBD", "no (uncore_event_names: platform_cas_count_reads, platform_cas_count_writes and set enable_derived_metrics)", "numeric",  "gauge", "derived from perf uncore", "socket, pmu_type"
 	"platform_dram_hit_ratio", "TBD", "no (uncore_event_names: platform_cas_count_reads, platform_cas_count_writes and set enable_derived_metrics)", "numeric",  "gauge", "derived from perf uncore", "socket, pmu_type"
 	"platform_upi_bandwidth_bytes_per_second", "TBD", "no (uncore_event_names: platform_upi_txl_flits, platform_upi_rxl_flits and set enable_derived_metrics)", "numeric",  "counter", "derived from perf uncore", "socket, pmu_type"
+	"platform_scaling_uncore_factor", "Perf uncore subsystem metric scaling factor(value 1.0 is the best, meaning that there is no scaling at all for any uncore metric)", "auto, (depending on uncore_event_names)", "numeric",  "gauge", "perf subsystem with dynamic PMUs (uncore)", "socket, pmu_type"
 	"platform_last_seen", "Timestamp the information about platform was last collected", "yes", "timestamp",  "counter", "internal", ""
 	"platform_capacity_per_nvdimm_bytes", "Platform capacity per NVDIMM", "yes", "bytes",  "gauge", "internal", ""
 	"platform_avg_power_per_nvdimm_watts", "Average power used by NVDIMM on the platform", "yes", "watts",  "gauge", "internal", ""

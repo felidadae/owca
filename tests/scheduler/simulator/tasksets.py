@@ -17,7 +17,6 @@ from wca.scheduler.cluster_simulator import Task
 from wca.scheduler.types import CPU, MEM, WSS, MEMBW_READ, \
     MEMBW_WRITE
 
-
 TASKS_3TYPES = [
     Task('cpu', Resources({CPU: 10, MEM: 50, MEMBW_READ: 2, MEMBW_WRITE: 1, WSS: 1})),
     Task('mem', Resources({CPU: 1, MEM: 100, MEMBW_READ: 1, MEMBW_WRITE: 0, WSS: 1})),
@@ -38,5 +37,3 @@ TASKS_6TYPES = [
     Task('mbw', Resources({CPU: 1, MEM: 1, MEMBW_READ: 10, MEMBW_WRITE: 5, WSS: 1})),
     Task('mbw2', Resources({CPU: 1, MEM: 1, MEMBW_READ: 7, MEMBW_WRITE: 1, WSS: 1})),
 ]
-
-

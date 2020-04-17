@@ -63,7 +63,20 @@ def _parse_online_cpus_string(raw_string) -> List[int]:
     return parsed_cpus_info
 
 
-def _parse_event_groups(file, event_names, include_scaling_info) -> Measurements:
+def _get_measurements_for_scaling_info(scaling_factors):
+    # we add 2 non-standard metrics based on unpacked values,
+    # we need to collect scaling factors here
+    measurements = {}
+    if scaling_factors:
+        measurements[MetricName.TASK_SCALING_FACTOR_AVG] = statistics.mean(scaling_factors)
+        measurements[MetricName.TASK_SCALING_FACTOR_MAX] = max(scaling_factors)
+    else:
+        measurements[MetricName.TASK_SCALING_FACTOR_AVG] = 1.0
+        measurements[MetricName.TASK_SCALING_FACTOR_MAX] = 1.0
+    return measurements
+
+
+def _parse_event_groups(file, event_names, get_scaling_info=None) -> Measurements:
     """Reads event values from the event file (For single cpu)
     Returns all declared metrics in "event_names".
     """
@@ -89,15 +102,8 @@ def _parse_event_groups(file, event_names, include_scaling_info) -> Measurements
         # id is unused, but we still need to read the whole struct
         struct.unpack('q', file.read(8))[0]
 
-    # we add 2 non-standard metrics based on unpacked values,
-    # we need to collect scaling factors here
-    if include_scaling_info:
-        if scaling_factors:
-            measurements[MetricName.TASK_SCALING_FACTOR_AVG] = statistics.mean(scaling_factors)
-            measurements[MetricName.TASK_SCALING_FACTOR_MAX] = max(scaling_factors)
-        else:
-            measurements[MetricName.TASK_SCALING_FACTOR_AVG] = 1.0
-            measurements[MetricName.TASK_SCALING_FACTOR_MAX] = 1.0
+        if get_scaling_info:
+            measurements.update(get_scaling_info(scaling_factors))
 
     return measurements
 
@@ -361,7 +367,8 @@ class PerfCounters:
 
         for cpu, event_leader_file in self._group_event_leader_files.items():
             per_cpu = _parse_event_groups(
-                event_leader_file, self._event_names, include_scaling_info=True)
+                event_leader_file, self._event_names,
+                get_scaling_info=_get_measurements_for_scaling_info)
             for metric_name, metric_value in per_cpu.items():
                 # not aggregated  version
                 per_metric_per_cpu.setdefault(metric_name, {})

@@ -13,13 +13,12 @@
 # limitations under the License.
 from typing import Dict, List, Callable
 
+from tests.scheduler.simulator.data_provider import ClusterSimulatorDataProvider
 from wca.scheduler.algorithms import Algorithm
 from wca.scheduler.algorithms.fit import Fit
 from wca.scheduler.algorithms.least_used_bar import LeastUsedBAR
 from wca.scheduler.cluster_simulator import ClusterSimulator
 from wca.scheduler.cluster_simulator import Node, Resources, Task
-from wca.scheduler.data_providers.cluster_simulator_data_provider import (
-    ClusterSimulatorDataProvider)
 from wca.scheduler.types import CPU, MEM, MEMBW_READ, MEMBW_WRITE
 
 

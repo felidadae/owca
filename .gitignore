@@ -34,7 +34,6 @@ apiserver-kubelet-client.key
 allocations.prom
 wca-bandit.html
 env
-/wca/scheduler/simulator_experiments/experiments_results/
-env
 Pipfile
 /experiments_results
+/tests/scheduler/experiments/experiments_results/

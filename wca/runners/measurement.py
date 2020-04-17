@@ -14,7 +14,7 @@
 
 import logging
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import re
 import resource
@@ -177,7 +177,7 @@ class MeasurementRunner(Runner):
             event_names: List[str] = [],
             perf_aggregate_cpus: bool = True,
             enable_derived_metrics: bool = False,
-            uncore_event_names: List[str] = [],
+            uncore_event_names: List[Union[List[str], str]] = [],
             task_label_generators: Optional[Dict[str, TaskLabelGenerator]] = None,
             allocation_configuration: Optional[AllocationConfiguration] = None,
             wss_reset_interval: int = 0,
@@ -236,6 +236,7 @@ class MeasurementRunner(Runner):
 
         self._initialize_rdt_callback = None
         self._iterate_body_callback = None
+        self._cached_bandwidth = None
 
     def _set_initialize_rdt_callback(self, func):
         self._initialize_rdt_callback = func
@@ -445,44 +446,47 @@ class MeasurementRunner(Runner):
     def _init_uncore_pmu_events(self, enable_derived_metrics, uncore_events,
                                 platform: platforms.Platform):
         _enable_perf_uncore = len(uncore_events) > 0
-        self._uncore_pmu = None
-        self._uncore_get_measurements = lambda: {}
+        self._uncore_pmu = []
+        self._uncore_get_measurements = []
         if not _enable_perf_uncore:
             return
-        pmu_events = {}
-        imc_events, cha_events, upi_events = self._prepare_events(uncore_events)
-        try:
-            # Cpus and events for perf uncore imc
-            cpus_imc, pmu_events_imc = _discover_pmu_uncore_config(
-                imc_events, 'uncore_imc_')
-            pmu_events.update(pmu_events_imc)
-            # Cpus and events for perf uncore upi
-            cpus_upi, pmu_events_upi = _discover_pmu_uncore_config(
-                upi_events, 'uncore_upi_')
-            pmu_events.update(pmu_events_upi)
-            # Cpus and events for perf uncore cha
-            cpus_cha, pmu_events_cha = _discover_pmu_uncore_config(
-                cha_events, 'uncore_cha_')
-            pmu_events.update(pmu_events_cha)
-            cpus = list(set(cpus_imc + cpus_upi))
-        except PMUNotAvailable:
-            log.error('PMU metrics requested but PMU not available!')
-            raise
+        if type(uncore_events[0]) == str:
+            uncore_events = [uncore_events]
+        for event_groups in uncore_events:
+            pmu_events = {}
+            imc_events, cha_events, upi_events = self._prepare_events(event_groups)
+            try:
+                # Cpus and events for perf uncore imc
+                cpus_imc, pmu_events_imc = _discover_pmu_uncore_config(
+                    imc_events, 'uncore_imc_')
+                pmu_events.update(pmu_events_imc)
+                # Cpus and events for perf uncore upi
+                cpus_upi, pmu_events_upi = _discover_pmu_uncore_config(
+                    upi_events, 'uncore_upi_')
+                pmu_events.update(pmu_events_upi)
+                # Cpus and events for perf uncore cha
+                cpus_cha, pmu_events_cha = _discover_pmu_uncore_config(
+                    cha_events, 'uncore_cha_')
+                pmu_events.update(pmu_events_cha)
+                cpus = list(set(cpus_imc + cpus_upi))
+            except PMUNotAvailable:
+                log.error('PMU metrics requested but PMU not available!')
+                raise
 
-        # Prepare uncore object
-        self._uncore_pmu = UncorePerfCounters(
-            cpus=cpus,
-            pmu_events=pmu_events,
-            platform=platform,
-        )
+            # Prepare uncore object
+            uncore_pmu = UncorePerfCounters(
+                cpus=cpus,
+                pmu_events=pmu_events,
+                platform=platform)
+            self._uncore_pmu.append(uncore_pmu)
 
-        # Wrap with derived..
-        if enable_derived_metrics:
-            self._uncore_derived_metrics = UncoreDerivedMetricsGenerator(
-                self._uncore_pmu.get_measurements)
-            self._uncore_get_measurements = self._uncore_derived_metrics.get_measurements
-        else:
-            self._uncore_get_measurements = self._uncore_pmu.get_measurements
+            # Wrap with derived..
+            if enable_derived_metrics:
+                derived_metrics_generator = UncoreDerivedMetricsGenerator(
+                    uncore_pmu.get_measurements)
+                self._uncore_get_measurements.append(derived_metrics_generator.get_measurements)
+            else:
+                self._uncore_get_measurements.append(uncore_pmu.get_measurements)
 
     def _iterate(self):
         iteration_start = time.time()
@@ -505,8 +509,12 @@ class MeasurementRunner(Runner):
              in containers.items()]))
 
         # @TODO why not in platform module?
-        extra_platform_measurements = self._uncore_get_measurements()
-        extra_platform_measurements.update(get_bandwidth())
+        extra_platform_measurements = {}
+        for uncore_get_measurements in self._uncore_get_measurements:
+            extra_platform_measurements.update(uncore_get_measurements())
+        if self._cached_bandwidth is None:
+            self._cached_bandwidth = get_bandwidth()
+        extra_platform_measurements.update(self._cached_bandwidth)
 
         # Platform information
         platform, platform_metrics, platform_labels = platforms.collect_platform_information(

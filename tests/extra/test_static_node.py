@@ -13,9 +13,9 @@
 # limitations under the License.
 from unittest.mock import Mock, patch
 
+from tests.testing import mock_open
 from wca.extra.static_node import StaticNode
 from wca.nodes import Task
-from tests.testing import mock_open
 
 
 @patch('os.path.exists', Mock(return_value=True))
@@ -51,3 +51,21 @@ def test_static_node_with_labels_and_resources():
         name='task1', task_id='task1', cgroup_path='/task1',
         labels={'foo': 'bar'}, resources={'cpu': 1}, subcgroups_paths=[]
     )]
+
+
+@patch('os.path.exists', Mock(return_value=True))
+@patch('os.path.isdir', Mock(return_value=True))
+@patch('os.listdir', Mock(return_value=['task2']))
+def test_static_node_with_directory():
+    static_node = StaticNode(
+        tasks=['task1'],
+        directory='docker'  # doesn't matter because we're patch listdir
+    )
+    got_tasks = static_node.get_tasks()
+    # Warning only the task_id checked (cgroup_path and name are ignored for __eq__)
+    assert got_tasks == [
+        Task(name='task1', task_id='task1', cgroup_path='/task1',
+             subcgroups_paths=[], labels={}, resources={}),
+        Task(name='docker/task2', task_id='docker/task2', cgroup_path='/docker/task2',
+             subcgroups_paths=[], labels={}, resources={})
+    ]

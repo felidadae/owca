@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import csv
 import datetime
 import itertools
 import logging
@@ -104,6 +105,7 @@ def get_total_capacity_and_demand(
 
 
 def generate_subexperiment_report(
+        simulator_args_text,
         exp_name: str,
         exp_dir: str,
         subexp_name: str,
@@ -147,8 +149,9 @@ def generate_subexperiment_report(
         # Check consistency of iterations data and data provider.
         if total_apps_count != total_tasks_dict:
             fref.write(
-                "!Scheduled tasks different from total_apps_count from query! total_apps_count={}\n"
-                    .format(dict(total_apps_count)))
+                "!Scheduled tasks different from "
+                "total_apps_count from query! "
+                "total_apps_count={}\n".format(dict(total_apps_count)))
             assert False, 'should not happen!'
 
         scheduled_tasks = sum(total_tasks_dict.values())
@@ -190,10 +193,16 @@ def generate_subexperiment_report(
         fref.write("Start of experiment: {}\n".format(
             datetime.datetime.strftime(datetime.datetime.now(), '%Y%m%d_%H%M')))
         fref.write("Iterations: {}\n".format(len(iterations_data)))
+        app_profiles = algorithm.data_provider.get_apps_profile()
+        app_profiles = list(sorted(app_profiles.items(), key=lambda x: x[1], reverse=True))
+        fref.write(
+            "Scores (app_profiles): {}\n".format(app_profiles)
+        )
 
     # ----------------------- Stats --------------------------------------
 
     stats = {}
+    stats['SIM'] = simulator_args_text
     stats['TASKS'] = str(task_gen)  # sum(total_tasks_dict.values())
     stats['NODES'] = '%s(%s)' % (total_nodes, nodes_info)
     stats['ALGO'] = str(algorithm)
@@ -237,7 +246,6 @@ def generate_charts(exp_name, exp_dir, subexp_name, extra_metrics, iterations_da
         import matplotlib.pyplot as plt
         import seaborn as sns
         import pandas as pd
-        import numpy as np
     except ImportError:
         # No installed packages required for report generation.
         log.warning(
@@ -303,6 +311,20 @@ def generate_charts(exp_name, exp_dir, subexp_name, extra_metrics, iterations_da
 
 
 def generate_experiment_report(stats_dicts, exp_dir):
+    if not stats_dicts:
+        return
+
+    # Save as csv.
+    # Group by keys.
+    def by_keys(d): return tuple(d.keys())
+    stats_dicts_sorted = list(sorted(stats_dicts, key=by_keys))
+    for i, (keys, rows) in enumerate(itertools.groupby(stats_dicts_sorted, key=by_keys)):
+        with open(os.path.join(exp_dir, 'summary_%i.csv' % i), 'w') as f:
+            w = csv.DictWriter(f, keys, lineterminator='\n')
+            w.writeheader()
+            w.writerows(rows)
+
+    # Format with pandas
     try:
         import pandas as pd
     except ImportError:
@@ -328,9 +350,11 @@ def generate_experiment_report(stats_dicts, exp_dir):
         'util_var': '{:,.0%}'.format,
         'utilization%': '{:,.0f}%'.format,
     })
+    print(output, file=open(os.path.join(exp_dir, 'summary.txt'), 'w'))
     print(output)
     df.reset_index()
 
+    # Format with pivottablejs
     def p(val, aggr):
         _pivot_ui(
             df,

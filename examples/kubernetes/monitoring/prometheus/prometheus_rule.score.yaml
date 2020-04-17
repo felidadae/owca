@@ -9,35 +9,6 @@ spec:
   groups:
 
   - name: score
-
-    # ---- For nodes -----------------------
-    # New metrics with following dim=[cpu, mem, wss, mbw_write, mbw_read]
-    # end following units: cpu, GB, GB, GBs, GBs
-    # node_capacity 
-    #   -> profile_node_by_cpu with memory=[1lm, 2lm]
-    #       -> profile_nodes_by_cpu_2lm (only for 2LM)
-    # 
-    #
-    # ---- For applications ------------
-    # app_count
-    # low level:
-    #
-    # WARNING all level metrics take an average of 10m for tasks
-    # app_cpu, app_cpu_usage -> app_cpu_util
-    # app_mem, app_mem_usage -> app_mem_util
-    # app_req with dim=[cpu, mem, wss, mbw_write, mbw_read]
-    # app_mbw, app_mbw_rw, app_mbw_read, app_mbw_write
-    #   -> app_req
-    #     -> profile_app_by_cpu
-    #
-    # ---- Profiles -----------------------
-    # with index=[mem_density, mem_intesity_read, mem_intesity_write, mem_utilization]
-    #  profile_nodes_by_cpu
-    #  profile_app_by_cpu
-    #    -> profile_app_by_cpu_norm 
-
-
-
     rules:
     # ============================ node ===================================
     # cpu
@@ -263,26 +234,9 @@ spec:
     - record: profile_app_2lm_score_sum # higher is better for 2lm
       expr: profile_app_2lm_score_positive - on(app) group_left() profile_app_2lm_score_negative_sum
 
-    - record: drozdzan_test # higher is better for 2lm
-      expr: profile_app_by_cpu
-
     # ======================== SCORE2 calculation ==========================
-    - record: profile_app_2lm_score2_positive # higher is better for 2lm
-      expr: profile_app_by_mem_norm{index="cpu_density"}
-
-    - record: profile_app_2lm_score2_negative_sum # lower is better for 2lm
-      expr: sum(profile_app_by_mem_norm{index=~"mem_intensity_read|mem_intensity_write|mem_utilization"}) by (app)
-
     - record: profile_app_2lm_score2_negative_max # lower is better for 2lm
-      expr: max(profile_app_by_mem_norm{index=~"mem_intensity_read|mem_intensity_write|mem_utilization"}) by (app)
-
-    - record: profile_app_2lm_score2_max # higher is better for 2lm
-      expr: profile_app_2lm_score2_positive - on(app) group_left() profile_app_2lm_score2_negative_max
-    - record: profile_app_2lm_score2_sum # higher is better for 2lm
-      expr: profile_app_2lm_score2_positive - on(app) group_left() profile_app_2lm_score2_negative_sum
-
-    - record: drozdzan_test # higher is better for 2lm
-      expr: profile_app_by_mem
+      expr: -1 * max(profile_app_by_mem_norm{index=~"cpu_density|mem_intensity_read|mem_intensity_write|mem_utilization"}) by (app)
 
   - name: cluster-score-data-provider
     rules:
@@ -302,4 +256,4 @@ spec:
           nodetype: unknown
       
       - record: app_profile
-        expr: 'profile_app_2lm_score_max'
+        expr: 'profile_app_2lm_score2_negative_max'
