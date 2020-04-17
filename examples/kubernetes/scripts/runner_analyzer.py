@@ -250,14 +250,14 @@ def calculate_task_summaries(tasks: List[Task], workloads_baseline: Dict[str, WS
             # "TB_max": workloads_baseline[workload].throughput._max,
             # "B_count": workloads_baseline[workload].count,
             # ----
-            # "L_nice[%]": latency / workloads_baseline[workload].latency._max * 100,
-            # "T_nice[%]": throughput / workloads_baseline[workload].throughput._min * 100,
+            "L_nice[%]": latency / workloads_baseline[workload].latency._max * 100,
+            "T_nice[%]": throughput / workloads_baseline[workload].throughput._min * 100,
             # # ----
-            # "L_avg[%]": latency / workloads_baseline[workload].latency._avg * 100,
-            # "T_avg[%]": throughput / workloads_baseline[workload].throughput._avg * 100,
+            "L_avg[%]": latency / workloads_baseline[workload].latency._avg * 100,
+            "T_avg[%]": throughput / workloads_baseline[workload].throughput._avg * 100,
             # # ----
-            # "L_strict[%]": latency / workloads_baseline[workload].latency._min * 100,
-            # "T_strict[%]": throughput / workloads_baseline[workload].throughput._max * 100,
+            "L_strict[%]": latency / workloads_baseline[workload].latency._min * 100,
+            "T_strict[%]": throughput / workloads_baseline[workload].throughput._max * 100,
             # ----
             "task": task.name, "app": task.workload_name, "node": task.node
         }
@@ -270,9 +270,9 @@ def calculate_task_summaries(tasks: List[Task], workloads_baseline: Dict[str, WS
                 task_summary[key] = round(val, 3)
 
         ts = task_summary
-        # ts["pass_nice"] = ts['T_nice[%]'] > 80 and ts['L_nice[%]'] < 150
-        # ts["pass_avg"] = ts['T_avg[%]'] > 80 and ts['L_avg[%]'] < 150
-        # ts["pass_strict"] = ts['T_strict[%]'] > 80 and ts['L_strict[%]'] < 150
+        ts["pass_nice"] = ts['T_nice[%]'] > 80 and ts['L_nice[%]'] < 150
+        ts["pass_avg"] = ts['T_avg[%]'] > 80 and ts['L_avg[%]'] < 150
+        ts["pass_strict"] = ts['T_strict[%]'] > 80 and ts['L_strict[%]'] < 150
 
         tasks_summaries.append(ts)
     return tasks_summaries
@@ -322,8 +322,12 @@ class StagesAnalyzer:
             throughputs_list = [task.get_throughput('avg') for task in tasks if task.get_throughput('avg') is not None]
             latencies_list =  [task.get_latency('avg') for task in tasks if task.get_latency('avg') is not None]
 
-            t_max, t_min, t_avg, t_stdev = max(throughputs_list), min(throughputs_list), statistics.mean(throughputs_list), statistics.stdev(throughputs_list)
-            l_max, l_min, l_avg, l_stdev = max(latencies_list), min(latencies_list), statistics.mean(latencies_list), statistics.stdev(latencies_list)
+            if len(throughputs_list) == 1:
+                t_max, t_min, t_avg, t_stdev = [throughputs_list[0]] * 4
+                l_max, l_min, l_avg, l_stdev = [latencies_list[0]] * 4
+            else:
+                t_max, t_min, t_avg, t_stdev = max(throughputs_list), min(throughputs_list), statistics.mean(throughputs_list), statistics.stdev(throughputs_list)
+                l_max, l_min, l_avg, l_stdev = max(latencies_list), min(latencies_list), statistics.mean(latencies_list), statistics.stdev(latencies_list)
 
             workloads_wstats[workload] = WStat(latency=Stat(l_avg, l_min, l_max, l_stdev), throughput=Stat(t_avg, t_min, t_max, t_stdev), count=len(tasks), name=workload)
         return workloads_wstats
@@ -465,6 +469,7 @@ class TxtStagesExporter:
         self._fref.write('\n')
 
     def export_to_txt(self):
+        import ipdb; ipdb.set_trace()
         logging.debug("Saving results to {}".format(self.export_file_path))
 
         runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path, 'runner_analyzer')
@@ -721,8 +726,8 @@ def analyze_3stage_experiment(experiment_meta: ExperimentMeta):
             raise
             continue
 
-        # logging.error("@TODO remove this break")
-        # break
+        logging.error("@TODO remove this break")
+        break
 
 
 if __name__ == "__main__":
@@ -864,7 +869,18 @@ if __name__ == "__main__":
             bugs='',
             experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
             experiment_baseline_index=0,
-            commit_hash='35a1216a516b',)
+            commit_hash='35a1216a516b',),
+
+        ExperimentMeta(
+            data_path='results/2020-04-16__score2_promrules', 
+            title='Score2',
+            description='Damian first run on cluster.',
+            params={},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.ThreeStageStandardRun,
+            experiment_baseline_index=0,
+            commit_hash='unknown',)
     ]
 
     # copy data to summary dir with README
