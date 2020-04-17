@@ -126,7 +126,7 @@ spec:
     - record: app_cpu
       expr: avg(max_over_time(task_requested_cpus[10m])) by (app)
     - record: app_cpu_usage
-      expr: ceil(avg(rate(task_cpu_usage_seconds[10m])) by (app))
+      expr: avg(rate(task_cpu_usage_seconds[10m])) by (app)
     - record: app_cpu_util
       expr: app_cpu_usage/app_cpu
 
@@ -139,17 +139,21 @@ spec:
 
     # ---- mem bandwidth [gb/s]
     - record: app_mbw
+      # not used
       expr: max(irate(task_mem_bandwidth_bytes[10m])) by (app) / 1e9
     # ---- r/w and read/write bandwidth
     - record: app_mbw_rw
+      # not used
       expr: avg(task_memory_rw_ratio) by (app)
     - record: app_mbw_read
-      expr: ceil(app_mbw * app_mbw_rw)
+      # expr: ceil(app_mbw * app_mbw_rw)
+      expr: sum (task_up) by (app, nodename) * on(nodename) group_right(app) sum(max_over_time(platform_dram_reads_bytes_per_second[1m])) by(nodename) / 1e9
     - record: app_mbw_write
-      expr: ceil(app_mbw * (1-app_mbw_rw))
+      # expr: ceil(app_mbw * (1-app_mbw_rw))
+      expr: sum (task_up) by (app, nodename) * on(nodename) group_right(app) sum(max_over_time(platform_dram_writes_bytes_per_second[1m])) by(nodename) / 1e9
     # --- wss [gb]
     - record: app_wss   # gb collected over 15s
-      expr: ceil((avg(avg_over_time(task_wss_referenced_bytes[10m])) by (app)) / 1e9)
+      expr: (avg(avg_over_time(task_wss_referenced_bytes[10m])) by (app)) / 1e9
 
     # just a mapping app_req to use labels: cpu, mem, mbw_read, mbw_write, wss
     - record: app_req
