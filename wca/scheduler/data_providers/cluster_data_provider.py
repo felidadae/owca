@@ -240,7 +240,7 @@ class ClusterDataProvider(DataProvider):
                 app = result['metric'].get('app')
                 value = float(result['value'][1])
                 if app:
-                    app_requested_resources[app][resource] = int(value)
+                    app_requested_resources[app][resource] = float(value)
 
         app_requested_resources = {k: dict(v) for k, v in app_requested_resources.items()}
         log.debug('Resources requested by apps: %r' % app_requested_resources)
