@@ -3,18 +3,12 @@
 		{"mem": 7, "cpu": 2, "membw_write": 2, "membw_read": 1, "wss": 7},
 	"stress-stream-medium":
 		{"mem": 13, "cpu": 2, "membw_write": 2, "membw_read": 1, "wss": 13},
-	"stress-stream-big":
-		{"mem": 13, "cpu": 4, "membw_write": 6, "membw_read": 2, "wss": 13},
 
 	"sysbench-memory-medium":
 		{"mem": 4, "cpu": 3, "membw_write": 9, "membw_read": 1, "wss": 3},
 	"sysbench-memory-small":
 		{"mem": 2, "cpu": 2, "membw_write": 4, "membw_read": 1, "wss": 2},
-	"sysbench-memory-big":
-		{"mem": 10, "cpu": 4, "membw_write": 17, "membw_read": 1, "wss": 9},
 
-	"redis-memtier-small":
-		{"mem": 10, "cpu": 3, "membw_write": 2, "membw_read": 2, "wss": 1},
 	"redis-memtier-medium":
 		{"mem": 11, "cpu": 3, "membw_write": 1, "membw_read": 2, "wss": 1},
 	"redis-memtier-big":
@@ -22,18 +16,9 @@
 	"redis-memtier-big-wss":
 		{"mem": 75, "cpu": 3, "membw_write": 3, "membw_read": 2, "wss": 1},
 
-	"memcached-mutilate-small":
-		{"mem": 26, "cpu": 10, "membw_write": 2, "membw_read": 2, "wss": 5},
-	"memcached-mutilate-medium":
-		{"mem": 51, "cpu": 10, "membw_write": 2, "membw_read": 3, "wss": 8},
 	"memcached-mutilate-big":
 		{"mem": 91, "cpu": 10, "membw_write": 3, "membw_read": 3, "wss": 3},
 	"memcached-mutilate-big-wss":
-		{"mem": 91, "cpu": 10, "membw_write": 2, "membw_read": 3, "wss": 10},
+		{"mem": 91, "cpu": 10, "membw_write": 2, "membw_read": 3, "wss": 10}
 
-	"specjbb-preset-big-120":
-		{"mem": 126, "cpu": 12, "membw_write": 1, "membw_read": 3, "wss": 11},
-		
-	"mysql-hammerdb-small":
-		{"mem": 52, "cpu": 4, "membw_write": 1, "membw_read": 1, "wss": 1}
 }
