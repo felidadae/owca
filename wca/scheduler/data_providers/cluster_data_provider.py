@@ -18,12 +18,12 @@ from dataclasses import dataclass, field
 from typing import Iterable, Dict, Optional, List, Tuple
 
 from wca.resources import _MEMORY_UNITS
-from wca.scheduler.data_providers import DataProvider
+from wca.scheduler.data_providers import DataProvider, AppsOnNode
 from wca.scheduler.kubeapi import Kubeapi
 from wca.scheduler.prometheus import Prometheus
 from wca.scheduler.types import (
         Resources, ResourceType, NodeName, AppName,
-        NodeCapacities, AppsCount, Apps)
+        NodeCapacities, AppsCount)
 
 log = logging.getLogger(__name__)
 
@@ -34,6 +34,7 @@ class Queries:
     MEMBW_CAPACITY_READ: str = 'sum(platform_nvdimm_read_bandwidth_bytes_per_second) by (nodename)'
     MEMBW_CAPACITY_WRITE: str =\
         'sum(platform_nvdimm_write_bandwidth_bytes_per_second) by (nodename)'
+    NODES_DRAM_HIT_RATIO: str = 'platform_dram_hit_ratio'
 
     NODE_CAPACITY_MEM_WSS: str =\
         'sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (nodename)'
@@ -169,6 +170,7 @@ class ClusterDataProvider(DataProvider):
                         node['status']['capacity']['memory']),
                     }
                 for node in kubeapi_nodes_data
+                if 'node-role.kubernetes.io/master' not in node['metadata']['labels']
         }
 
         nodes = node_capacities.keys()
@@ -193,12 +195,14 @@ class ClusterDataProvider(DataProvider):
 
         return node_capacities
 
-    def get_apps_counts(self) -> Tuple[Dict[NodeName, Apps], AppsCount]:
+    def get_apps_counts(self) -> Tuple[AppsOnNode, AppsCount]:
 
         unassigned_apps = defaultdict(int)
 
         nodes_data = list(self.kubeapi.request_kubeapi('/api/v1/nodes')['items'])
-        node_names = [node['metadata']['name']for node in nodes_data]
+        node_names = [
+            node['metadata']['name']for node in nodes_data
+            if 'node-role.kubernetes.io/master' not in node['metadata']['labels']]
 
         assigned_apps = {}
         for node_name in node_names:
@@ -237,7 +241,6 @@ class ClusterDataProvider(DataProvider):
 
     def get_apps_requested_resources(self, resources: Iterable[ResourceType]) \
             -> Dict[AppName, Resources]:
-
         app_requested_resources = defaultdict(lambda: defaultdict(float))
 
         for resource in resources:
@@ -251,5 +254,12 @@ class ClusterDataProvider(DataProvider):
 
         app_requested_resources = {k: dict(v) for k, v in app_requested_resources.items()}
         log.debug('Resources requested by apps: %r' % app_requested_resources)
-
         return app_requested_resources
+
+    def get_dram_hit_ratio(self) -> Dict[NodeName, float]:
+        query_result = self.prometheus.do_query(self.queries.NODES_DRAM_HIT_RATIO)
+        dram_hit_ratio_per_node = {}
+        for row in query_result:
+            dram_hit_ratio_per_node[row['metric']['nodename']] = float(row['value'][1])
+
+        return dram_hit_ratio_per_node

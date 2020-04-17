@@ -16,6 +16,8 @@ from typing import Dict, Iterable, Tuple
 
 from wca.scheduler.types import ResourceType, NodeName, Resources, AppName, AppsCount, Apps
 
+AppsOnNode = Dict[NodeName, Apps]
+
 
 class DataProvider(ABC):
     @abstractmethod
@@ -29,7 +31,7 @@ class DataProvider(ABC):
         pass
 
     @abstractmethod
-    def get_apps_counts(self) -> Tuple[Dict[NodeName, Apps], AppsCount]:
+    def get_apps_counts(self) -> Tuple[AppsOnNode, AppsCount]:
         """Return apps assigned to nodes and usassigned yet.
         e.g. {'node_0': {'memcached_small': 3, 'stress_ng': 5}}, {'memcached_big': 8}
         """
@@ -39,4 +41,9 @@ class DataProvider(ABC):
     def get_apps_requested_resources(self, resources: Iterable[ResourceType]) \
             -> Dict[AppName, Resources]:
         """Returns all apps definitions on the cluster"""
+        pass
+
+    @abstractmethod
+    def get_dram_hit_ratio(self) -> Dict[NodeName, float]:
+        """Returns dram hit ratio for each node"""
         pass

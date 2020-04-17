@@ -14,6 +14,7 @@
 
 from wca.config import register
 from wca.scheduler.algorithms.bar import BAR
+from wca.scheduler.algorithms.dram_hit_ratio_provision import DramHitRatioProvision
 from wca.scheduler.algorithms.least_used_bar import LeastUsedBAR
 from wca.scheduler.algorithms.least_used import LeastUsed
 from wca.scheduler.algorithms.fit import Fit
@@ -36,6 +37,7 @@ def register_algorithms():
     register(StaticAssigner)
     register(Score)
     register(Score2)
+    register(DramHitRatioProvision)
 
 
 def register_dataproviders():

@@ -13,19 +13,21 @@
 # limitations under the License.
 
 import logging
-import time
-from typing import Dict, List, Optional
-
 import re
-import resource
+import time
 from abc import abstractmethod
+from typing import Dict, List, Optional, Union
+
+import resource
 from dataclasses import dataclass
 
 from wca import platforms, profiling
 from wca import resctrl
 from wca import security
+from wca import zoneinfo as zoneinfo_module
 from wca.allocators import AllocationConfiguration
 from wca.config import Numeric, Str
+from wca.config import ValidationError
 from wca.containers import ContainerManager, Container
 from wca.detectors import TaskData, TasksData, TaskResource
 from wca.logger import trace, get_logging_metrics, TRACE
@@ -163,7 +165,15 @@ class MeasurementRunner(Runner):
 
         Attach following labels to all metrics:
         `sockets`, `cores`, `cpus`, `cpu_model`, `cpu_model_number` and `wca_version`
-        (defaults to False)
+
+    - ``zoneinfo``: **Union[Str, bool]** = *True*
+
+        By default when zoneinfo is enabled, all the metrics matching to '{name} {value}'
+        will be collected.  False means disable the collection.
+
+        If string is provided it will be used as regexp to extract information from /proc/zoneinfo
+        (only matching regexp will be collected). Regexp should contains two groups. When zoneinfo
+        is True default value for this regexp can parse values like "nr_pages 1234".
     """
 
     def __init__(
@@ -177,11 +187,13 @@ class MeasurementRunner(Runner):
             event_names: List[str] = [],
             perf_aggregate_cpus: bool = True,
             enable_derived_metrics: bool = False,
-            uncore_event_names: List[str] = [],
+            uncore_event_names: List[Union[List[str], str]] = [],
             task_label_generators: Optional[Dict[str, TaskLabelGenerator]] = None,
             allocation_configuration: Optional[AllocationConfiguration] = None,
             wss_reset_interval: int = 0,
-            include_optional_labels: bool = False
+            include_optional_labels: bool = False,
+            zoneinfo: Union[Str, bool] = True,
+
     ):
 
         self._node = node
@@ -236,6 +248,32 @@ class MeasurementRunner(Runner):
 
         self._initialize_rdt_callback = None
         self._iterate_body_callback = None
+        self._cached_bandwidth = None
+
+        if zoneinfo is True:
+            self._zoneinfo = zoneinfo
+            zoneinfo_regexp = zoneinfo_module.DEFAULT_REGEXP
+            log.debug('Enabled zoneinfo collection')
+        elif zoneinfo is False:
+            self._zoneinfo = zoneinfo
+            log.debug('Disabled zoneinfo collection')
+            zoneinfo_regexp = None
+        else:
+            zoneinfo_regexp = zoneinfo
+            self._zoneinfo = True
+
+        # Validate regexp.
+        log.debug('zoneinfo=%r regexp=%r', self._zoneinfo, zoneinfo_regexp)
+        self._zoneinfo_regexp_compiled = None
+        if self._zoneinfo:
+            try:
+                self._zoneinfo_regexp_compiled = re.compile(zoneinfo_regexp)
+            except re.error as e:
+                raise ValidationError('zoneinfo_regexp_compile improper regexp: %s' % e)
+
+            if not self._zoneinfo_regexp_compiled.groups == 2:
+                raise ValidationError(
+                    'zoneinfo_regexp_compile improper number of groups: should be 2')
 
     def _set_initialize_rdt_callback(self, func):
         self._initialize_rdt_callback = func
@@ -445,44 +483,47 @@ class MeasurementRunner(Runner):
     def _init_uncore_pmu_events(self, enable_derived_metrics, uncore_events,
                                 platform: platforms.Platform):
         _enable_perf_uncore = len(uncore_events) > 0
-        self._uncore_pmu = None
-        self._uncore_get_measurements = lambda: {}
+        self._uncore_pmu = []
+        self._uncore_get_measurements = []
         if not _enable_perf_uncore:
             return
-        pmu_events = {}
-        imc_events, cha_events, upi_events = self._prepare_events(uncore_events)
-        try:
-            # Cpus and events for perf uncore imc
-            cpus_imc, pmu_events_imc = _discover_pmu_uncore_config(
-                imc_events, 'uncore_imc_')
-            pmu_events.update(pmu_events_imc)
-            # Cpus and events for perf uncore upi
-            cpus_upi, pmu_events_upi = _discover_pmu_uncore_config(
-                upi_events, 'uncore_upi_')
-            pmu_events.update(pmu_events_upi)
-            # Cpus and events for perf uncore cha
-            cpus_cha, pmu_events_cha = _discover_pmu_uncore_config(
-                cha_events, 'uncore_cha_')
-            pmu_events.update(pmu_events_cha)
-            cpus = list(set(cpus_imc + cpus_upi))
-        except PMUNotAvailable:
-            log.error('PMU metrics requested but PMU not available!')
-            raise
+        if type(uncore_events[0]) == str:
+            uncore_events = [uncore_events]
+        for event_groups in uncore_events:
+            pmu_events = {}
+            imc_events, cha_events, upi_events = self._prepare_events(event_groups)
+            try:
+                # Cpus and events for perf uncore imc
+                cpus_imc, pmu_events_imc = _discover_pmu_uncore_config(
+                    imc_events, 'uncore_imc_')
+                pmu_events.update(pmu_events_imc)
+                # Cpus and events for perf uncore upi
+                cpus_upi, pmu_events_upi = _discover_pmu_uncore_config(
+                    upi_events, 'uncore_upi_')
+                pmu_events.update(pmu_events_upi)
+                # Cpus and events for perf uncore cha
+                cpus_cha, pmu_events_cha = _discover_pmu_uncore_config(
+                    cha_events, 'uncore_cha_')
+                pmu_events.update(pmu_events_cha)
+                cpus = list(set(cpus_imc + cpus_upi))
+            except PMUNotAvailable:
+                log.error('PMU metrics requested but PMU not available!')
+                raise
 
-        # Prepare uncore object
-        self._uncore_pmu = UncorePerfCounters(
-            cpus=cpus,
-            pmu_events=pmu_events,
-            platform=platform,
-        )
+            # Prepare uncore object
+            uncore_pmu = UncorePerfCounters(
+                cpus=cpus,
+                pmu_events=pmu_events,
+                platform=platform)
+            self._uncore_pmu.append(uncore_pmu)
 
-        # Wrap with derived..
-        if enable_derived_metrics:
-            self._uncore_derived_metrics = UncoreDerivedMetricsGenerator(
-                self._uncore_pmu.get_measurements)
-            self._uncore_get_measurements = self._uncore_derived_metrics.get_measurements
-        else:
-            self._uncore_get_measurements = self._uncore_pmu.get_measurements
+            # Wrap with derived..
+            if enable_derived_metrics:
+                derived_metrics_generator = UncoreDerivedMetricsGenerator(
+                    uncore_pmu.get_measurements)
+                self._uncore_get_measurements.append(derived_metrics_generator.get_measurements)
+            else:
+                self._uncore_get_measurements.append(uncore_pmu.get_measurements)
 
     def _iterate(self):
         iteration_start = time.time()
@@ -505,8 +546,17 @@ class MeasurementRunner(Runner):
              in containers.items()]))
 
         # @TODO why not in platform module?
-        extra_platform_measurements = self._uncore_get_measurements()
-        extra_platform_measurements.update(get_bandwidth())
+        extra_platform_measurements = {}
+        for uncore_get_measurements in self._uncore_get_measurements:
+            extra_platform_measurements.update(uncore_get_measurements())
+        if self._cached_bandwidth is None:
+            self._cached_bandwidth = get_bandwidth()
+        extra_platform_measurements.update(self._cached_bandwidth)
+
+        # Zoneinfo from /proc/zoneinfo
+        if self._zoneinfo:
+            extra_platform_measurements.update(
+                zoneinfo_module.get_zoneinfo_measurements(self._zoneinfo_regexp_compiled))
 
         # Platform information
         platform, platform_metrics, platform_labels = platforms.collect_platform_information(

@@ -19,9 +19,7 @@ from wca.metrics import Metric
 from wca.scheduler.algorithms import DataMissingException, RescheduleResult
 from wca.scheduler.algorithms.base import (
         BaseAlgorithm, sum_resources, used_free_requested,
-        QueryDataProviderInfo, calculate_read_write_ratio,
-        enough_resources_on_node)
-from wca.scheduler.cluster_simulator import Resources
+        QueryDataProviderInfo, enough_resources_on_node)
 
 log = logging.getLogger(__name__)
 
@@ -80,34 +78,4 @@ class Fit(BaseAlgorithm):
 
     def reschedule_with_metrics(self, data_provider_queried: QueryDataProviderInfo,
                                 ) -> Tuple[RescheduleResult, List[Metric]]:
-        """Fit pods that over-allocate available resources and remove them.
-
-        We're going to remove from every over-used node the applications with
-        most multiple copies.
-        """
-
-        nodes_capacities, assigned_apps, apps_spec, unassigned_apps_count = data_provider_queried
-
-        reschedule_result: RescheduleResult = {}
-
-        for node_name, capacity in nodes_capacities.items():
-            apps_count = assigned_apps.get(node_name, {})
-            used = Resources.create_empty(self.dimensions).data
-            if apps_count:
-                # sorted by count, last app_name will be the most assigned to node
-                app_name, apps = None, {}
-                for app_name, apps in sorted(apps_count.items(), key=lambda x: x[1]):
-                    app_resource = apps_spec[app_name]
-                    used = sum_resources(used, app_resource)
-
-                membw_read_write_ratio = calculate_read_write_ratio(capacity)
-                fits, broken_capacities, free = enough_resources_on_node(
-                    capacity, used, membw_read_write_ratio)
-
-                if app_name and not fits:
-                    # Try to remove last app from node (just one)
-                    reschedule_result[node_name] = {app_name: apps}
-                    log.debug('found app=%r (count=%d) to reschedule because of fit', app_name,
-                              apps)
-
-        return reschedule_result, []
+        return {}, []

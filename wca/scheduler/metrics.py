@@ -32,6 +32,7 @@ class MetricName(str, Enum):
     NODE_CAPACITY_RESOURCE = PREFIX + 'node_capacity_resource'
     NODE_USED_RESOURCE = PREFIX + 'node_used_resource'
     NODE_FREE_RESOURCE = PREFIX + 'node_free_resource'
+    NODE_DRAM_HIT_RATIO_CAN_SCHEDULE = PREFIX + 'node_dram_hit_ratio_can_schedule'
     FIT_PREDICTED_MEMBW_FLAT_USAGE = PREFIX + 'fit_predicted_membw_flat_usage'
     BAR_REQUESTED_FRACTION = PREFIX + 'bar_requested_fraction'
     BAR_LEAST_USED_SCORE = PREFIX + 'bar_least_used_score'

@@ -211,9 +211,12 @@ class ClusterSimulator:
         assert len(filtered) == 1
         return filtered[0] if filtered else None
 
+    def _get_dimensions_from_first_node(self):
+        return self.nodes[0].initial.data.keys()
+
     def per_node_resource_usage(self, if_percentage: bool = False) -> Dict[Node, Resources]:
         """if_percentage: if output in percentage or original resource units"""
-        first_node_dimensions = self.nodes[0].initial.data.keys()
+        first_node_dimensions = self._get_dimensions_from_first_node()
         node_resource_usage = {node: Resources.create_empty(first_node_dimensions) for node in
                                self.nodes}
         for task in self.tasks:
@@ -325,11 +328,9 @@ class ClusterSimulator:
             reschedule_result: RescheduleResult = self.algorithm.reschedule()
 
             if reschedule_result:
-                for node_name, apps_to_remove in reschedule_result.items():
-                    for app_name, task_names in apps_to_remove.items():
-                        for task_name in task_names:
-                            task = self.get_task_by_name(task_name)
-                            task.assignment = None
+                for task_name_to_remove in reschedule_result:
+                    task = self.get_task_by_name(task_name_to_remove)
+                    task.assignment = None
 
         # Can unbind tasks if task lived long enough.
         self.update_tasks_life()

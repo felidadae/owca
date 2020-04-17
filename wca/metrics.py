@@ -13,12 +13,11 @@
 # limitations under the License.
 import logging
 import time
+from enum import Enum
+from operator import sub
 from typing import Dict, Union, List, Tuple, Callable, Optional
 
 from dataclasses import dataclass, field
-from enum import Enum
-from operator import sub
-
 
 log = logging.getLogger(__name__)
 
@@ -137,6 +136,11 @@ class MetricName(str, Enum):
     PLATFORM_DRAM_HIT_RATIO = 'platform_dram_hit_ratio'
     # Based on UPI Flits
     PLATFORM_UPI_BANDWIDTH_BYTES_PER_SECOND = 'platform_upi_bandwidth_bytes_per_second'
+    # Extra perf uncore based
+    PLATFORM_SCALING_UNCORE_FACTOR = 'platform_scaling_uncore_factor'
+
+    # Platform zoneinfo (dynamic)
+    PLATFORM_ZONEINFO = 'platform_zoneinfo'
 
     # Generic
     PLATFORM_LAST_SEEN = 'platform_last_seen'
@@ -1036,6 +1040,30 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             'no (uncore_event_names: platform_upi_txl_flits, '
             'platform_upi_rxl_flits and set enable_derived_metrics)',
         ),
+    MetricName.PLATFORM_SCALING_UNCORE_FACTOR:
+        MetricMetadata(
+            'Perf uncore subsystem metric scaling factor'
+            '(value 1.0 is the best, meaning that there is no scaling at all '
+            'for any uncore metric)',
+            MetricType.GAUGE,
+            MetricUnit.NUMERIC,
+            MetricSource.PERF_SUBSYSTEM_UNCORE,
+            MetricGranularity.PLATFORM,
+            ['socket', 'pmu_type'],
+            'auto, (depending on uncore_event_names)'
+        ),
+    # --------------- platform zoneinfo -------------------
+    MetricName.PLATFORM_ZONEINFO:
+        MetricMetadata(
+            'Dynamic metric with many keys based on fields from '
+            '/proc/zoneinfo grouped by numa_node and zone (only Normal zone)',
+            MetricType.GAUGE,
+            MetricUnit.NUMERIC,
+            MetricSource.PROCFS,
+            MetricGranularity.PLATFORM,
+            ['numa_node', 'zone', 'key'],
+            'yes (zoneinfo option)'
+        ),
     MetricName.PLATFORM_LAST_SEEN:
         MetricMetadata(
             'Timestamp the information about platform was last collected',
@@ -1149,6 +1177,7 @@ METRICS_METADATA: Dict[MetricName, MetricMetadata] = {
             ['socket'],
             'yes'
         ),
+
 }
 
 # Make sure the same order is used.

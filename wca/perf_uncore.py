@@ -13,6 +13,7 @@
 # limitations under the License.
 import ctypes
 import logging
+import statistics
 from collections import defaultdict
 from typing import List, Dict, BinaryIO
 
@@ -75,6 +76,16 @@ def _create_event_attributes(pmu_type, disabled, event: Event):
     return attr
 
 
+def _get_measurements_for_scaling_info(scaling_factors):
+    measurements = {}
+    if scaling_factors:
+        measurements[MetricName.PLATFORM_SCALING_UNCORE_FACTOR] = \
+            statistics.mean(scaling_factors)
+    else:
+        measurements[MetricName.PLATFORM_SCALING_UNCORE_FACTOR_AVG] = 1.0
+    return measurements
+
+
 @dataclass
 class UncorePerfCounters:
     """Perf facade on perf_event_open system call to deal with uncore counters"""
@@ -106,7 +117,7 @@ class UncorePerfCounters:
             event_names = [e.name for e in events]
             for cpu, event_leader_file in self._group_event_leader_files_per_pmu[pmu].items():
                 measurements_per_cpu[cpu] = _parse_event_groups(
-                    event_leader_file, event_names, include_scaling_info=False)
+                    event_leader_file, event_names, _get_measurements_for_scaling_info)
                 for metric in measurements_per_cpu[cpu]:
                     socket = cpu_to_socket[cpu]
                     measurements_per_socket[metric][socket][pmu] = \

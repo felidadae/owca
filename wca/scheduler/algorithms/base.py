@@ -40,7 +40,6 @@ DEFAULT_DIMENSIONS: List[ResourceType] = [
 
 # Convert data provider to common tuple.
 def query_data_provider(data_provider, dimensions) -> QueryDataProviderInfo:
-    """Should be overwritten if one needs more data from DataProvider."""
     assigned_apps, apps_unassigned = data_provider.get_apps_counts()
     nodes_capacities = data_provider.get_nodes_capacities(dimensions)
     apps_spec = data_provider.get_apps_requested_resources(dimensions)
@@ -156,10 +155,10 @@ class BaseAlgorithm(Algorithm):
         if log.getEffectiveLevel() <= TRACE:
             log.log(TRACE,
                     '[Reschedule] data_queried: \n%s\n', str(data_provider_queried))
-        apps_to_reschedule, metrics = self.reschedule_with_metrics(data_provider_queried)
+        tasks_to_reschedule, metrics = self.reschedule_with_metrics(data_provider_queried)
         self.metrics.extend(metrics)
-        log.debug('[Reschedule] <- Remove: %r', ','.join(apps_to_reschedule))
-        return apps_to_reschedule
+        log.debug('[Reschedule] <- Remove: %r', ','.join(tasks_to_reschedule))
+        return tasks_to_reschedule
 
     def reschedule_with_metrics(self, data_provider_queried: QueryDataProviderInfo
                                 ) -> Tuple[RescheduleResult, List[Metric]]:

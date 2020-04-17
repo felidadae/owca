@@ -8,7 +8,6 @@ resources:
   - prometheus_rule.apm.yaml
   - prometheus_rule.score.yaml
   - prometheus_rule.16-compatibility-rules-new-to-old.yaml
-  - prometheus_rule.wca-scheduler.yaml
   - service_account.yaml
   - service.yaml
   - operator/deployment.yaml

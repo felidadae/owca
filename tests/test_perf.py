@@ -25,7 +25,7 @@ from wca import perf
 from wca import perf_const as pc
 from wca.metrics import MetricName
 from wca.perf import _parse_raw_event_name, _get_event_config, PerfCgroupDerivedMetricsGenerator, \
-    filter_out_event_names_for_cpu, check_perf_event_count_limit
+    filter_out_event_names_for_cpu, check_perf_event_count_limit, _get_measurements_for_scaling_info
 from wca.platforms import CPUCodeName, Platform
 
 
@@ -117,7 +117,8 @@ def test_parse_online_cpus_string(raw_string, expected):
      )
 ])
 def test_parse_event_groups(file, event_names, expected):
-    assert perf._parse_event_groups(file, event_names, include_scaling_info=True) == expected
+    assert perf._parse_event_groups(file, event_names,
+                                    _get_measurements_for_scaling_info) == expected
 
 
 @patch('wca.perf._get_cgroup_fd')

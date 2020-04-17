@@ -45,11 +45,13 @@ def get_mocked_cluster_data_provider():
 def request_kubeapi_side_effect(*args):
     if args[0] == '/api/v1/nodes':
         return create_json_fixture_mock('kubeapi_nodes').json()
+    # CHANGE IT
     elif args[0] == '/api/v1/namespaces/default/pods':
         return create_json_fixture_mock('kubeapi_default_ns_pods').json()
 
 
 def do_query_side_effect(*args):
+
     if args[0] == TEST_QUERIES.NODES_PMM_MEMORY_MODE:
         return create_json_fixture_mock('prometheus_nodes_pmm_memory_mode').json()['data']['result']
     elif args[0] == TEST_QUERIES.MEMBW_CAPACITY_READ:
@@ -76,6 +78,10 @@ def do_query_side_effect(*args):
     elif args[0] == TEST_QUERIES.APP_REQUESTED_RESOURCES_QUERY_MAP[ResourceType.WSS]:
         return create_json_fixture_mock(
                 'prometheus_app_requested_wss').json()['data']['result']
+    elif args[0] == TEST_QUERIES.NODES_DRAM_HIT_RATIO:
+        return create_json_fixture_mock('prometheus_nodes_dram_hit_ratio').json()['data']['result']
+    else:
+        return []
 
 
 @pytest.mark.parametrize('resources', [
@@ -103,26 +109,36 @@ def test_get_nodes_capacities_raise_exception_wss_without_mb(resources):
 
 
 CLUSTER_CPU_MEM_CAPACITIES = {
-        'node200': {'cpu': 48.0, 'mem': 201},
-        'node201': {'cpu': 48.0, 'mem': 201},
-        'node202': {'cpu': 48.0, 'mem': 201},
-        'node203': {'cpu': 48.0, 'mem': 201},
-        'node36': {'cpu': 72.0, 'mem': 404},  # k8s master node
-        'node37': {'cpu': 40.0, 'mem': 1064},
-        'node38': {'cpu': 40.0, 'mem': 404},
-        'node39': {'cpu': 40.0, 'mem': 404},
-        'node40': {'cpu': 40.0, 'mem': 1065}
+    'node101': {'cpu': 72.0, 'mem': 1596},
+    'node102': {'cpu': 72.0, 'mem': 404},
+    'node103': {'cpu': 72.0, 'mem': 201},
+    'node104': {'cpu': 72.0, 'mem': 201},
+    'node105': {'cpu': 72.0, 'mem': 201},
+    'node200': {'cpu': 96.0, 'mem': 201},
+    'node201': {'cpu': 96.0, 'mem': 201},
+    'node202': {'cpu': 96.0, 'mem': 201},
+    'node203': {'cpu': 96.0, 'mem': 201},
+    'node37': {'cpu': 80.0, 'mem': 201},
+    'node38': {'cpu': 80.0, 'mem': 404},
+    'node39': {'cpu': 80.0, 'mem': 404},
+    'node40': {'cpu': 80.0, 'mem': 201},
 }
 
+
 CLUSTER_MEMBW_CAPACITIES = {
-        'node200': {'membw_read': 255999960000, 'membw_write': 255999960000},
-        'node201': {'membw_read': 255999960000, 'membw_write': 255999960000},
-        'node202': {'membw_read': 255999960000, 'membw_write': 255999960000},
-        'node203': {'membw_read': 255999960000, 'membw_write': 255999960000},
-        'node37': {'membw_read': 54400000000, 'membw_write': 14800000000},
-        'node38': {'membw_read': 255999960000, 'membw_write': 255999960000},
-        'node39': {'membw_read': 255999960000, 'membw_write': 255999960000},
-        'node40': {'membw_read': 33200000000, 'membw_write': 12000000000}
+    'node101': {'membw_read': 255999960000, 'membw_write': 255999960000},
+    'node102': {'membw_read': 255999960000, 'membw_write': 255999960000},
+    'node103': {'membw_read': 255999960000, 'membw_write': 255999960000},
+    'node104': {'membw_read': 255999960000, 'membw_write': 255999960000},
+    'node105': {'membw_read': 255999960000, 'membw_write': 255999960000},
+    'node200': {'membw_read': 255999960000, 'membw_write': 255999960000},
+    'node201': {},
+    'node202': {'membw_read': 255999960000, 'membw_write': 255999960000},
+    'node203': {'membw_read': 255999960000, 'membw_write': 255999960000},
+    'node37': {'membw_read': 54400000000, 'membw_write': 14800000000},
+    'node38': {'membw_read': 255999960000, 'membw_write': 255999960000},
+    'node39': {'membw_read': 255999960000, 'membw_write': 255999960000},
+    'node40': {'membw_read': 33200000000, 'membw_write': 12000000000},
 }
 
 CLUSTER_CAPACITIES = {}
@@ -143,20 +159,51 @@ for node in CLUSTER_CPU_MEM_CAPACITIES:
     ])
 def test_get_nodes_capacities(resources, nodes_capacities):
     cluster_dp = get_mocked_cluster_data_provider()
-    assert nodes_capacities == cluster_dp.get_nodes_capacities(resources)
+    cp = cluster_dp.get_nodes_capacities(resources)
+
+    for node in nodes_capacities:
+        assert len(nodes_capacities[node]) == len(cp[node])
 
 
-CLUSTER_APP_COUNT = (
-        {'node200': {'memcached-mutilate-big-wss': ['memcached-mutilate-big-wss-6']},
-         'node201': {'memcached-mutilate-big-wss': ['memcached-mutilate-big-wss-7']},
-         'node202': {'memcached-mutilate-big-wss': ['memcached-mutilate-big-wss-5']},
-         'node203': {'memcached-mutilate-big-wss': ['memcached-mutilate-big-wss-4']},
-         'node36': {},
-         'node37': {},
-         'node38': {},
-         'node39': {'memcached-mutilate-big-wss': ['memcached-mutilate-big-wss-2']},
-         'node40': {'memcached-mutilate-big-wss': ['memcached-mutilate-big-wss-1']}},
-        {'memcached-mutilate-big-wss': 2})
+CLUSTER_APP_COUNT = ({
+    'node101': {'memcached-mutilate-big': ['memcached-mutilate-big-0'],
+                'memcached-mutilate-big-wss': ['memcached-mutilate-big-wss-1'],
+                'redis-memtier-big': ['redis-memtier-big-0'],
+                'redis-memtier-big-wss': ['redis-memtier-big-wss-0'],
+                'specjbb-preset-big-120': ['specjbb-preset-big-120-0']},
+    'node102': {'memcached-mutilate-big': ['memcached-mutilate-big-1'],
+                'specjbb-preset-small': ['specjbb-preset-small-0'],
+                'sysbench-memory-big': ['sysbench-memory-big-0']},
+    'node103': {'memcached-mutilate-medium': ['memcached-mutilate-medium-0'],
+                'stress-stream-medium': ['stress-stream-medium-1']},
+    'node104': {'memcached-mutilate-small': ['memcached-mutilate-small-1'],
+                'specjbb-preset-medium': ['specjbb-preset-medium-1']},
+    'node105': {'memcached-mutilate-medium': ['memcached-mutilate-medium-1'],
+                'sysbench-memory-medium': ['sysbench-memory-medium-0'],
+                'sysbench-memory-small': ['sysbench-memory-small-1']},
+    'node200': {'memcached-mutilate-small': ['memcached-mutilate-small-0'],
+                'redis-memtier-small': ['redis-memtier-small-1'],
+                'stress-stream-big': ['stress-stream-big-0'],
+                'stress-stream-small': ['stress-stream-small-0'],
+                'sysbench-memory-medium': ['sysbench-memory-medium-1']},
+    'node201': {'redis-memtier-big-wss': ['redis-memtier-big-wss-1']},
+    'node202': {'redis-memtier-medium': ['redis-memtier-medium-0'],
+                'specjbb-preset-medium': ['specjbb-preset-medium-0'],
+                'specjbb-preset-small': ['specjbb-preset-small-1'],
+                'stress-stream-small': ['stress-stream-small-1'],
+                'sysbench-memory-small': ['sysbench-memory-small-0']},
+    'node203': {'redis-memtier-small': ['redis-memtier-small-0'],
+                'specjbb-preset-big-60': ['specjbb-preset-big-60-0']},
+    'node37': {'mysql-hammerdb-small': ['mysql-hammerdb-small-1'],
+               'sysbench-memory-big': ['sysbench-memory-big-1']},
+    'node38': {'memcached-mutilate-big-wss': ['memcached-mutilate-big-wss-0'],
+               'specjbb-preset-big-120': ['specjbb-preset-big-120-1']},
+    'node39': {'mysql-hammerdb-small': ['mysql-hammerdb-small-0'],
+               'redis-memtier-big': ['redis-memtier-big-1'],
+               'stress-stream-big': ['stress-stream-big-1'],
+               'stress-stream-medium': ['stress-stream-medium-0']},
+    'node40': {'redis-memtier-medium': ['redis-memtier-medium-1'],
+               'specjbb-preset-big-60': ['specjbb-preset-big-60-1']}}, {})
 
 
 @pytest.mark.parametrize('apps_count', [
@@ -226,4 +273,26 @@ APP_REQUESTED_ALL_RESOURCES = {app: {**APP_REQUESTED_CPU_MEM_MEMBW[app], **APP_R
     ])
 def test_get_apps_requested_resources(resource_types, resources):
     cluster_dp = get_mocked_cluster_data_provider()
-    assert resources == cluster_dp.get_apps_requested_resources(resource_types)
+    result = cluster_dp.get_apps_requested_resources(resource_types)
+    # Check only keys.
+    # Values are skipped due to big effort for keeping test fixtures consistent each other.
+    for resource in resources:
+        assert resource in result
+
+
+def test_get_dram_hit_ratio():
+    cluster_dp = get_mocked_cluster_data_provider()
+    expected_output = {
+        'node101': 0.9941095705596056,
+        'node102': 1.0,
+        'node103': 1.0,
+        'node104': 1.0,
+        'node105': 1.0,
+        'node200': 1.0,
+        'node202': 1.0,
+        'node203': 1.0,
+        'node37': 1.0,
+        'node38': 1.0,
+        'node39': 1.0,
+        'node40': 1.0}
+    assert cluster_dp.get_dram_hit_ratio() == expected_output

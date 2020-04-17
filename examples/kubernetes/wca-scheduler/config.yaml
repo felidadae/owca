@@ -5,7 +5,7 @@ kubeapi: &kubeapi !Kubeapi
   host: !Env KUBERNETES_SERVICE_HOST
   port: !Env KUBERNETES_SERVICE_PORT
 # reschedule_interval: 5
-algorithm: !Score2
+algorithm: !Score
   score_target: -3.0
   max_node_score: 10000.
   dimensions:
@@ -20,7 +20,7 @@ algorithm: !Score2
       host: http://100.64.176.36
       port: 30900
       timeout: 5.0
-      time: "1584646650"  # Date: 2020-03-19 19:37:30
+      time: "1586245624"  # Date: 2020-04-07 07:47:04
     queries: !Queries
       APP_REQUESTED_RESOURCES_QUERY_MAP:
             cpu: 'ceil(max(max_over_time(task_requested_cpus[10m])) by (app))'

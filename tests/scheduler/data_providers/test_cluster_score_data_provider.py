@@ -11,11 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import pytest
 from unittest.mock import MagicMock, Mock
 
 from tests.testing import create_json_fixture_mock
-from wca.scheduler.data_providers.score import NodeType
+from tests.scheduler.data_providers.test_cluster_data_provider import (
+        do_query_side_effect as do_query_side_effect_cluster_dp,
+        request_kubeapi_side_effect)
+
 from wca.scheduler.data_providers.score.cluster import ClusterScoreDataProvider
 from wca.scheduler.kubeapi import Kubeapi
 from wca.scheduler.prometheus import Prometheus
@@ -23,6 +25,9 @@ from wca.scheduler.prometheus import Prometheus
 
 def get_mocked_cluster_data_provider():
     mocked_kubeapi = MagicMock(spec=Kubeapi)
+    mocked_kubeapi.monitored_namespaces = ['default']
+    mocked_kubeapi.request_kubeapi.side_effect = request_kubeapi_side_effect
+
     mocked_prometheus = Mock(spec=Prometheus)
     mocked_prometheus.do_query.side_effect = do_query_side_effect
 
@@ -36,13 +41,10 @@ def get_mocked_cluster_data_provider():
 def do_query_side_effect(*args, **kwargs):
     if args[0] == ClusterScoreDataProvider.app_profiles_query:
         return create_json_fixture_mock('prometheus_app_profile').json()['data']['result']
-    elif args[0] == ClusterScoreDataProvider.node_type_query % 'node101':
-        return create_json_fixture_mock('prometheus_node_type_node101').json()['data']['result']
-    elif args[0] == ClusterScoreDataProvider.node_type_query % 'node40':
-        return create_json_fixture_mock('prometheus_node_type_node40').json()['data']['result']
-
+    elif args[0] == ClusterScoreDataProvider.node_type_query:
+        return create_json_fixture_mock('prometheus_node_type').json()['data']['result']
     else:
-        return []
+        return do_query_side_effect_cluster_dp(*args)
 
 
 APPS_PROFILE = {
@@ -89,11 +91,6 @@ NODE_TYPES = {
 }
 
 
-@pytest.mark.parametrize('node, expected_type', [
-        ('node101', NodeType.PMEM),
-        ('node40', NodeType.DRAM),
-        ('node36', NodeType.UNKNOWN),
-        ])
-def test_get_nodes_profiles(node, expected_type):
+def test_get_nodes_profiles():
     dp = get_mocked_cluster_data_provider()
-    assert dp.get_node_type(node) == expected_type
+    assert dp.get_nodes_type() == NODE_TYPES

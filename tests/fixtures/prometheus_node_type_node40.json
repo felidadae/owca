@@ -1,1 +1,0 @@
-{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"node_type","endpoint":"web","host":"node40","instance":"100.64.176.40:9100","job":"wca","namespace":"wca","node":"node40","nodename":"node40","nodetype":"dram","pod":"wca-cztpg","service":"wca"},"value":[1584435999.82,"0"]}]}}

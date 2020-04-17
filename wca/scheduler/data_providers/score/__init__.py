@@ -38,5 +38,5 @@ class ScoreDataProvider(DataProvider):
         pass
 
     @abstractmethod
-    def get_node_type(self, node: NodeName) -> NodeType:
+    def get_nodes_type(self) -> NodesType:
         pass

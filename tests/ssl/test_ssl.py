@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
-import requests
 import ssl
 import time
-from multiprocessing import Process
-from wca.security import HTTPSAdapter
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from multiprocessing import Process
+
+import pytest
+import requests
+
+from wca.security import HTTPSAdapter
+
+pytestmark = [pytest.mark.long, pytest.mark.ssl]
 
 
 class HTTPRequestHandlerForTest(BaseHTTPRequestHandler):
@@ -29,7 +33,6 @@ class HTTPRequestHandlerForTest(BaseHTTPRequestHandler):
 
 
 def run_simple_https_server(ssl_context: ssl.SSLContext):
-
     server = HTTPServer(('127.0.0.1', 8080), HTTPRequestHandlerForTest)
 
     server.socket = ssl_context.wrap_socket(server.socket, server_side=True)
@@ -40,7 +43,7 @@ def run_simple_https_server(ssl_context: ssl.SSLContext):
 def test_good_certificate():
     # Disable due to https://github.com/urllib3/urllib3/issues/497
     requests.packages.urllib3.disable_warnings(
-            requests.packages.urllib3.exceptions.SubjectAltNameWarning)
+        requests.packages.urllib3.exceptions.SubjectAltNameWarning)
 
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
     ssl_context.load_cert_chain('tests/ssl/goodkey.crt', 'tests/ssl/goodkey.key')
@@ -112,7 +115,7 @@ def test_supported_rsa_2048():
 def test_supported_tls_1_2():
     # Disable for older openssl versions.
     requests.packages.urllib3.disable_warnings(
-            requests.packages.urllib3.exceptions.SubjectAltNameWarning)
+        requests.packages.urllib3.exceptions.SubjectAltNameWarning)
 
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
     ssl_context.load_cert_chain('tests/ssl/goodkey.crt', 'tests/ssl/goodkey.key')
