@@ -1,3 +1,5 @@
+#!/usr/bin/env python3.6
+
 import shutil
 import os
 from typing import List, Dict, Tuple, Optional, Union
@@ -67,6 +69,7 @@ def random_with_total_utilization_specified(cpu_limit: Tuple[float, float],
        Returns tuple, first item how many iterations were performed to random proper workloads set,
        second set of workloads."""
     cpu_all, mem_all = 0, 0
+    AEP_NODES = ClusterInfoLoader.get_instance().get_aep_nodes()
     for node_name, node in nodes_capacities.items():
         # Only count DRAM nodes
         if node_name in AEP_NODES:
@@ -540,7 +543,7 @@ def experimentset_single_workload_at_once(
     create_experiment_root_dir(experiment_root_dir, overwrite)
 
     # Experiment params, could be passed 
-    run_mode: RunMode = RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES,
+    run_mode: RunMode = RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES
     workloads = [
         'stress-stream-medium',
         'memcached-mutilate-medium',
@@ -575,7 +578,7 @@ def experimentset_test(experiment_root_dir='results/__test__'):
     _, workloads, _ = random_with_total_utilization_specified(
         cpu_limit=(0.25, 0.41), mem_limit=(0.65, 0.9),
         nodes_capacities=ClusterInfoLoader.get_instance().get_nodes(),
-        workloads_set=ClusterInfoLoader.get_instance().get_workloads_names())
+        workloads_set=ClusterInfoLoader.get_instance().get_workloads())
     single_3stage_experiment(experiment_id=0,
                              workloads=workloads,
                              wait_periods={WaitPeriod.SCALE_DOWN: 10,
@@ -588,7 +591,7 @@ def experimentset_test(experiment_root_dir='results/__test__'):
 if __name__ == "__main__":
     ClusterInfoLoader.build_singleton()
 
-    # experimentset_test()
+    experimentset_test()
     # tune_stage(ClusterInfoLoader.get_instance().get_workloads_names())
-    experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-15__stepping_single_workloads')
-    # experimentset_main(iterations=10, experiment_root_dir='results/2020-04-06__score2_promrules')
+    # experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-16__stepping_single_workloads')
+    # experimentset_main(iterations=6, experiment_root_dir='results/2020-04-16__score2_promrules')
