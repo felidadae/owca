@@ -14,6 +14,7 @@
 
 import logging
 from typing import Tuple, List
+from copy import deepcopy
 
 from wca.metrics import Metric
 from wca.scheduler.algorithms import DataMissingException, RescheduleResult
@@ -32,7 +33,7 @@ def app_fits(node_name, app_name, dimensions, nodes_capacities,
                             nodes_capacities, assigned_apps, apps_spec)
     metrics.extend(metrics)
 
-    # SUBTRACT: "free" after simulated assigment of requested
+    # SUBTRACT: "free" after simulated assignment of requested
     try:
         requested_and_used = sum_resources(requested, used)
     except ValueError as e:
@@ -65,9 +66,17 @@ class Fit(BaseAlgorithm):
 
     def app_fit_node(self, node_name, app_name, data_provider_queried) -> Tuple[bool, str]:
         nodes_capacities, assigned_apps, apps_spec, _ = data_provider_queried
+
+        # Hardcoded 70% of cpu for experiment purpose
+        scale_factor = 0.7
+        new_nodes_capacities = deepcopy(nodes_capacities)
+        for node in nodes_capacities:
+            if node == 'node101':
+                new_nodes_capacities[node]['cpu'] = int(nodes_capacities[node]['cpu'] * scale_factor)
+
         fits, message, metrics = app_fits(
             node_name, app_name, self.dimensions,
-            nodes_capacities, assigned_apps, apps_spec)
+            new_nodes_capacities, assigned_apps, apps_spec)
         self.metrics.extend(metrics)
         return fits, message
 
@@ -79,3 +88,4 @@ class Fit(BaseAlgorithm):
     def reschedule_with_metrics(self, data_provider_queried: QueryDataProviderInfo,
                                 ) -> Tuple[RescheduleResult, List[Metric]]:
         return {}, []
+

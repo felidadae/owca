@@ -1,6 +1,9 @@
 runner: !MeasurementRunner
-  interval: 5.0
+  interval: 1.0
   node: !StaticNode
     tasks: []
     # Will look for tasks in /sys/fs/cgroup/cpu/docker/[task_ids]
     directory: docker
+  metrics_storage: !LogStorage
+    output_filename: metrics.prom
+    overwrite: true

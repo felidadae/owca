@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -29,9 +29,8 @@ from wca.runners.measurement import MeasurementRunner
 
 
 @prepare_runner_patches
-@patch('wca.cgroups.Cgroup.reset_counters')
 @pytest.mark.parametrize('subcgroups', ([], ['/T/c1'], ['/T/c1', '/T/c2']))
-def test_detection_runner(reset_counters_mock, subcgroups):
+def test_detection_runner(subcgroups):
     # Tasks mock
     t1 = redis_task_with_default_labels('t1', subcgroups)
     t2 = redis_task_with_default_labels('t2', subcgroups)

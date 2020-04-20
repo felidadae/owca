@@ -31,14 +31,13 @@ _os_tasks_allocations = {
 
 
 @prepare_runner_patches
-@patch('wca.cgroups.Cgroup.reset_counters')
 @patch('wca.containers.Container.get_allocations',    return_value=_os_tasks_allocations)
 @patch('wca.containers.ContainerSet.get_allocations', return_value=_os_tasks_allocations)
 @patch('wca.platforms.collect_platform_information', return_value=(platform_mock, [], {}))
 @pytest.mark.parametrize('subcgroups', ([], ['/T/c1'], ['/T/c1', '/T/c2']))
 def test_allocation_runner(
         _get_allocations_mock, _get_allocations_mock_, platform_mock,
-        reset_counter_mock, subcgroups):
+        subcgroups):
     """ Low level system calls are not mocked - but higher level objects and functions:
         Cgroup, Resgroup, Platform, etc. Thus the test do not cover the full usage scenario
         (such tests would be much harder to write).

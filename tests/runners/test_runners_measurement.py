@@ -64,9 +64,8 @@ def test_measurements_runner_init_and_checks(rdt_enabled, resctrl_available,
 
 
 @prepare_runner_patches
-@patch('wca.cgroups.Cgroup.reset_counters')
 @pytest.mark.parametrize('subcgroups', ([], ['/T/c1'], ['/T/c1', '/T/c2']))
-def test_measurements_runner(reset_counters_mock, subcgroups):
+def test_measurements_runner(subcgroups):
     # Node mock
     t1 = redis_task_with_default_labels('t1', subcgroups)
     t2 = redis_task_with_default_labels('t2', subcgroups)

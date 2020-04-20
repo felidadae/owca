@@ -328,7 +328,7 @@ def generate_experiment_report(stats_dicts, exp_dir):
     try:
         import pandas as pd
     except ImportError:
-        log.warn('cannot generate reports (require pandas, numpy and pivottablejs')
+        log.warning('cannot generate reports (require pandas, numpy and pivottablejs')
         return
 
     pd.set_option('display.max_columns', None)
