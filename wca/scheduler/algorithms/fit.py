@@ -71,7 +71,8 @@ class Fit(BaseAlgorithm):
         scale_factor = 0.7
         new_nodes_capacities = deepcopy(nodes_capacities)
         for node in nodes_capacities:
-            new_nodes_capacities[node]['cpu'] = int(nodes_capacities[node]['cpu'] * scale_factor)
+            if node == 'node101':
+                new_nodes_capacities[node]['cpu'] = int(nodes_capacities[node]['cpu'] * scale_factor)
 
         fits, message, metrics = app_fits(
             node_name, app_name, self.dimensions,
