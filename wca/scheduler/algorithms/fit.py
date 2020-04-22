@@ -68,7 +68,7 @@ class Fit(BaseAlgorithm):
         nodes_capacities, assigned_apps, apps_spec, _ = data_provider_queried
 
         # Hardcoded 70% of cpu for experiment purpose
-        scale_factor = 0.7
+        scale_factor = 0.5
         new_nodes_capacities = deepcopy(nodes_capacities)
         for node in nodes_capacities:
             if node == 'node101':
