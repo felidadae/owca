@@ -30,8 +30,9 @@ kubectl -n wca-scheduler scale deployment wca-scheduler --replicas=0
 kubectl -n wca-scheduler scale deployment wca-scheduler --replicas=1
 pod=$(kubectl get pods -n wca-scheduler | tail -1 | cut -f1 -d' ')
 configmap=$(kubectl describe pod -n wca-scheduler $pod | grep 'wca-scheduler-config-' | awk '{print $2}')
+kubectl describe configmap -n wca-scheduler $configmap
 kubectl describe configmap -n wca-scheduler $pod wca-scheduler | less
-kubectl describe configmap -n wca-scheduler $configmap 
+ 
 ```
 
 4. If wca-scheduler is used. Run runner.py with test mode.
