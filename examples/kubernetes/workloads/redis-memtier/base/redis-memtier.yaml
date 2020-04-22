@@ -20,6 +20,7 @@ spec:
       containers:
         - name: redis
           image: redis
+          imagePullPolicy: Always
           securityContext:
             privileged: true
           envFrom:
@@ -42,6 +43,7 @@ spec:
               $redis_extra
         - name: memtier
           image: memtier_benchmark
+          imagePullPolicy: Always
           securityContext:
             privileged: true
           envFrom:

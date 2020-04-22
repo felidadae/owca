@@ -20,6 +20,7 @@ spec:
       containers:
         - name: memcached
           image: memcached
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: memcached
@@ -34,6 +35,7 @@ spec:
               $extra
         - name: mutilate
           image: mutilate
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: mutilate

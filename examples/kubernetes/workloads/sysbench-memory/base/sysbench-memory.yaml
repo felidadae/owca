@@ -20,6 +20,7 @@ spec:
       containers:
         - name: sysbench
           image: sysbench
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: sysbench-memory

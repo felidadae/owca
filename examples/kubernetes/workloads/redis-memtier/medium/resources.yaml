@@ -9,10 +9,10 @@ spec:
         - name: redis
           resources:
             requests:
-              cpu: 1
+              cpu: 2
               memory: 10G
             limits:
-              cpu: 1
+              cpu: 2
               memory: 10G
         - name: memtier
           resources:

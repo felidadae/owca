@@ -20,6 +20,7 @@ spec:
       initContainers:
         - name: prepare-names
           image: specjbb
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: specjbb
@@ -80,6 +81,7 @@ spec:
       containers:
         - name: backend
           image: specjbb
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: specjbb-backend
@@ -128,6 +130,7 @@ spec:
 
         - name: injector
           image: specjbb
+          imagePullPolicy: Always
           # According: User Guide Chap 2.3
           # "Approximate total RAM needed = 2GB Controller + 2GB * Number of all TxI(s)"
           resources:
@@ -167,6 +170,7 @@ spec:
             - name: PODNAME
               valueFrom: {fieldRef: {fieldPath: metadata.name}}
           image: specjbb
+          imagePullPolicy: Always
           command:
             - sh
             - -c

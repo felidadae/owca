@@ -20,6 +20,7 @@ spec:
       initContainers:
       - name: change-config-workload
         image: busybox
+        imagePullPolicy: Always
         envFrom:
           - configMapRef:
               name: hammerdb
@@ -50,6 +51,7 @@ spec:
       containers:
       - name: hammerdb
         image: hammerdb
+        imagePullPolicy: Always
         env:
           # Downward API
           - name: MEM_REQUEST
