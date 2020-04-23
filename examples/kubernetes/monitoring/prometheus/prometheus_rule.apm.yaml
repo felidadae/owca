@@ -100,7 +100,7 @@ spec:
         - record: apm_hammerdb_alive
           expr: ceil(rate(apm_hammerdb_stdout_lines[30s])>0)
         - record: apm_hammerdb_ops
-          expr: avg_over_time(apm_hammerdb_tpm[90s]) and apm_hammerdb_tpm_gauge_alive
+          expr: avg_over_time(apm_hammerdb_tpm[90s]) / 60 and apm_hammerdb_tpm_gauge_alive # it is collecting TPM (Transaction Per Minute) and it is necessary to change minutes to seconds to collect ops
         - record: apm_hammerdb_latency
           expr: avg_over_time(apm_hammerdb_latency_stdout[1m]) and ignoring(quantile, type_query) apm_hammerdb_alive
         # common apm metrics
