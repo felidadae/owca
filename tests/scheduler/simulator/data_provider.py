@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from collections import defaultdict
-from typing import Iterable, Dict, Tuple
+from typing import Iterable, Dict, Tuple, List
 
 from wca.scheduler.algorithms.base import divide_resources, calculate_read_write_ratio
 from wca.scheduler.algorithms.hierbar import _calc_average_resources
@@ -155,3 +155,7 @@ class ClusterSimulatorDataProvider(ClusterScoreDataProvider):
     def get_dram_hit_ratio(self) -> Dict[NodeName, float]:
         """Returns dram_hit_ratio for node"""
         return defaultdict(lambda: 1)
+
+    def get_pmem_nodes(self) -> List[NodeName]:
+        """Returns Memory Mode nodes in cluster"""
+        return []

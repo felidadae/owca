@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, Tuple
+from typing import Dict, Iterable, Tuple, List
 
 from wca.scheduler.types import ResourceType, NodeName, Resources, AppName, AppsCount, Apps
 
@@ -41,4 +41,9 @@ class DataProvider(ABC):
     @abstractmethod
     def get_dram_hit_ratio(self) -> Dict[NodeName, float]:
         """Returns dram hit ratio for each node"""
+        pass
+
+    @abstractmethod
+    def get_pmem_nodes(self) -> List[NodeName]:
+        """Returns Memory Mode nodes in cluster"""
         pass

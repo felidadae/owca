@@ -72,6 +72,14 @@ class ClusterDataProvider(DataProvider):
     prometheus: Prometheus
     queries: Optional[Queries] = Queries()
 
+    def get_pmem_nodes(self) -> List[str]:
+        """Check which nodes have PMem (Memory Mode)"""
+        query_result = self.prometheus.do_query(self.queries.NODES_PMM_MEMORY_MODE)
+        nodes_with_pmm = []
+        for row in query_result:
+            nodes_with_pmm.append(row['metric']['nodename'])
+        return nodes_with_pmm
+
     def _get_nodes_capacities_from_query(
             self, nodes: List[NodeName],
             resources: List[ResourceType], query: str) -> NodeCapacities:
@@ -94,12 +102,7 @@ class ClusterDataProvider(DataProvider):
             self, nodes: List[NodeName], memory_node_capacities: NodeCapacities,
             gather_wss: bool) -> NodeCapacities:
 
-        # Check which nodes have PMem (Memory Mode).
-        query_result = self.prometheus.do_query(self.queries.NODES_PMM_MEMORY_MODE)
-        nodes_with_pmm = []
-        for row in query_result:
-            nodes_with_pmm.append(row['metric']['nodename'])
-
+        nodes_with_pmm = self.get_pmem_nodes()
         # Every other node should be DRAM only.
         nodes_with_dram = list(nodes - nodes_with_pmm)
 

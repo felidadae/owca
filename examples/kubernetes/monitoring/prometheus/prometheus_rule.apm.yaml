@@ -78,10 +78,6 @@ spec:
         # usec(microseconds) convert to miliseconds (msec)
         - record: apm_specjbb_latency
           expr: avg_over_time(apm_specjbb_p95[90s])/1000 and apm_specjbb_alive
-        - record: apm_specjbb_ops_per_task
-          expr: apm_specjbb_ops * on(task_name) group_right() task_up
-        - record: apm_specjbb_latency_per_task
-          expr: apm_specjbb_latency * on(task_name) group_right() task_up
         # common apm metrics
         - record: apm_specjbb_latency_per_task
           expr:  apm_specjbb_latency * on(task_name) group_right() task_up

@@ -57,9 +57,10 @@ class Score(Fit, DramHitRatioProvision):
                  alias: str = None,
                  score_target: Optional[float] = None,
                  strict_mode_placement: bool = False,
-                 threshold: float = 0.97
+                 threshold: float = 0.97,
+                 cpu_scale_factor: float = 1
                  ):
-        Fit.__init__(self, data_provider, dimensions, max_node_score, alias)
+        Fit.__init__(self, data_provider, dimensions, max_node_score, alias, cpu_scale_factor)
         DramHitRatioProvision.__init__(self, data_provider, dimensions, max_node_score,
                                        alias, threshold)
         self.score_target = score_target

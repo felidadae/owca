@@ -1,0 +1,23 @@
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: webhook
+webhooks:
+  - name: webhook.k8s.io
+    clientConfig:
+      service:
+        name: webhook
+        namespace: webhook
+        path: "/mutate"
+      caBundle: ${CA_BUNDLE}
+    rules:
+      - operations:
+          - CREATE
+          - UPDATE
+        apiGroups:
+          - "*"
+        apiVersions:
+          - "*"
+        resources:
+          - "pods"
+    failurePolicy: Fail
