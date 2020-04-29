@@ -32,6 +32,7 @@ spec:
       containers:
         - name: wca-scheduler
           image: 100.64.176.12:80/wca-scheduler:latest
+          imagePullPolicy: Always
           envFrom:
           - configMapRef:
               name: wca-scheduler-env

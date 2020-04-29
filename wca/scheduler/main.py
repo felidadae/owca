@@ -33,6 +33,7 @@ def main(config):
     log.warning('This software is pre-production and should not be deployed to production servers!')
     log.debug('started PID=%r', os.getpid())
     log.info('Starting wca-scheduler.')
+    log.info('Version wca: 0.0.3')
 
     # Initialize all necessary objects.
     register_algorithms()
