@@ -87,8 +87,8 @@ def random_with_total_utilization_specified(cpu_limit: Tuple[float, float],
 
     workloads_names = [workload_name for workload_name in workloads_set]
     workloads_list = [workloads_set[workload_name] for workload_name in workloads_names]
-    choices_weights = [w['mem']/w['cpu'] for w in workloads_list]
-    choices_weights = [round(val+5, 2) for val in choices_weights]
+    choices_weights = [w['mem'] / w['cpu'] * w['scale_weights'] for w in workloads_list]
+    choices_weights = [round(val + 5, 2) for val in choices_weights]
     logging.debug("[randomizing workloads] weights={}".format(list(zip(workloads_names,
                                                                        choices_weights))))
     best_for_now = (100, 1)
@@ -401,9 +401,10 @@ def single_step1workload_experiment(run_mode: RunMode, experiment_id: str, workl
         max_count = get_max_count_per_smallest_node(workload, nodes)
 
         if count_per_node_list is None:
-            count_per_node_list = list(range(1, max_count+1, int(max_count/5 + 1)))
-            logging.debug("[EQUAL_ON_ALL_NODES] will run experiment for {}(cpu={}, mem={}) with counts {} (possible_max={})".format(
-                workload, workload_cpu, workload_mem, count_per_node_list, max_count))
+            count_per_node_list = list(range(1, max_count + 1, int(max_count / 5 + 1)))
+            logging.debug(
+                "[EQUAL_ON_ALL_NODES] will run experiment for {}(cpu={}, mem={}) with counts {} (possible_max={})".format(
+                    workload, workload_cpu, workload_mem, count_per_node_list, max_count))
 
     # kubernetes only, 2lm on
     switch_extender(OnOffState.Off)
@@ -415,19 +416,24 @@ def single_step1workload_experiment(run_mode: RunMode, experiment_id: str, workl
 
         if run_mode == RunMode.EQUAL_ON_ALL_NODES:
             if count_per_node > max_count:
-                logging.info('[EQUAL_ON_ALL_NODES] Skipping count={}, not enough space on nodes max_count={}'.format(count_per_node, max_count))
+                logging.info(
+                    '[EQUAL_ON_ALL_NODES] Skipping count={}, not enough space on nodes max_count={}'.format(
+                        count_per_node, max_count))
                 continue
         elif run_mode == RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES:
-            nodes = [node for node, capacity in ClusterInfoLoader.get_instance().get_nodes().items() 
+            nodes = [node for node, capacity in ClusterInfoLoader.get_instance().get_nodes().items()
                      if node in nodes
                      and count_per_node * workload_cpu < capacity['cpu']
                      and count_per_node * workload_mem < capacity['mem']]
             # Log.
             if not nodes:
-                logging.info('[RUN_ON_NODES_WHERE_ENOUGH_RESOURCES] Skipping run - cannot be run on any node.')
+                logging.info(
+                    '[RUN_ON_NODES_WHERE_ENOUGH_RESOURCES] Skipping run - cannot be run on any node.')
                 break
             else:
-                logging.info('[RUN_ON_NODES_WHERE_ENOUGH_RESOURCES] Running on nodes {}. Tottaly {} pods'.format(nodes, len(nodes) * count_per_node))
+                logging.info(
+                    '[RUN_ON_NODES_WHERE_ENOUGH_RESOURCES] Running on nodes {}. Tottaly {} pods'.format(
+                        nodes, len(nodes) * count_per_node))
         else:
             raise Exception("Unsupported run_mode={}".format(run_mode))
 
@@ -442,12 +448,12 @@ def single_step1workload_experiment(run_mode: RunMode, experiment_id: str, workl
         fref.write('\n')
         fref.write(str(events))
         fref.write('\n')
-        
+
     # Just to show on graph end of experiment
     sleep(100)
 
 
-def tune_stage(workloads: List[str], sleep_time: int = 25*MINUTE):
+def tune_stage(workloads: List[str], sleep_time: int = 25 * MINUTE):
     assert type(workloads) == list
     workloads_run_order: List[str] = workloads
 
@@ -458,7 +464,7 @@ def tune_stage(workloads: List[str], sleep_time: int = 25*MINUTE):
     run_workloads(workloads_run_order, {workload: 1 for workload in workloads})
     sleep(sleep_time)
     now = datetime.now()  # Read data just before killing workloads
-    sleep(60)             # Additional 60 seconds of sleep, after reading >>now<<
+    sleep(60)  # Additional 60 seconds of sleep, after reading >>now<<
     scale_down_all_workloads(wait_time=20)
 
     # Save and print result.
@@ -489,8 +495,8 @@ def modify_configmap(regexes: List[(str)], experiment_index: int, experiment_roo
     # Apply changes
     command = "kubectl apply -k {path_to_kustomize_folder_wca_scheduler} " \
               "&& sleep {sleep_time}".format(
-                path_to_kustomize_folder_wca_scheduler=path,
-                sleep_time='10s')
+        path_to_kustomize_folder_wca_scheduler=path,
+        sleep_time='10s')
     default_shell_run(command)
     switch_extender(OnOffState.Off)
 
@@ -498,7 +504,7 @@ def modify_configmap(regexes: List[(str)], experiment_index: int, experiment_roo
 def create_experiment_root_dir(path: str, overwrite: bool):
     if overwrite and os.path.isdir(path):
         shutil.rmtree(path)
-    
+
     if not os.path.isdir(path):
         os.makedirs(path)
     else:
@@ -507,19 +513,54 @@ def create_experiment_root_dir(path: str, overwrite: bool):
 
 # -----------------------------------------------------------------------------------------------------
 def experimentset_main(
-            iterations: int = 10,
-            experiment_root_dir: str = 'results/tmp',
-            overwrite: bool = False):
+        iterations: int = 10,
+        experiment_root_dir: str = 'results/tmp',
+        overwrite: bool = False):
     """3 stage experiment: our classic way of benchmarking the wca_scheduler."""
-    logging.debug("Running experimentset >>main<< with experiment_directory >>{}<<".format(experiment_root_dir))
+    logging.debug("Running experimentset >>main<< with experiment_directory >>{}<<".format(
+        experiment_root_dir))
     random.seed(datetime.now())
     create_experiment_root_dir(experiment_root_dir, overwrite)
 
+    # regex = [
+    #     [(r'score_target: -\d.\d', 'score_target: -6.5'), ],
+    #     [(r'score_target: -\d.\d', 'score_target: -3.0'), ],
+    #     [(r'score_target: -\d.\d', 'score_target: -2.3'), ],
+    #     [(r'score_target: -\d.\d', 'score_target: -2.0'), ],
+    #     [(r'score_target: -\d.\d', 'score_target: -3.0'), ],
+    # ]
+
+    # regex = [
+    #     [(r'score_target: -\d.\d', 'score_target: -2.3'), ],
+    #     [(r'score_target: -\d.\d', 'score_target: -6.5'), ],
+    # ]
+
     for i in range(iterations):
+        #     # Change config wca-scheduler
+        #     if i == 10:
+        #         modify_configmap(regex[0], i, experiment_root_dir)
+        #     elif i == 20:
+        #         modify_configmap(regex[1], i, experiment_root_dir)
+        #     elif i == 30:
+        #         modify_configmap(regex[2], i, experiment_root_dir)
+        #     elif i == 40:
+        #         modify_configmap(regex[3], i, experiment_root_dir)
+        #     elif i == 50:
+        #         modify_configmap(regex[4], i, experiment_root_dir)
+
+        # Change config wca-scheduler
+        # if i == 0:
+        #     modify_configmap(regex[0], i, experiment_root_dir)
+        # elif i == 10:
+        #     modify_configmap(regex[1], i, experiment_root_dir)
+
         iterations, workloads, utilization = random_with_total_utilization_specified(
             cpu_limit=(0.25, 0.46), mem_limit=(0.81, 0.9),  # total cluster cpu/mem usage
-            nodes_capacities=ClusterInfoLoader.get_instance().get_nodes(), workloads_set=ClusterInfoLoader.get_instance().get_workloads())
-        with open(os.path.join(experiment_root_dir, 'choosen_workloads_utilization.{}.txt'.format(i)), 'a') as fref:
+            nodes_capacities=ClusterInfoLoader.get_instance().get_nodes(),
+            workloads_set=ClusterInfoLoader.get_instance().get_workloads())
+        with open(
+                os.path.join(experiment_root_dir, 'choosen_workloads_utilization.{}.txt'.format(i)),
+                'a') as fref:
             fref.write(str(utilization))
             fref.write('\n')
 
@@ -527,16 +568,15 @@ def experimentset_main(
         single_3stage_experiment(experiment_id=experiment_id,
                                  workloads=workloads,
                                  wait_periods={WaitPeriod.SCALE_DOWN: MINUTE,
-                                               WaitPeriod.STABILIZE: MINUTE*15},
+                                               WaitPeriod.STABILIZE: MINUTE * 15},
                                  stages=[True, True, True],
                                  experiment_root_dir=experiment_root_dir)
 
 
 def experimentset_single_workload_at_once(
-            experiment_root_dir: str = 'results/tmp',
-            overwrite: bool = False,
-            workloads_set: Optional[List[str]] = None):
-
+        experiment_root_dir: str = 'results/tmp',
+        overwrite: bool = False,
+        workloads_set: Optional[List[str]] = None):
     logging.debug("Running experimentset >>every workload is single<<"
                   " with experiment_directory >>{}<<".format(experiment_root_dir))
     random.seed(datetime.now())
@@ -545,32 +585,38 @@ def experimentset_single_workload_at_once(
     # Experiment params, could be passed 
     run_mode: RunMode = RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES
     workloads = [
-        'stress-stream-medium',
-        'memcached-mutilate-medium',
-        'redis-memtier-big',
+        # 'stress-stream-medium',
+        # 'memcached-mutilate-medium',
+        # 'redis-memtier-medium',
+        # 'redis-memtier-big',
+        'redis-memtier-big-wss',
     ]
     count_per_node_list = {
         # 6,6,6 = 18 --> 9h
-        'stress-stream-medium': [2,3,4,5,6,7],
-        'memcached-mutilate-medium': [3,6,7,8],
-        'redis-memtier-big': [2,3,6,10,20,25],
+        # 'stress-stream-medium': [2,3,4,5,6,7],
+        # 'memcached-mutilate-medium': [3,6,7,8],
+        # 'redis-memtier-medium': [1, 3, 8, 10, 14, 18],  # 1 20% 40% 60% 80% 100%
+        # 'redis-memtier-big': [1, 2],
+        'redis-memtier-big-wss': [1, 2],
     }
 
     for i, workload in enumerate(workloads):
         single_step1workload_experiment(
-             run_mode = RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES,
-             experiment_id=str(i),
-             workload=workload,
-             count_per_node_list=count_per_node_list[workload],
-             wait_periods={WaitPeriod.SCALE_DOWN: MINUTE,
-                           WaitPeriod.STABILIZE: MINUTE * 20},
-             nodes=None,
-             experiment_root_dir=experiment_root_dir)
+            run_mode=RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES,
+            experiment_id=str(i),
+            workload=workload,
+            count_per_node_list=count_per_node_list[workload],
+            wait_periods={WaitPeriod.SCALE_DOWN: MINUTE,
+                          WaitPeriod.STABILIZE: MINUTE * 20},
+            nodes=None,
+            experiment_root_dir=experiment_root_dir)
 
 
 def experimentset_test(experiment_root_dir='results/__test__'):
     logging.debug("Running experimentset >>test<<")
     random.seed(datetime.now())
+
+    # modify_configmap([(r'score_target: -\d.\d', 'score_target: -7.0'), ], 0, experiment_root_dir)
 
     if not os.path.isdir(experiment_root_dir):
         os.makedirs(experiment_root_dir)
@@ -585,13 +631,15 @@ def experimentset_test(experiment_root_dir='results/__test__'):
                                            WaitPeriod.STABILIZE: MINUTE},
                              stages=[False, False, True],
                              experiment_root_dir=experiment_root_dir)
+
+
 # -----------------------------------------------------------------------------------------------------
 
 
 if __name__ == "__main__":
     ClusterInfoLoader.build_singleton()
 
-    experimentset_test()
+    # experimentset_test()
     # tune_stage(ClusterInfoLoader.get_instance().get_workloads_names())
-    # experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-16__stepping_single_workloads')
-    # experimentset_main(iterations=6, experiment_root_dir='results/2020-04-16__score2_promrules')
+    # experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-27__stepping_single_workloads_redis-big-wss')
+    experimentset_main(iterations=10, experiment_root_dir='results/2020-04-28__score2_2')
