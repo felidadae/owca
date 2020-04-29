@@ -1,3 +1,5 @@
+#!/usr/bin/env python3.6
+
 import os
 import statistics
 import requests
@@ -61,7 +63,10 @@ class PrometheusClient:
         """
         urli = PrometheusClient.BASE_URL + '/api/v1/query?{}'.format(parse.urlencode(dict(
             query=query, time=time,)))
-        r = requests.get(urli)
+        try:
+            r = requests.get(urli)
+        except requests.exceptions.ConnectionError as e:
+            raise Exception() from e
         try:
             r.raise_for_status()
         except requests.exceptions.HTTPError as e:
@@ -144,6 +149,8 @@ class Node:
         # @TODO should be taken from queries
         node_cpu = nodes_capacities[self.name]['cpu']
         node_mem = nodes_capacities[self.name]['mem']
+        node_mbw_read = nodes_capacities[self.name]['membw_read']
+        node_mbw_write = nodes_capacities[self.name]['membw_write']
 
         if Metric.PLATFORM_CPU_REQUESTED not in self.performance_metrics:
             # means that no tasks were run on the node
@@ -155,8 +162,11 @@ class Node:
             'cpu_requested [%]': round(float(self.performance_metrics[Metric.PLATFORM_CPU_REQUESTED]['instant'])/node_cpu*100, 2),
             'cpu_util': round(float(self.performance_metrics[Metric.PLATFORM_CPU_UTIL]['instant']),2),
             'mem_requested': round(float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant']),2),
-            'mem_requested [%]': round(float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant'])/node_mem*100,2),
-            'mbw_total':     round(float(self.performance_metrics[Metric.PLATFORM_MBW_TOTAL]['instant']),2),
+            'mem_requested [%]': round(float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant'])/node_mem*100, 2),
+            'mbw_total': round(float(self.performance_metrics[Metric.PLATFORM_MBW_TOTAL]['instant']),2),
+            'mbw_read [%]': round(float(self.performance_metrics[Metric.PLATFORM_MBW_TOTAL]['instant'])/node_mbw_read*100, 2),
+            'mbw_write [%]': round(float(self.performance_metrics[Metric.PLATFORM_MBW_TOTAL]['instant']) / node_mbw_write * 100, 2),
+            # 'mbw_total_max [%]': round(float(self.performance_metrics[Metric.PLATFORM_MBW_TOTAL_MAX]['instant']), 2),
             'dram_hit_ratio [%]': round(float(self.performance_metrics[Metric.PLATFORM_DRAM_HIT_RATIO]['instant']) * 100,2),
             'wss_used (aprox)': round(float(self.performance_metrics[Metric.PLATFORM_WSS_USED]['instant']),2),
             'wss_used (aprox) [%]': round(float(self.performance_metrics[Metric.PLATFORM_WSS_USED]['instant'])/193*100,2),
@@ -298,9 +308,14 @@ class StagesAnalyzer:
 
     def get_all_tasks_count_in_stage(self, stage: int) -> int:
         """Only returns tasks count, directly from metric."""
-        return sum(int(node.performance_metrics[Metric.POD_SCHEDULED]['instant'])
-                   for node in self.stages[stage].nodes.values()
-                   if Metric.POD_SCHEDULED in node.performance_metrics)
+        # return sum(int(node.performance_metrics[Metric.POD_SCHEDULED]['instant'])
+        #            for node in self.stages[stage].nodes.values()
+        #            if Metric.POD_SCHEDULED in node.performance_metrics)
+        dd=0
+        for node in self.stages[stage].nodes.values():
+            if Metric.POD_SCHEDULED in node.performance_metrics:
+                dd += int(node.performance_metrics[Metric.POD_SCHEDULED]['instant'])
+        return dd
 
     def get_all_workloads_in_stage(self, stage_index: int):
         return set(task.workload_name for task in self.stages[stage_index].tasks.values())
@@ -322,9 +337,13 @@ class StagesAnalyzer:
             throughputs_list = [task.get_throughput('avg') for task in tasks if task.get_throughput('avg') is not None]
             latencies_list =  [task.get_latency('avg') for task in tasks if task.get_latency('avg') is not None]
 
-            if len(throughputs_list) == 1:
-                t_max, t_min, t_avg, t_stdev = [throughputs_list[0]] * 4
-                l_max, l_min, l_avg, l_stdev = [latencies_list[0]] * 4
+            # TODO:  if len(throughputs_list) == 0 -> exception, len(workloads) != len(workloads_wstats)
+            if len(throughputs_list) == 0:
+                t_max, t_min, t_avg, t_stdev = [1, 1, 1, 1]
+                l_max, l_min, l_avg, l_stdev = [1, 1, 1, 1]
+            elif len(throughputs_list) == 1:
+                t_max, t_min, t_avg, t_stdev = [throughputs_list[0], throughputs_list[0], throughputs_list[0], 0]
+                l_max, l_min, l_avg, l_stdev = [throughputs_list[0], throughputs_list[0], throughputs_list[0], 0]
             else:
                 t_max, t_min, t_avg, t_stdev = max(throughputs_list), min(throughputs_list), statistics.mean(throughputs_list), statistics.stdev(throughputs_list)
                 l_max, l_min, l_avg, l_stdev = max(latencies_list), min(latencies_list), statistics.mean(latencies_list), statistics.stdev(latencies_list)
@@ -346,7 +365,8 @@ class StagesAnalyzer:
         """
         # baseline results in stage0 on DRAM
         for i in range(len(self.stages)):
-            assert self.get_all_tasks_count_in_stage(0) > 5
+            check = self.get_all_tasks_count_in_stage(0)
+            assert check > 5
 
         workloads_wstats: List[Dict[str, Wstat]] = []
         tasks_summaries__per_stage: List[List[Dict]] = []
@@ -373,6 +393,8 @@ class StagesAnalyzer:
         tasks_summaries__per_stage: List[pd.DataFrame] = [pd.DataFrame(el) for el in tasks_summaries__per_stage]
         node_summaries__per_stage: List[pd.DataFrame] = [pd.DataFrame(el) for el in node_summaries__per_stage]
 
+        tasks_summaries__per_stage: List[pd.DataFrame] = [el.sort_values(by='node') for el in tasks_summaries__per_stage]
+
         exporter = TxtStagesExporter(
             events_data=self.events_data,
             experiment_meta=experiment_meta,
@@ -387,6 +409,8 @@ class StagesAnalyzer:
 
         if experiment_meta.experiment_type == ExperimentType.ThreeStageStandardRun:
             exporter.export_to_txt()
+            exporter.export_to_xls()
+            exporter.export_to_csv()
         elif experiment_meta.experiment_type == ExperimentType.SingleWorkloadsRun:
             exporter.export_to_txt_single()
         elif experiment_meta.experiment_type == ExperimentType.SteppingSingleWorkloadsRun:
@@ -432,6 +456,14 @@ class TxtStagesExporter:
     def export_to_txt_stepping_single(self):
         logging.debug("Saving results to {}".format(self.export_file_path))
 
+        runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path,
+                                                   'runner_analyzer')
+        if not os.path.isdir(runner_analyzer_results_dir):
+            os.mkdir(runner_analyzer_results_dir)
+
+    def export_to_txt_stepping_single(self):
+        logging.debug("Saving results to {}".format(self.export_file_path))
+
         runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path, 'runner_analyzer')
         if not os.path.isdir(runner_analyzer_results_dir):
             os.mkdir(runner_analyzer_results_dir)
@@ -468,8 +500,59 @@ class TxtStagesExporter:
         self._fref.write(df.to_string())
         self._fref.write('\n')
 
+    def multiple_dfs(df_list, sheets, file_name, spaces):
+        writer = pd.ExcelWriter(file_name, engine='xlsxwriter')
+        row = 0
+        for dataframe in df_list:
+            dataframe.to_excel(writer, sheet_name=sheets, startrow=row, startcol=0)
+            row = row + len(dataframe.index) + spaces + 1
+        writer.save()
+
+    def export_to_xls(self):
+        logging.debug("Saving results to {}".format(self.export_file_path))
+
+        runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path,
+                                                   'runner_analyzer')
+        if not os.path.isdir(runner_analyzer_results_dir):
+            os.mkdir(runner_analyzer_results_dir)
+
+        with pd.ExcelWriter(os.path.join(runner_analyzer_results_dir, 'tasks_summaries_{}.xlsx'.format(self.experiment_index))) as writer:
+            self.tasks_summaries[0].to_excel(writer, sheet_name='BASELINE')
+            self.tasks_summaries[1].to_excel(writer, sheet_name='KUBERNETES_BASELINE')
+            self.tasks_summaries[2].to_excel(writer, sheet_name='WCA-SCHEDULER')
+
+        with pd.ExcelWriter(os.path.join(runner_analyzer_results_dir, 'node_summaries_{}.xlsx'.format(self.experiment_index))) as writer:
+            self.node_summaries[0].to_excel(writer, sheet_name='BASELINE')
+            self.node_summaries[1].to_excel(writer, sheet_name='KUBERNETES_BASELINE')
+            self.node_summaries[2].to_excel(writer, sheet_name='WCA-SCHEDULER')
+
+        with pd.ExcelWriter(os.path.join(runner_analyzer_results_dir, 'workloads_summaries_{}.xlsx'.format(self.experiment_index))) as writer:
+            self.workloads_summaries[0].to_excel(writer, sheet_name='BASELINE')
+            self.workloads_summaries[1].to_excel(writer, sheet_name='KUBERNETES_BASELINE')
+            self.workloads_summaries[2].to_excel(writer, sheet_name='WCA-SCHEDULER')
+
+    def export_to_csv(self):
+        logging.debug("Saving results to {}".format(self.export_file_path))
+
+        runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path,
+                                                   'runner_analyzer')
+        if not os.path.isdir(runner_analyzer_results_dir):
+            os.mkdir(runner_analyzer_results_dir)
+
+        self.tasks_summaries[0].to_csv(os.path.join(runner_analyzer_results_dir, 'tasks_summaries_{}_BASELINE.csv'.format(self.experiment_index)))
+        self.tasks_summaries[1].to_csv(os.path.join(runner_analyzer_results_dir,'tasks_summaries_{}_KUBERNETES_BASELINE.csv'.format(self.experiment_index)))
+        self.tasks_summaries[2].to_csv(os.path.join(runner_analyzer_results_dir,'tasks_summaries_{}_WCA-SCHEDULER.csv'.format(self.experiment_index)))
+
+        self.node_summaries[0].to_csv(os.path.join(runner_analyzer_results_dir,'node_summaries_{}_BASELINE.csv'.format(self.experiment_index)))
+        self.node_summaries[1].to_csv(os.path.join(runner_analyzer_results_dir,'node_summaries_{}_KUBERNETES_BASELINE.csv'.format(self.experiment_index)))
+        self.node_summaries[2].to_csv(os.path.join(runner_analyzer_results_dir,'node_summaries_{}_WCA-SCHEDULER.csv'.format(self.experiment_index)))
+
+        self.workloads_summaries[0].to_csv(os.path.join(runner_analyzer_results_dir,'workloads_summaries_{}_BASELINE.csv'.format(self.experiment_index)))
+        self.workloads_summaries[1].to_csv(os.path.join(runner_analyzer_results_dir,'workloads_summaries_{}_KUBERNETES_BASELINE.csv'.format(self.experiment_index)))
+        self.workloads_summaries[2].to_csv(os.path.join(runner_analyzer_results_dir,'workloads_summaries_{}_WCA-SCHEDULER.csv'.format(self.experiment_index)))
+
     def export_to_txt(self):
-        import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         logging.debug("Saving results to {}".format(self.export_file_path))
 
         runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path, 'runner_analyzer')
@@ -510,11 +593,14 @@ class TxtStagesExporter:
         else:
             self._fref.write("Utilization of resources: unknown\n")
 
-
     def _baseline(self, title="BASELINE", stage_index=0):
         self._fref.write("***{}(stage_index={})***\n".format(title, stage_index))
         self._fref.write(str(self.workloads_summaries[stage_index].to_string()))
-        self._fref.write('\n')
+        self._fref.write('\n\n')
+        self._fref.write(str(self.node_summaries[stage_index].to_string()))
+        self._fref.write('\n\n')
+        self._fref.write(str(self.tasks_summaries[stage_index].to_string()))
+        self._fref.write('\n\n')
 
     def _aep_tasks(self):
         for istage, title in (1, "KUBERNETES BASELINE"), (2, "WCA-SCHEDULER"):
@@ -533,7 +619,6 @@ class TxtStagesExporter:
             self._fref.write('Passed {}/{} strict limit >>{}<<\n'.format(
                             len([val for val in self.tasks_summaries[istage]['pass_strict'] if val]),
                             len(self.tasks_summaries[istage]['pass_strict']), self.limits))
-
 
 
 def print_n_per_row(n, list_):
@@ -560,7 +645,13 @@ class Metric(Enum):
     PLATFORM_MBW_TOTAL = 'platform_mbw_total'
     PLATFORM_DRAM_HIT_RATIO = 'platform_dram_hit_ratio'
     PLATFORM_WSS_USED = 'platform_wss_used'
-
+    ####
+    PLATFORM_MBW_TOTAL_MAX = 'platform_mbw_total_max'
+    # 'platform_dram_total_bytes_per_second'
+    # 'platform_pmm_total_bytes_per_second'
+    # 'platform_nvdimm_read_bandwidth_bytes_per_second'
+    # 'platform_nvdimm_write_bandwidth_bytes_per_second'
+    # 'platform_mem_mode_size_bytes'
     
 MetricsQueries = {
     Metric.TASK_THROUGHPUT: 'apm_sli2',
@@ -574,6 +665,7 @@ MetricsQueries = {
     Metric.PLATFORM_CPU_REQUESTED: 'sum(task_requested_cpus) by (nodename)',
     Metric.PLATFORM_CPU_UTIL: "sum(1-rate(node_cpu_seconds_total{mode='idle'}[10s])) by(nodename) / sum(platform_topology_cpus) by (nodename)",
     Metric.PLATFORM_MBW_TOTAL: 'sum(platform_dram_reads_bytes_per_second + platform_pmm_reads_bytes_per_second) by (nodename) / 1e9',
+    Metric.PLATFORM_MBW_TOTAL_MAX: '(sum(platform_dram_reads_bytes_per_second + platform_pmm_reads_bytes_per_second) by (nodename) / 1e9) / ((sum(platform_nvdimm_read_bandwidth_bytes_per_second + platform_nvdimm_write_bandwidth_bytes_per_second) by (nodename) and sum(platform_mem_mode_size_bytes) by (nodename) != 0))',
     Metric.PLATFORM_DRAM_HIT_RATIO: 'avg(platform_dram_hit_ratio) by (nodename)',
     Metric.PLATFORM_WSS_USED: 'sum(avg_over_time(task_wss_referenced_bytes[15s])) by (nodename) / 1e9',
 }
@@ -624,6 +716,7 @@ class AnalyzerQueries:
     def query_platform_performance_metrics(time: int, nodes: Dict[str, Node]):
         metrics = (Metric.PLATFORM_MEM_USAGE, Metric.PLATFORM_CPU_REQUESTED,
                    Metric.PLATFORM_CPU_UTIL, Metric.PLATFORM_MBW_TOTAL,
+                   Metric.PLATFORM_MBW_TOTAL_MAX,
                    Metric.POD_SCHEDULED, Metric.PLATFORM_DRAM_HIT_RATIO, Metric.PLATFORM_WSS_USED)
         
         for metric in metrics:
@@ -722,12 +815,12 @@ def analyze_3stage_experiment(experiment_meta: ExperimentMeta):
             stages_analyzer.aep_report(experiment_meta, experiment_index=i)
         except Exception:
             logging.error("Skipping the whole 3stage subexperiment number {} due to exception!".format(i))
-            # @TODO remove raise
-            raise
-            continue
+            # # @TODO remove raise
+            # raise
+            # continue
 
-        logging.error("@TODO remove this break")
-        break
+        # logging.error("@TODO remove this break")
+        # break
 
 
 if __name__ == "__main__":
@@ -872,7 +965,7 @@ if __name__ == "__main__":
             commit_hash='35a1216a516b',),
 
         ExperimentMeta(
-            data_path='results/2020-04-16__score2_promrules', 
+            data_path='results/2020-04-17__score2',
             title='Score2',
             description='Damian first run on cluster.',
             params={},
@@ -880,7 +973,143 @@ if __name__ == "__main__":
             bugs='',
             experiment_type=ExperimentType.ThreeStageStandardRun,
             experiment_baseline_index=0,
-            commit_hash='unknown',)
+            commit_hash='unknown',),
+
+        ExperimentMeta(
+            data_path='results/2020-04-17__score2',
+            title='Score2',
+            description='Damian changes analizer. NO new results',
+            params={},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.ThreeStageStandardRun,
+            experiment_baseline_index=0,
+            commit_hash='unknown', ),
+
+        ExperimentMeta(
+            data_path='results/2020-04-20__score2',
+            title='Score2',
+            description='Marta fix to set max 70% usage cpu',
+            params={},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.ThreeStageStandardRun,
+            experiment_baseline_index=0,
+            commit_hash='unknown', ),
+
+        ExperimentMeta(
+            data_path='results/2020-04-21__score2',
+            title='Score2',
+            description='Max 50% CPU usage, even number cores for workloads',
+            params={},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.ThreeStageStandardRun,
+            experiment_baseline_index=0,
+            commit_hash='unknown', ),
+
+        ExperimentMeta(
+            data_path='results/2020-04-22__score2',
+            title='Score2',
+            description='Max 50% CPU usage, Fixed redis-memtire with old images',
+            params={},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.ThreeStageStandardRun,
+            experiment_baseline_index=0,
+            commit_hash='unknown', ),
+
+        ExperimentMeta(
+            data_path='results/2020-04-23__score2',
+            title='Score2',
+            description='Max 70% CPU usage',
+            params={},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.ThreeStageStandardRun,
+            experiment_baseline_index=0,
+            commit_hash='unknown', ),
+
+        ExperimentMeta(
+            data_path='results/2020-04-23__stepping_single_workloads',
+            title='Stepping workloads',
+            description='redis',
+            params={'instances_count': '', 'workloads_count': '3',
+                    'stabilize_phase_length [min]': [20]},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
+            experiment_baseline_index=0,
+            commit_hash='', ),
+
+        ExperimentMeta(
+            data_path='results/2020-04-23__score2_xls',
+            title='Score2',
+            description='XLS',
+            params={},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.ThreeStageStandardRun,
+            experiment_baseline_index=0,
+            commit_hash='unknown', ),
+
+        ExperimentMeta(
+            data_path='results/2020-04-24__score2',
+            title='Score2',
+            description='Different value of score',
+            params={},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.ThreeStageStandardRun,
+            experiment_baseline_index=0,
+            commit_hash='unknown', ),
+
+        ExperimentMeta(
+            data_path='results/2020-04-27__stepping_single_workloads_redis',
+            title='Stepping workloads',
+            description='redis',
+            params={'instances_count': '', 'workloads_count': 'almost all',
+                    'stabilize_phase_length [min]': [20]},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
+            experiment_baseline_index=0,
+            commit_hash='', ),
+
+        ExperimentMeta(
+            data_path='results/2020-04-27__stepping_single_workloads_redis-big',
+            title='Stepping workloads',
+            description='redis',
+            params={'instances_count': '', 'workloads_count': 'almost all',
+                    'stabilize_phase_length [min]': [20]},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
+            experiment_baseline_index=0,
+            commit_hash='', ),
+
+        ExperimentMeta(
+            data_path='results/2020-04-28__score2',
+            title='Score2',
+            description='4 step, score -2.3',
+            params={},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.ThreeStageStandardRun,
+            experiment_baseline_index=0,
+            commit_hash='unknown', ),
+
+        ExperimentMeta(
+            data_path='results/2020-04-28__score2_2',
+            title='Score2',
+            description='',
+            params={},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.ThreeStageStandardRun,
+            experiment_baseline_index=0,
+            commit_hash='unknown', ),
+
     ]
 
     # copy data to summary dir with README
