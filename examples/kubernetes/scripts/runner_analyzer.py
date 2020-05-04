@@ -157,19 +157,22 @@ class Node:
             return {}
 
         return {
-            'name': self.name, 
+            'name': self.name,
+
             'cpu_requested': round(float(self.performance_metrics[Metric.PLATFORM_CPU_REQUESTED]['instant']), 2),
             'cpu_requested [%]': round(float(self.performance_metrics[Metric.PLATFORM_CPU_REQUESTED]['instant'])/node_cpu*100, 2),
             'cpu_util': round(float(self.performance_metrics[Metric.PLATFORM_CPU_UTIL]['instant']),2),
+
             'mem_requested': round(float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant']),2),
             'mem_requested [%]': round(float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant'])/node_mem*100, 2),
-            'mbw_total': round(float(self.performance_metrics[Metric.PLATFORM_MBW_TOTAL]['instant']),2),
-            'mbw_read [%]': round(float(self.performance_metrics[Metric.PLATFORM_MBW_TOTAL]['instant'])/node_mbw_read*100, 2),
-            'mbw_write [%]': round(float(self.performance_metrics[Metric.PLATFORM_MBW_TOTAL]['instant']) / node_mbw_write * 100, 2),
-            # 'mbw_total_max [%]': round(float(self.performance_metrics[Metric.PLATFORM_MBW_TOTAL_MAX]['instant']), 2),
+
+            'mbw_reads_total [GB]':  round(float(self.performance_metrics[Metric.PLATFORM_MBW_READS]['instant']),2),
+            'mbw_writes_total [GB]': round(float(self.performance_metrics[Metric.PLATFORM_MBW_WRITES]['instant']), 2),
+
             'dram_hit_ratio [%]': round(float(self.performance_metrics[Metric.PLATFORM_DRAM_HIT_RATIO]['instant']) * 100,2),
+
             'wss_used (aprox)': round(float(self.performance_metrics[Metric.PLATFORM_WSS_USED]['instant']),2),
-            'wss_used (aprox) [%]': round(float(self.performance_metrics[Metric.PLATFORM_WSS_USED]['instant'])/193*100,2),
+
             'mem/cpu': round(float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant'])/
                        float(self.performance_metrics[Metric.PLATFORM_CPU_REQUESTED]['instant']), 2)
         }
@@ -299,7 +302,8 @@ class StagesAnalyzer:
 
         self.stages = [] 
         for i in range(self.stages_count):
-            self.stages.append(Stage(t_start=events[i*2][0].timestamp()+T_DELTA, t_end=events[i*2+1][0].timestamp() + T_DELTA))
+            self.stages.append(Stage(t_start=events[i*2][0].timestamp()+T_DELTA,
+                                     t_end=events[i*2+1][0].timestamp() + T_DELTA))
 
     def delete_report_files(self, report_root_dir):
         if os.path.isdir(report_root_dir):
@@ -320,35 +324,47 @@ class StagesAnalyzer:
     def get_all_workloads_in_stage(self, stage_index: int):
         return set(task.workload_name for task in self.stages[stage_index].tasks.values())
 
+    # def get_all_nodes_where_jobs_where_run_in_stage(self, stage_index: int):
+    #     return list(set([task.node for task in self.get_all_tasks_in_stage_on_nodes(stage_index)]))
+
     def get_all_tasks_in_stage_on_nodes(self, stage_index: int, nodes: List[str]):
         return [task for task in self.stages[stage_index].tasks.values() if task.node in nodes]
 
     def get_all_nodes_in_stage(self, stage_index: int) -> List[str]:
         return [nodename for nodename in self.stages[stage_index].nodes]
 
-    def calculate_per_workload_wstats_per_stage(self, workloads: Iterable[str], stage_index) -> Dict[str, WStat]:
-        """Calculate Wstats for all workloads in list for stage (stage_index). Takes data from all nodes."""
+    def calculate_per_workload_wstats_per_stage(self, workloads: Iterable[str],
+                                                stage_index: int, filter_nodes: List[str]) -> Dict[str, WStat]:
+        """Calculate WStat for all workloads in list for stage (stage_index). Takes data from all nodes."""
         workloads_wstats: Dict[str, WStat] = {}
         for workload in workloads:
+            # filter tasks of a given workload
             tasks = [task for task in self.stages[stage_index].tasks.values() if task.workload_name == workload]
-            tasks = [task for task in tasks if task.node != 'node101']
+            # filter out tasks which were run on >>filter_nodes<<
+            tasks = [task for task in tasks if task.node not in filter_nodes]
 
             # avg but from 12 sec for a single task
             throughputs_list = [task.get_throughput('avg') for task in tasks if task.get_throughput('avg') is not None]
             latencies_list =  [task.get_latency('avg') for task in tasks if task.get_latency('avg') is not None]
 
-            # TODO:  if len(throughputs_list) == 0 -> exception, len(workloads) != len(workloads_wstats)
             if len(throughputs_list) == 0:
-                t_max, t_min, t_avg, t_stdev = [1, 1, 1, 1]
-                l_max, l_min, l_avg, l_stdev = [1, 1, 1, 1]
+                # TODO:  if len(throughputs_list) == 0 -> exception, len(workloads) != len(workloads_wstats)
+                # not having data at all ? - maybe inf?
+                exception_value = float('inf')  # 1
+                t_max, t_min, t_avg, t_stdev = [exception_value] * 4
+                l_max, l_min, l_avg, l_stdev = [exception_value] * 4
             elif len(throughputs_list) == 1:
                 t_max, t_min, t_avg, t_stdev = [throughputs_list[0], throughputs_list[0], throughputs_list[0], 0]
                 l_max, l_min, l_avg, l_stdev = [throughputs_list[0], throughputs_list[0], throughputs_list[0], 0]
             else:
-                t_max, t_min, t_avg, t_stdev = max(throughputs_list), min(throughputs_list), statistics.mean(throughputs_list), statistics.stdev(throughputs_list)
-                l_max, l_min, l_avg, l_stdev = max(latencies_list), min(latencies_list), statistics.mean(latencies_list), statistics.stdev(latencies_list)
+                t_max, t_min, t_avg, t_stdev = max(throughputs_list), min(throughputs_list), \
+                                               statistics.mean(throughputs_list), statistics.stdev(throughputs_list)
+                l_max, l_min, l_avg, l_stdev = max(latencies_list), min(latencies_list), \
+                                               statistics.mean(latencies_list), statistics.stdev(latencies_list)
 
-            workloads_wstats[workload] = WStat(latency=Stat(l_avg, l_min, l_max, l_stdev), throughput=Stat(t_avg, t_min, t_max, t_stdev), count=len(tasks), name=workload)
+            workloads_wstats[workload] = WStat(latency=Stat(l_avg, l_min, l_max, l_stdev),
+                                               throughput=Stat(t_avg, t_min, t_max, t_stdev),
+                                               count=len(tasks), name=workload)
         return workloads_wstats
 
     def get_stages_count(self):
@@ -360,7 +376,7 @@ class StagesAnalyzer:
         1) list all workloads which are run on AEP (Task.workload.name) in stage 3 (or 2)
           a) for all this workloads read performance on DRAM in stage 1
         2) for assertion and consistency we could also check how compare results in all stages
-        3) compare results which we got AEP vs DRAM seperately for stage 2 and 3
+        3) compare results which we got AEP vs DRAM separately for stage 2 and 3
           a) for each workload:
         """
         # baseline results in stage0 on DRAM
@@ -368,15 +384,26 @@ class StagesAnalyzer:
             check = self.get_all_tasks_count_in_stage(0)
             assert check > 5
 
-        workloads_wstats: List[Dict[str, Wstat]] = []
+        workloads_wstats: List[Dict[str, WStat]] = []
         tasks_summaries__per_stage: List[List[Dict]] = []
         node_summaries__per_stage: List[List[Dict]] = []
         workloads_baseline: Dict[str, WStat] = None
 
+        aep_nodes = ClusterInfoLoader.get_instance().get_aep_nodes()
+
         for stage_index in range(0, self.get_stages_count()):
-            workloads_wstat = self.calculate_per_workload_wstats_per_stage(self.get_all_workloads_in_stage(stage_index), stage_index=stage_index)
+            workloads_wstat = self.calculate_per_workload_wstats_per_stage(
+                workloads=self.get_all_workloads_in_stage(stage_index), stage_index=stage_index, filter_nodes=aep_nodes)
             workloads_wstats.append(workloads_wstat)
-        workloads_baseline = workloads_wstats[experiment_meta.experiment_baseline_index]
+
+        # Only take nodes node10*
+        # @TODO replace with more generic solution, like param in MetaExperiment
+        partial_nodes_baseline = [node for node in self.get_all_nodes_in_stage(experiment_meta.experiment_baseline_index)
+                                  if node not in aep_nodes and not node.startswith('node10')]
+        workloads_baseline = self.calculate_per_workload_wstats_per_stage(
+            workloads=self.get_all_workloads_in_stage(stage_index), stage_index=experiment_meta.experiment_baseline_index,
+            filter_nodes=partial_nodes_baseline)
+
         for stage_index in range(0, self.get_stages_count()):
             tasks = self.get_all_tasks_in_stage_on_nodes(stage_index=stage_index, nodes=self.get_all_nodes_in_stage(stage_index))
             # ---
@@ -389,7 +416,7 @@ class StagesAnalyzer:
             node_summaries__per_stage.append(nodes_summaries)
 
         # Transform to DataFrames keeping the same names
-        workloads_wstats: List[DataFrame] = [WStat.to_dataframe(el.values()) for el in workloads_wstats]
+        workloads_wstats: List[pd.DataFrame] = [WStat.to_dataframe(el.values()) for el in workloads_wstats]
         tasks_summaries__per_stage: List[pd.DataFrame] = [pd.DataFrame(el) for el in tasks_summaries__per_stage]
         node_summaries__per_stage: List[pd.DataFrame] = [pd.DataFrame(el) for el in node_summaries__per_stage]
 
@@ -421,7 +448,7 @@ class StagesAnalyzer:
 
 @dataclass
 class TxtStagesExporter:
-    events_data: List
+    events_data: Tuple[List, List]
     experiment_meta: ExperimentMeta
     experiment_index: int
     export_file_path: str
@@ -642,16 +669,10 @@ class Metric(Enum):
     PLATFORM_MEM_USAGE = 'platform_mem_usage'
     PLATFORM_CPU_REQUESTED = 'platform_cpu_requested'
     PLATFORM_CPU_UTIL = 'platform_cpu_util'
-    PLATFORM_MBW_TOTAL = 'platform_mbw_total'
+    PLATFORM_MBW_READS = 'platform_mbw_reads'
+    PLATFORM_MBW_WRITES = 'platform_mbw_writes'
     PLATFORM_DRAM_HIT_RATIO = 'platform_dram_hit_ratio'
     PLATFORM_WSS_USED = 'platform_wss_used'
-    ####
-    PLATFORM_MBW_TOTAL_MAX = 'platform_mbw_total_max'
-    # 'platform_dram_total_bytes_per_second'
-    # 'platform_pmm_total_bytes_per_second'
-    # 'platform_nvdimm_read_bandwidth_bytes_per_second'
-    # 'platform_nvdimm_write_bandwidth_bytes_per_second'
-    # 'platform_mem_mode_size_bytes'
     
 MetricsQueries = {
     Metric.TASK_THROUGHPUT: 'apm_sli2',
@@ -663,9 +684,10 @@ MetricsQueries = {
     Metric.POD_SCHEDULED: 'wca_tasks',
     Metric.PLATFORM_MEM_USAGE: 'sum(task_requested_mem_bytes) by (nodename) / 1e9',
     Metric.PLATFORM_CPU_REQUESTED: 'sum(task_requested_cpus) by (nodename)',
+    # @TODO check if correct (with htop as comparison)
     Metric.PLATFORM_CPU_UTIL: "sum(1-rate(node_cpu_seconds_total{mode='idle'}[10s])) by(nodename) / sum(platform_topology_cpus) by (nodename)",
-    Metric.PLATFORM_MBW_TOTAL: 'sum(platform_dram_reads_bytes_per_second + platform_pmm_reads_bytes_per_second) by (nodename) / 1e9',
-    Metric.PLATFORM_MBW_TOTAL_MAX: '(sum(platform_dram_reads_bytes_per_second + platform_pmm_reads_bytes_per_second) by (nodename) / 1e9) / ((sum(platform_nvdimm_read_bandwidth_bytes_per_second + platform_nvdimm_write_bandwidth_bytes_per_second) by (nodename) and sum(platform_mem_mode_size_bytes) by (nodename) != 0))',
+    Metric.PLATFORM_MBW_READS: 'sum(platform_dram_reads_bytes_per_second + platform_pmm_reads_bytes_per_second) by (nodename) / 1e9',
+    Metric.PLATFORM_MBW_WRITES: 'sum(platform_dram_writes_bytes_per_second + platform_pmm_writes_bytes_per_second) by (nodename) / 1e9',
     Metric.PLATFORM_DRAM_HIT_RATIO: 'avg(platform_dram_hit_ratio) by (nodename)',
     Metric.PLATFORM_WSS_USED: 'sum(avg_over_time(task_wss_referenced_bytes[15s])) by (nodename) / 1e9',
 }
