@@ -161,19 +161,20 @@ class Node:
 
             'cpu_requested': round(float(self.performance_metrics[Metric.PLATFORM_CPU_REQUESTED]['instant']), 2),
             'cpu_requested [%]': round(float(self.performance_metrics[Metric.PLATFORM_CPU_REQUESTED]['instant'])/node_cpu*100, 2),
-            'cpu_util': round(float(self.performance_metrics[Metric.PLATFORM_CPU_UTIL]['instant']),2),
+            'cpu_util [experimental]': round(float(self.performance_metrics[Metric.PLATFORM_CPU_UTIL]['instant']),2),
 
             'mem_requested': round(float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant']),2),
             'mem_requested [%]': round(float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant'])/node_mem*100, 2),
 
-            'mbw_reads_total [GB]':  round(float(self.performance_metrics[Metric.PLATFORM_MBW_READS]['instant']),2),
-            'mbw_writes_total [GB]': round(float(self.performance_metrics[Metric.PLATFORM_MBW_WRITES]['instant']), 2),
+            'mbw_reads [GB]':  round(float(self.performance_metrics[Metric.PLATFORM_MBW_READS]['instant']),2),
+            'mbw_writes [GB]': round(float(self.performance_metrics[Metric.PLATFORM_MBW_WRITES]['instant']), 2),
+            'mbw_flat [GB]': round(3.7 * float(self.performance_metrics[Metric.PLATFORM_MBW_WRITES]['instant']) + float(self.performance_metrics[Metric.PLATFORM_MBW_READS]['instant']), 2),
 
             'dram_hit_ratio [%]': round(float(self.performance_metrics[Metric.PLATFORM_DRAM_HIT_RATIO]['instant']) * 100,2),
 
             'wss_used (aprox)': round(float(self.performance_metrics[Metric.PLATFORM_WSS_USED]['instant']),2),
 
-            'mem/cpu': round(float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant'])/
+            'mem/cpu (requested)': round(float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant'])/
                        float(self.performance_metrics[Metric.PLATFORM_CPU_REQUESTED]['instant']), 2)
         }
 
@@ -737,8 +738,7 @@ class AnalyzerQueries:
     @staticmethod
     def query_platform_performance_metrics(time: int, nodes: Dict[str, Node]):
         metrics = (Metric.PLATFORM_MEM_USAGE, Metric.PLATFORM_CPU_REQUESTED,
-                   Metric.PLATFORM_CPU_UTIL, Metric.PLATFORM_MBW_TOTAL,
-                   Metric.PLATFORM_MBW_TOTAL_MAX,
+                   Metric.PLATFORM_CPU_UTIL, Metric.PLATFORM_MBW_READS, Metric.PLATFORM_MBW_WRITES,
                    Metric.POD_SCHEDULED, Metric.PLATFORM_DRAM_HIT_RATIO, Metric.PLATFORM_WSS_USED)
         
         for metric in metrics:
@@ -838,7 +838,7 @@ def analyze_3stage_experiment(experiment_meta: ExperimentMeta):
         except Exception:
             logging.error("Skipping the whole 3stage subexperiment number {} due to exception!".format(i))
             # # @TODO remove raise
-            # raise
+            raise
             # continue
 
         # logging.error("@TODO remove this break")
@@ -1132,6 +1132,16 @@ if __name__ == "__main__":
             experiment_baseline_index=0,
             commit_hash='unknown', ),
 
+        ExperimentMeta(
+            data_path='results/2020-04-29__score2_full',
+            title='Score2',
+            description='',
+            params={},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.ThreeStageStandardRun,
+            experiment_baseline_index=0,
+            commit_hash='unknown', ),
     ]
 
     # copy data to summary dir with README
