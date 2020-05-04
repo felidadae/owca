@@ -399,11 +399,12 @@ class StagesAnalyzer:
 
         # Only take nodes node10*
         # @TODO replace with more generic solution, like param in MetaExperiment
-        partial_nodes_baseline = [node for node in self.get_all_nodes_in_stage(experiment_meta.experiment_baseline_index)
-                                  if node not in aep_nodes and not node.startswith('node10')]
+        nodes_to_filter = [node for node in self.get_all_nodes_in_stage(experiment_meta.experiment_baseline_index)
+                           if node in aep_nodes or not node.startswith('node10')]
         workloads_baseline = self.calculate_per_workload_wstats_per_stage(
-            workloads=self.get_all_workloads_in_stage(stage_index), stage_index=experiment_meta.experiment_baseline_index,
-            filter_nodes=partial_nodes_baseline)
+            workloads=self.get_all_workloads_in_stage(experiment_meta.experiment_baseline_index),
+            stage_index=experiment_meta.experiment_baseline_index,
+            filter_nodes=nodes_to_filter)
 
         for stage_index in range(0, self.get_stages_count()):
             tasks = self.get_all_tasks_in_stage_on_nodes(stage_index=stage_index, nodes=self.get_all_nodes_in_stage(stage_index))
