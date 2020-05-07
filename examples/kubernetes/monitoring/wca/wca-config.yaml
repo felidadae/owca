@@ -24,8 +24,10 @@ runner: !MeasurementRunner
   event_names:
     - task_cycles # do not remove: USED BY E2E tests
     - task_instructions
-    - task_offcore_requests_demand_data_rd # required fro R/W characterization
-    - task_offcore_requests_demand_rfo
+    # - task_offcore_requests_demand_data_rd # required fro R/W characterization
+    # - task_offcore_requests_demand_rfo
+    - offcore_demand_pf_any_snoop__rB7013FBC000490
+
   enable_derived_metrics: True
   uncore_event_names:
     - platform_cas_count_reads
