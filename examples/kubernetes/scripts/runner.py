@@ -320,6 +320,7 @@ def single_3stage_experiment(experiment_id: str, workloads: Dict[str, int],
     workloads_run_order: List[str] = get_shuffled_workloads_order(workloads)
     logging.debug("Workload run order: {}".format(list(reversed(workloads_run_order))))
     annotate("Start experiment {}".format(experiment_id))
+    annotate("Start experiment {}".format(experiment_id), dashboard_id=70)
 
     if stages[0]:
         # kubernetes only, 2lm off
@@ -362,6 +363,7 @@ def single_3stage_experiment(experiment_id: str, workloads: Dict[str, int],
         fref.write('\n')
 
     annotate("End experiment {}".format(experiment_id))
+    annotate("End experiment {}".format(experiment_id), dashboard_id=70)
     # Just to show on graph end of experiment
     sleep(100)
 
@@ -514,7 +516,7 @@ def create_experiment_root_dir(path: str, overwrite: bool):
         raise Exception('experiment root directory already exists! {}'.format(path))
 
 
-def annotate(text, tags=[]):
+def annotate(text, tags=[], dashboard_id=90):
     GRAFANA_URL = "http://100.64.176.12:3000"
     BEARER_TOKEN = "Bearer eyJrIjoiQXBwRnVwczdXMHVQWFJOQm42ejFVaXVLdDdHOTcxWW0iLCJuIjoicnVubmVyIiwiaWQiOjF9"
     URL_PATH = GRAFANA_URL + '/api/annotations'  # '/api/search?folderIds=78&query=&starred=false'
@@ -524,10 +526,10 @@ def annotate(text, tags=[]):
                'Accept': 'text/plain',
                'Authorization': BEARER_TOKEN}
 
-    # Scheduler demo v2 orginal
+    # Scheduler demo v2 orginal - 90, panelId - 42
+    # Workload 2LM profiling - 70
     data = {
-        "dashboardId": 90,
-        "panelId": 42,
+        "dashboardId": dashboard_id,
         "tags": tags,
         "text": text
     }
