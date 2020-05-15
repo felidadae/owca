@@ -24,13 +24,11 @@ algorithm: !Score
       time: "1587551802"  # Date: (your time zone): Wednesday, April 22, 2020 12:36:42 PM GMT+02:00
     queries: !Queries
       APP_REQUESTED_RESOURCES_QUERY_MAP:
-            cpu: 'avg(max_over_time(task_requested_cpus[10m])) by (app)'
-            mem: 'avg(max_over_time(task_requested_mem_bytes[10m])) by (app) / 1e9'
-            #membw_read: 'ceil(max(max_over_time (task_membw_reads_bytes_per_second[10m])) by (app) / 1e9)'
-            membw_read: 'sum (task_up) by (app, nodename) * on(nodename) group_right(app) sum(max_over_time(platform_dram_reads_bytes_per_second[1m])) by(nodename) / 1e9'
-            #membw_write: 'ceil(max(max_over_time(task_membw_writes_bytes_per_second[10m])) by (app) / 1e9)'
-            membw_write: 'sum (task_up) by (app, nodename) * on(nodename) group_right(app) sum(max_over_time(platform_dram_writes_bytes_per_second[1m])) by(nodename) / 1e9'
-            wss: 'max(max_over_time(task_wss_referenced_bytes[10m])) by (app) / 1e9'
+            cpu: 'app_cpu'
+            mem: 'app_mem'
+            membw_read: 'app_mbw_read'
+            membw_write: 'app_mbw_write'
+            wss: 'app_wss'
       MEMBW_CAPACITY_READ: 'ceil(sum(platform_nvdimm_read_bandwidth_bytes_per_second) by (nodename) / 1e9)*0.7'
       MEMBW_CAPACITY_WRITE: 'ceil(sum(platform_nvdimm_write_bandwidth_bytes_per_second) by (nodename) / 1e9)*0.7'
       NODES_PMM_MEMORY_MODE: 'sum(platform_mem_mode_size_bytes) by (nodename) != 0'
