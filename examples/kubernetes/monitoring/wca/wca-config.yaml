@@ -24,15 +24,20 @@ runner: !MeasurementRunner
   event_names:
     - task_cycles # do not remove: USED BY E2E tests
     - task_instructions
-    # -------------------------------------------------------------------
-    - offcore_response__all_pf_data__l3_miss_any_snoop__rB701003FBC000490
-    - offcore_response__demand_data__l3_miss_any_snoop__rB701003FBC000001
-    - l2_lines_in_all__r1ff1
-    - l2_trans_l2_wb__r40f0
-    - mem_inst_retired_all_loads__r81d0
-    - mem_inst_retired_all_stores__r82d0
-    - mem_load_l3_miss_retired_local_dram__r01d3
-    - mem_load_l3_miss_retired_remote_dram__r02d3
+    # ------------------------------------------------------------------------
+    - task_offcore_requests_demand_data_rd # required fro R/W characterization
+    - task_offcore_requests_demand_rfo
+
+    # ------------------------------------------------------------------------
+    # - offcore_response__all_pf_data__l3_miss_any_snoop__rB701003FBC000490
+    # - offcore_response__demand_data__l3_miss_any_snoop__rB701003FBC000001
+    # - mem_inst_retired_all_loads__r81d0
+    # - mem_inst_retired_all_stores__r82d0
+    # ---
+    # - l2_lines_in_all__r1ff1
+    # - l2_trans_l2_wb__r40f0
+    # - mem_load_l3_miss_retired_local_dram__r01d3
+    # - mem_load_l3_miss_retired_remote_dram__r02d3
 
   enable_derived_metrics: True
   uncore_event_names:

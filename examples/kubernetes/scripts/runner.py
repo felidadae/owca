@@ -586,18 +586,18 @@ def experimentset_single_workload_at_once(
     run_mode: RunMode = RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES
     workloads = [
         # 'stress-stream-medium',
-        # 'memcached-mutilate-medium',
+        'memcached-mutilate-big',
         # 'redis-memtier-medium',
-        # 'redis-memtier-big',
-        'redis-memtier-big-wss',
+        'redis-memtier-big',
+        # 'redis-memtier-big-wss',
     ]
     count_per_node_list = {
         # 6,6,6 = 18 --> 9h
-        # 'stress-stream-medium': [2,3,4,5,6,7],
-        # 'memcached-mutilate-medium': [3,6,7,8],
+        # 'stress-stream-medium': [4],
+        'memcached-mutilate-big': [3],
         # 'redis-memtier-medium': [1, 3, 8, 10, 14, 18],  # 1 20% 40% 60% 80% 100%
-        # 'redis-memtier-big': [1, 2],
-        'redis-memtier-big-wss': [1, 2],
+        'redis-memtier-big': [2],
+        # 'redis-memtier-big-wss': [1, 2],
     }
 
     for i, workload in enumerate(workloads):
@@ -626,7 +626,7 @@ def experimentset_test(experiment_root_dir='results/__test__'):
         nodes_capacities=ClusterInfoLoader.get_instance().get_nodes(),
         workloads_set=ClusterInfoLoader.get_instance().get_workloads())
     single_3stage_experiment(experiment_id=0,
-                             workloads=workloads,
+                             workloads=workloads,6
                              wait_periods={WaitPeriod.SCALE_DOWN: 10,
                                            WaitPeriod.STABILIZE: MINUTE},
                              stages=[False, False, True],
@@ -641,5 +641,5 @@ if __name__ == "__main__":
 
     # experimentset_test()
     # tune_stage(ClusterInfoLoader.get_instance().get_workloads_names())
-    # experimentset_single_workload_at_once(experiment_root_dir='results/2020-04-27__stepping_single_workloads_redis-big-wss')
-    experimentset_main(iterations=10, experiment_root_dir='results/2020-04-28__score2_2')
+    experimentset_single_workload_at_once(experiment_root_dir='results/2020-05-13__stepping_single_workloads')
+    #experimentset_main(iterations=10, experiment_root_dir='results/2020-04-28__score2_2')
