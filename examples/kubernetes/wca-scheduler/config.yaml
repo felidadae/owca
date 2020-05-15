@@ -21,7 +21,7 @@ algorithm: !Score
       host: http://100.64.176.36
       port: 30900
       timeout: 5.0
-      time: "1587551802"  # Date: (your time zone): Wednesday, April 22, 2020 12:36:42 PM GMT+02:00
+      time: "1589559381"  # Date: 2020-05-15 16:16:21.308265 Timestamp
     queries: !Queries
       APP_REQUESTED_RESOURCES_QUERY_MAP:
             cpu: 'app_cpu'
