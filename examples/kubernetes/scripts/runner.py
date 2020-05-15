@@ -634,7 +634,7 @@ def experimentset_test(experiment_root_dir='results/__test__'):
         nodes_capacities=ClusterInfoLoader.get_instance().get_nodes(),
         workloads_set=ClusterInfoLoader.get_instance().get_workloads())
     single_3stage_experiment(experiment_id=0,
-                             workloads=workloads,6
+                             workloads=workloads,
                              wait_periods={WaitPeriod.SCALE_DOWN: 10,
                                            WaitPeriod.STABILIZE: MINUTE},
                              stages=[False, False, True],
