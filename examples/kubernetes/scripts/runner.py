@@ -15,6 +15,7 @@ import re
 import logging
 import json
 
+import requests
 
 FORMAT = "%(asctime)-15s:%(levelname)s %(module)s %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
@@ -511,9 +512,45 @@ def create_experiment_root_dir(path: str, overwrite: bool):
         raise Exception('experiment root directory already exists! {}'.format(path))
 
 
+def annotate(text, tags, host):
+    GRAFANA_URL = "http://100.64.176.12:3000"
+    BEARER_TOKEN = "Bearer eyJrIjoiQXBwRnVwczdXMHVQWFJOQm42ejFVaXVLdDdHOTcxWW0iLCJuIjoicnVubmVyIiwiaWQiOjF9"
+    URL_PATH = GRAFANA_URL + '/api/annotations'  # '/api/search?folderIds=78&query=&starred=false'
+
+    url = URL_PATH
+    headers = {'Content-type': 'application/json',
+               'Accept': 'text/plain',
+               'Authorization': BEARER_TOKEN}
+
+    tags.append("host:{}".format(host))
+
+    # Scheduler demo v2 orginal
+    data = {
+        "dashboardId": 90,
+        "panelId": 42,
+        "tags": tags,
+        "text": text
+    }
+
+    try:
+        r = requests.post(url, data=json.dumps(data), headers=headers)
+        r.raise_for_status()
+    except requests.exceptions.ConnectionError as e:
+        raise Exception("ConnectionError") from e
+    except requests.exceptions.HTTPError as e:
+        raise Exception(r.content) from e
+
+    j = r.json()
+    if j['message'] == 'Annotation added':
+        logging.debug("Annotated successful")
+    else:
+        logging.debug("Annotated unsuccessful")
+
+
 # -----------------------------------------------------------------------------------------------------
 def experimentset_main(
         iterations: int = 10,
+        configmap_regex_parameters={},
         experiment_root_dir: str = 'results/tmp',
         overwrite: bool = False):
     """3 stage experiment: our classic way of benchmarking the wca_scheduler."""
@@ -522,37 +559,10 @@ def experimentset_main(
     random.seed(datetime.now())
     create_experiment_root_dir(experiment_root_dir, overwrite)
 
-    # regex = [
-    #     [(r'score_target: -\d.\d', 'score_target: -6.5'), ],
-    #     [(r'score_target: -\d.\d', 'score_target: -3.0'), ],
-    #     [(r'score_target: -\d.\d', 'score_target: -2.3'), ],
-    #     [(r'score_target: -\d.\d', 'score_target: -2.0'), ],
-    #     [(r'score_target: -\d.\d', 'score_target: -3.0'), ],
-    # ]
-
-    # regex = [
-    #     [(r'score_target: -\d.\d', 'score_target: -2.3'), ],
-    #     [(r'score_target: -\d.\d', 'score_target: -6.5'), ],
-    # ]
-
     for i in range(iterations):
-        #     # Change config wca-scheduler
-        #     if i == 10:
-        #         modify_configmap(regex[0], i, experiment_root_dir)
-        #     elif i == 20:
-        #         modify_configmap(regex[1], i, experiment_root_dir)
-        #     elif i == 30:
-        #         modify_configmap(regex[2], i, experiment_root_dir)
-        #     elif i == 40:
-        #         modify_configmap(regex[3], i, experiment_root_dir)
-        #     elif i == 50:
-        #         modify_configmap(regex[4], i, experiment_root_dir)
 
-        # Change config wca-scheduler
-        # if i == 0:
-        #     modify_configmap(regex[0], i, experiment_root_dir)
-        # elif i == 10:
-        #     modify_configmap(regex[1], i, experiment_root_dir)
+        if i in configmap_regex_parameters:
+            modify_configmap(configmap_regex_parameters.get(i), i, experiment_root_dir)
 
         iterations, workloads, utilization = random_with_total_utilization_specified(
             cpu_limit=(0.25, 0.46), mem_limit=(0.81, 0.9),  # total cluster cpu/mem usage
@@ -616,8 +626,6 @@ def experimentset_test(experiment_root_dir='results/__test__'):
     logging.debug("Running experimentset >>test<<")
     random.seed(datetime.now())
 
-    # modify_configmap([(r'score_target: -\d.\d', 'score_target: -7.0'), ], 0, experiment_root_dir)
-
     if not os.path.isdir(experiment_root_dir):
         os.makedirs(experiment_root_dir)
 
@@ -638,6 +646,17 @@ def experimentset_test(experiment_root_dir='results/__test__'):
 
 if __name__ == "__main__":
     ClusterInfoLoader.build_singleton()
+
+    # key - in which iteration, will be use list regex
+    # value - list of tupels (regex, new value)
+    # example:
+    # regexs_map = {
+    #     0: [(r'score_target: -\d.\d', 'score_target: -2.3'), ],
+    #     10: [(r'score_target: -\d.\d', 'score_target: -6.5'),
+    #          (r'cpu_scale_factor: \d.\d', 'cpu_scale_factor: 0.7'), ],
+    # }
+
+    regexs_map = {}
 
     # experimentset_test()
     # tune_stage(ClusterInfoLoader.get_instance().get_workloads_names())
