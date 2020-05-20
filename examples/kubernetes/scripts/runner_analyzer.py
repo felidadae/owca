@@ -11,8 +11,6 @@ import pandas as pd
 from urllib import parse
 from dataclasses import dataclass, field
 from enum import Enum
-import pprint
-
 from runner import ClusterInfoLoader
 import logging
 
@@ -27,7 +25,9 @@ class ExperimentType(Enum):
     SteppingSingleWorkloadsRun = 'SteppingSingleWorkloadsRun'
     ThreeStageStandardRun = 'ThreeStageStandardRun'
 
+
 WINDOW_LENGTH = 60 * 5
+
 
 @dataclass
 class ExperimentMeta:
@@ -43,9 +43,6 @@ class ExperimentMeta:
 
     def data_path_(self):
         return os.path.basename(self.data_path)
-
-    # def __str__(self):
-    #     return pprint.pformat(experiment_meta, indent=4, width=40).replace(',', '\n').replace('(', '(\n ')
 
 
 class PrometheusClient:
@@ -82,18 +79,18 @@ class PrometheusClient:
     def convert_result_to_dict(result):
         """ Very memory inefficient!"""
         d = defaultdict(list)
-        for serie in result:
-            metric = serie['metric']
+        for series in result:
+            metric = series['metric']
             # instant query
-            if 'value' in serie:
+            if 'value' in series:
                 for label_name, label_value in metric.items():
                     d[label_name].append(label_value)
-                timestamp, value = serie['value']
+                timestamp, value = series['value']
                 d['value'].append(value)
                 d['timestamp'].append(pd.Timestamp(timestamp, unit='s'))
             # range query
-            elif 'values' in serie:
-                for value in serie['values']:
+            elif 'values' in series:
+                for value in series['values']:
                     for label_name, label_value in metric.items():
                         d[label_name].append(label_value)
                     timestamp, value = value
@@ -150,8 +147,6 @@ class Node:
         # @TODO should be taken from queries
         node_cpu = nodes_capacities[self.name]['cpu']
         node_mem = nodes_capacities[self.name]['mem']
-        node_mbw_read = nodes_capacities[self.name]['membw_read']
-        node_mbw_write = nodes_capacities[self.name]['membw_write']
 
         if Metric.PLATFORM_CPU_REQUESTED not in self.performance_metrics:
             # means that no tasks were run on the node
@@ -314,20 +309,12 @@ class StagesAnalyzer:
 
     def get_all_tasks_count_in_stage(self, stage: int) -> int:
         """Only returns tasks count, directly from metric."""
-        # return sum(int(node.performance_metrics[Metric.POD_SCHEDULED]['instant'])
-        #            for node in self.stages[stage].nodes.values()
-        #            if Metric.POD_SCHEDULED in node.performance_metrics)
-        dd=0
-        for node in self.stages[stage].nodes.values():
-            if Metric.POD_SCHEDULED in node.performance_metrics:
-                dd += int(node.performance_metrics[Metric.POD_SCHEDULED]['instant'])
-        return dd
+        return sum(int(node.performance_metrics[Metric.POD_SCHEDULED]['instant'])
+                   for node in self.stages[stage].nodes.values()
+                   if Metric.POD_SCHEDULED in node.performance_metrics)
 
     def get_all_workloads_in_stage(self, stage_index: int):
         return set(task.workload_name for task in self.stages[stage_index].tasks.values())
-
-    # def get_all_nodes_where_jobs_where_run_in_stage(self, stage_index: int):
-    #     return list(set([task.node for task in self.get_all_tasks_in_stage_on_nodes(stage_index)]))
 
     def get_all_tasks_in_stage_on_nodes(self, stage_index: int, nodes: List[str]):
         return [task for task in self.stages[stage_index].tasks.values() if task.node in nodes]
@@ -377,7 +364,7 @@ class StagesAnalyzer:
         Compare results from AEP to DRAM:
         1) list all workloads which are run on AEP (Task.workload.name) in stage 3 (or 2)
           a) for all this workloads read performance on DRAM in stage 1
-        2) for assertion and consistency we could also check how compare results in all stages
+        2) for assertion and consistency we could also check how to compare results in all stages
         3) compare results which we got AEP vs DRAM separately for stage 2 and 3
           a) for each workload:
         """
@@ -431,7 +418,7 @@ class StagesAnalyzer:
             experiment_index=experiment_index,
             # ---
             export_file_path=os.path.join(experiment_meta.data_path, 'runner_analyzer', 'results.txt'),
-            utilization_file_path=os.path.join(experiment_meta.data_path, 'choosen_workloads_utilization.{}.txt'.format(experiment_index)),
+            utilization_file_path=os.path.join(experiment_meta.data_path, 'chosen_workloads_utilization.{}.txt'.format(experiment_index)),
             # ---
             workloads_summaries=workloads_wstats,
             tasks_summaries=tasks_summaries__per_stage,
@@ -486,14 +473,6 @@ class TxtStagesExporter:
     def export_to_txt_stepping_single(self):
         logging.debug("Saving results to {}".format(self.export_file_path))
 
-        runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path,
-                                                   'runner_analyzer')
-        if not os.path.isdir(runner_analyzer_results_dir):
-            os.mkdir(runner_analyzer_results_dir)
-
-    def export_to_txt_stepping_single(self):
-        logging.debug("Saving results to {}".format(self.export_file_path))
-
         runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path, 'runner_analyzer')
         if not os.path.isdir(runner_analyzer_results_dir):
             os.mkdir(runner_analyzer_results_dir)
@@ -512,25 +491,26 @@ class TxtStagesExporter:
                 self._seperator(ending=True)
             self._fref = None
 
+    def _print_summaries_in_stage(self, df, title):
+        self._fref.write('\n{}\n'.format(title))
+        self._fref.write(df.to_string())
+        self._fref.write('\n')
+
     def _tasks_summaries_in_stage(self, title: str, stage_index:int, filter_nodes: Optional[List[str]] = None):
         df = self.tasks_summaries[stage_index]  # df == dataframe
         if filter_nodes is not None:
             df = df[df.node.isin(filter_nodes)]
 
-        self._fref.write('\n{}\n'.format(title))
-        self._fref.write(df.to_string())
-        self._fref.write('\n')
+        self._print_summaries_in_stage(df, title)
 
     def _node_summaries_in_stage(self, title: str, stage_index: int, filter_nodes = Optional[List[str]]):
         df = self.node_summaries[stage_index]  # df == dataframe
         if filter_nodes is not None:
             df = df[df.name.isin(filter_nodes)]
 
-        self._fref.write('\n{}\n'.format(title))
-        self._fref.write(df.to_string())
-        self._fref.write('\n')
+        self._print_summaries_in_stage(df, title)
 
-    def multiple_dfs(df_list, sheets, file_name, spaces):
+    def multiple_dfs(self, df_list, sheets, file_name, spaces):
         writer = pd.ExcelWriter(file_name, engine='xlsxwriter')
         row = 0
         for dataframe in df_list:
@@ -582,7 +562,6 @@ class TxtStagesExporter:
         self.workloads_summaries[2].to_csv(os.path.join(runner_analyzer_results_dir,'workloads_summaries_{}_WCA-SCHEDULER.csv'.format(self.experiment_index)))
 
     def export_to_txt(self):
-        # import ipdb; ipdb.set_trace()
         logging.debug("Saving results to {} for experiment {}".format(self.export_file_path, self.experiment_index))
 
         runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path, 'runner_analyzer')
@@ -745,7 +724,6 @@ class AnalyzerQueries:
         
         for metric in metrics:
             query_results = PrometheusClient.instant_query(MetricsQueries[metric], time)
-            descr = metric.value 
             for result in query_results:
                 nodename = result['metric']['nodename']
                 if nodename in nodes:
@@ -801,7 +779,7 @@ class AnalyzerQueries:
 
 
 def load_events_file(filename):
-    # Each python structure in seperate file.
+    # Each python structure in separate file.
     with open(filename) as fref:
         il = 0
         workloads_ = []
@@ -856,7 +834,7 @@ if __name__ == "__main__":
             'making sure not PMEM app will be scheduled on DRAM',
             'the same run as previous day',
             {'target_score': -2},
-            'adding hack to make sure not PMEM app will not be scheduled on DRAM', ''),
+            'adding hack to make sure no PMEM app will be scheduled on DRAM', ''),
 
         ExperimentMeta(
             'results/2020-03-19__hp_enabled', 
@@ -907,7 +885,7 @@ if __name__ == "__main__":
         ExperimentMeta(
             data_path='results/2020-03-29__each_workload_is_single', 
             title='each workload single',
-            description='running each workload seperately; 15 runs;',
+            description='running each workload separately; 15 runs;',
             params={'instances_count': 10, 'stabilize_phase_length [min]': [15, 1, 1]},
             changelog='',
             bugs=''),
@@ -915,7 +893,7 @@ if __name__ == "__main__":
         ExperimentMeta(
             data_path='results/2020-03-30__each_workload_is_single__stability_fixed_1', 
             title='each workload single',
-            description='running each of 10 workloads seperately; 15 runs;',
+            description='running each of 10 workloads separately; 15 runs;',
             params={'instances_count': 'all machines', 'workloads_count': 10, 'stabilize_phase_length [min]': [35, 1, 1]},
             changelog='multiple stability fixes, frequency set to 2.1GHz, turn off node201',
             bugs='in seconds case all instances were run on single machine(dont know why)'),
@@ -923,7 +901,7 @@ if __name__ == "__main__":
         ExperimentMeta(
             data_path='results/2020-03-31__single', 
             title='each workload single',
-            description='running each of workloads seperately; 35 runs;',
+            description='running each of workloads separately; 35 runs;',
             params={'instances_count': 'all machines', 'workloads_count': 'all', 'stabilize_phase_length [min]': [35, 1, 1]},
             changelog='turn off node102',
             bugs='first three experiments were run not on all hosts (dont know why); frequency broken (rebooting machines)'),
