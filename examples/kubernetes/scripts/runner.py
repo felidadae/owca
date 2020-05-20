@@ -23,7 +23,7 @@ logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
 DRY_RUN=False
 if DRY_RUN:
-    logging.info("[DRY_RUN] Run in DRY_RUN mode!")
+    logging.info("[DRY_RUN] Running in DRY_RUN mode!")
 
 
 class ClusterInfoLoader:
@@ -37,7 +37,7 @@ class ClusterInfoLoader:
             self.workloads = json.load(fref)
 
     @staticmethod
-    def build_singleton(nodes_file: str = 'nodes.json', workloads_file: str = 'workloads.json'):
+    def build_singleton():
         ClusterInfoLoader.instance = ClusterInfoLoader()
 
     @staticmethod
@@ -65,7 +65,7 @@ def random_with_total_utilization_specified(cpu_limit: Tuple[float, float],
                                             nodes_capacities: Dict[str, Dict],
                                             workloads_set: Dict[str, Dict]
                                             ) -> Tuple[int, Dict[str, int], Dict[str, float]]:
-    """Random, but workloads expected usage of CPU and MEMORY sums to
+    """Random number of app, but workloads expected usage of CPU and MEMORY sums to
        specified percentage (+- accuracy).
        Returns tuple, first item how many iterations were performed to random proper workloads set,
        second set of workloads."""
@@ -279,7 +279,6 @@ class PodNotFoundException(Exception):
 
 
 def copy_scheduler_logs(log_file):
-    # ...
     stdout, _ = default_shell_run('kubectl get pods -n wca-scheduler')
     if not DRY_RUN:
         for word in stdout.split():
@@ -316,7 +315,7 @@ def single_3stage_experiment(experiment_id: str, workloads: Dict[str, int],
     # kill all workloads
     scale_down_all_workloads(wait_time=wait_periods[WaitPeriod.SCALE_DOWN])
 
-    # Before start random order of running workloads, but keep the order among the stages
+    # Before start randomize order of running workloads, but keep the order among the stages
     workloads_run_order: List[str] = get_shuffled_workloads_order(workloads)
     logging.debug("Workload run order: {}".format(list(reversed(workloads_run_order))))
     annotate("Start experiment {}".format(experiment_id))
@@ -386,7 +385,7 @@ def get_max_count_per_smallest_node(workload: str, nodes: List[str]) -> int:
     return max_count
 
 
-def single_step1workload_experiment(run_mode: RunMode, experiment_id: str, workload: str,
+def single_step1workload_experiment(run_mode: RunMode, workload: str,
                                     count_per_node_list: Optional[List[int]],
                                     wait_periods: Dict[WaitPeriod, int],
                                     nodes: Optional[List[str]] = None,
@@ -437,13 +436,13 @@ def single_step1workload_experiment(run_mode: RunMode, experiment_id: str, workl
                 break
             else:
                 logging.info(
-                    '[RUN_ON_NODES_WHERE_ENOUGH_RESOURCES] Running on nodes {}. Tottaly {} pods'.format(
+                    '[RUN_ON_NODES_WHERE_ENOUGH_RESOURCES] Running on nodes {}. Totally {} pods'.format(
                         nodes, len(nodes) * count_per_node))
         else:
             raise Exception("Unsupported run_mode={}".format(run_mode))
 
         run_workloads_equally_per_node({workload: count_per_node}, nodes=nodes)
-        events.append((datetime.now(), '{} stage: after run workloads'.format(i)))
+        events.append((datetime.now(), '{} stage: after running workloads'.format(i)))
         sleep(wait_periods[WaitPeriod.STABILIZE])
         events.append((datetime.now(), '{} stage: before killing workloads'.format(i)))
         scale_down_all_workloads(wait_time=wait_periods[WaitPeriod.SCALE_DOWN])
@@ -454,7 +453,7 @@ def single_step1workload_experiment(run_mode: RunMode, experiment_id: str, workl
         fref.write(str(events))
         fref.write('\n')
 
-    # Just to show on graph end of experiment
+    # Just to show on graph the end of experiment
     sleep(100)
 
 
@@ -526,7 +525,7 @@ def annotate(text, tags=[], dashboard_id=90):
                'Accept': 'text/plain',
                'Authorization': BEARER_TOKEN}
 
-    # Scheduler demo v2 orginal - 90, panelId - 42
+    # Scheduler demo v2 original - 90, panelId - 42
     # Workload 2LM profiling - 70
     data = {
         "dashboardId": dashboard_id,
@@ -587,8 +586,7 @@ def experimentset_main(
 
 def experimentset_single_workload_at_once(
         experiment_root_dir: str = 'results/tmp',
-        overwrite: bool = False,
-        workloads_set: Optional[List[str]] = None):
+        overwrite: bool = False):
     logging.debug("Running experimentset >>every workload is single<<"
                   " with experiment_directory >>{}<<".format(experiment_root_dir))
     random.seed(datetime.now())
@@ -650,7 +648,7 @@ if __name__ == "__main__":
     ClusterInfoLoader.build_singleton()
 
     # key - in which iteration, will be use list regex
-    # value - list of tupels (regex, new value)
+    # value - list of tuples (regex, new value)
     # example:
     # regexs_map = {
     #     0: [(r'score_target: -\d.\d', 'score_target: -2.3'), ],
