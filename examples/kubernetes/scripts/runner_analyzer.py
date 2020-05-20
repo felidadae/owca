@@ -1135,8 +1135,8 @@ if __name__ == "__main__":
             commit_hash='unknown', ),
 
         ExperimentMeta(
-            data_path='results/2020-04-29__score2_full',
-            title='Score2',
+            data_path='results/2020-04-29__score2',
+            title='Score2 score -2.3 90% CPU',
             description='',
             params={},
             changelog='',
@@ -1144,6 +1144,41 @@ if __name__ == "__main__":
             experiment_type=ExperimentType.ThreeStageStandardRun,
             experiment_baseline_index=0,
             commit_hash='unknown', ),
+
+        ExperimentMeta(
+            data_path='results/2020-04-29__score2_full',
+            title='Score2 score -2.3 90% CPU',
+            description='',
+            params={},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.ThreeStageStandardRun,
+            experiment_baseline_index=0,
+            commit_hash='unknown', ),
+
+        ExperimentMeta(
+            data_path='results/2020-04-30__score2',
+            title='Score2 mojowka; many score, 90 and 70 cpu',
+            description='',
+            params={},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.ThreeStageStandardRun,
+            experiment_baseline_index=0,
+            commit_hash='unknown', ),
+
+        ExperimentMeta(
+            data_path='results/2020-05-05__stepping_single_workloads',
+            title='Stepping workloads',
+            description='redis',
+            params={'instances_count': '', 'workloads_count': 'almost all',
+                    'stabilize_phase_length [min]': [20]},
+            changelog='',
+            bugs='',
+            experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
+            experiment_baseline_index=0,
+            commit_hash='', ),
+
     ]
 
     # copy data to summary dir with README
