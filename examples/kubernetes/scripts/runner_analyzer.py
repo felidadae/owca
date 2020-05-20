@@ -66,7 +66,8 @@ class PrometheusClient:
         try:
             r = requests.get(urli)
         except requests.exceptions.ConnectionError as e:
-            raise Exception() from e
+            logging.error("Connecting error with Prometheus. Error: {}".format(e.response))
+            return []
         try:
             r.raise_for_status()
         except requests.exceptions.HTTPError as e:
@@ -538,7 +539,7 @@ class TxtStagesExporter:
         writer.save()
 
     def export_to_xls(self):
-        logging.debug("Saving results to {}".format(self.export_file_path))
+        logging.debug("Saving xls to {} for experiment {}".format(self.export_file_path, self.experiment_index))
 
         runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path,
                                                    'runner_analyzer')
@@ -582,7 +583,7 @@ class TxtStagesExporter:
 
     def export_to_txt(self):
         # import ipdb; ipdb.set_trace()
-        logging.debug("Saving results to {}".format(self.export_file_path))
+        logging.debug("Saving results to {} for experiment {}".format(self.export_file_path, self.experiment_index))
 
         runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path, 'runner_analyzer')
         if not os.path.isdir(runner_analyzer_results_dir):
