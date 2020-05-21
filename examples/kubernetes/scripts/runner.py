@@ -68,7 +68,10 @@ def random_with_total_utilization_specified(cpu_limit: Tuple[float, float],
     """Random number of app, but workloads expected usage of CPU and MEMORY sums to
        specified percentage (+- accuracy).
        Returns tuple, first item how many iterations were performed to random proper workloads set,
-       second set of workloads."""
+       second set of workloads.
+       Pairs cpu_target_l/cpu_target_r and mem_target_l/mem_target_r are ranges,
+       where l means beginning and r end of the range.
+    """
     cpu_all, mem_all = 0, 0
     AEP_NODES = ClusterInfoLoader.get_instance().get_aep_nodes()
     for node_name, node in nodes_capacities.items():
@@ -224,9 +227,9 @@ def run_workloads(workloads_run_order: List[str], workloads_counts: Dict[str, in
 def run_workloads_equally_per_node(workloads_counts: Dict[str, int], nodes: Optional[List[str]] = None):
     """Make sure all nodes will end up with the same workloads being run - assumes that
        extender_scheduler is turned off. Needs to wait after tainting (5s)."""
-    c_scale = "kubectl scale sts {workload} --replicas={replicas}"
-    c_taint = "kubectl taint nodes {node} wca_runner=any:NoSchedule --overwrite"  # add taint
-    c_untaint = "kubectl taint nodes {node} wca_runner=any:NoSchedule- --overwrite"  # remove taint
+    cmd_scale = "kubectl scale sts {workload} --replicas={replicas}"
+    cmd_taint = "kubectl taint nodes {node} wca_runner=any:NoSchedule --overwrite"  # add taint
+    cmd_untaint = "kubectl taint nodes {node} wca_runner=any:NoSchedule- --overwrite"  # remove taint
 
     all_nodes = ClusterInfoLoader.get_instance().get_nodes_names()
     # should be equal to all nodes available on cluster
@@ -240,7 +243,7 @@ def run_workloads_equally_per_node(workloads_counts: Dict[str, int], nodes: Opti
 
     for nodename in all_nodes:
         try:
-            default_shell_run(c_untaint.format(node=nodename), verbose=True)
+            default_shell_run(cmd_untaint.format(node=nodename), verbose=True)
         except Exception:
             continue
     sleep(5)
@@ -249,18 +252,18 @@ def run_workloads_equally_per_node(workloads_counts: Dict[str, int], nodes: Opti
         logging.info("Running workloads on node={}".format(nodename))
         for nodename_ in all_nodes:
             if nodename_ != nodename:
-                default_shell_run(c_taint.format(node=nodename_), verbose=True)
+                default_shell_run(cmd_taint.format(node=nodename_), verbose=True)
 
         sleep(5)
         for workload in workloads_run_order:
             workloads_count_all_walker[workload] += 1
-            default_shell_run(c_scale.format(workload=workload,
-                                             replicas=workloads_count_all_walker[workload]))
+            default_shell_run(cmd_scale.format(workload=workload,
+                                               replicas=workloads_count_all_walker[workload]))
         sleep(10)
 
         for nodename_ in all_nodes:
             if nodename_ != nodename:
-                default_shell_run(c_untaint.format(node=nodename_), verbose=True)
+                default_shell_run(cmd_untaint.format(node=nodename_), verbose=True)
         sleep(5)
 
     workloads_count_all_target = {workload: len(nodes) * count for workload, count in workloads_counts.items()}
@@ -458,6 +461,11 @@ def single_step1workload_experiment(run_mode: RunMode, workload: str,
 
 
 def tune_stage(workloads: List[str], sleep_time: int = 25 * MINUTE):
+    """
+    This stage runs one instance from each workload.
+    This helps in calculating the score for each workload and determining the timestamp.
+    The timestamp is displayed at the end.
+    """
     assert type(workloads) == list
     workloads_run_order: List[str] = workloads
 
@@ -592,8 +600,7 @@ def experimentset_single_workload_at_once(
     random.seed(datetime.now())
     create_experiment_root_dir(experiment_root_dir, overwrite)
 
-    # Experiment params, could be passed 
-    run_mode: RunMode = RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES
+    # Experiment params, could be passed
     workloads = [
         # 'stress-stream-medium',
         'memcached-mutilate-big',
