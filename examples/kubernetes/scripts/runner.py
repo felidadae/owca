@@ -14,14 +14,12 @@ import random
 import re
 import logging
 import json
-
 import requests
 
 FORMAT = "%(asctime)-15s:%(levelname)s %(module)s %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
-
-DRY_RUN=False
+DRY_RUN = False
 if DRY_RUN:
     logging.info("[DRY_RUN] Running in DRY_RUN mode!")
 
@@ -57,7 +55,8 @@ class ClusterInfoLoader:
         return list(self.nodes.keys())
 
     def get_aep_nodes(self) -> List[str]:
-        return [node for node, capacity in self.nodes.items() if capacity['membw_read'] > capacity['membw_write']]
+        return [node for node, capacity in self.nodes.items() if
+                capacity['membw_read'] > capacity['membw_write']]
 
 
 def random_with_total_utilization_specified(cpu_limit: Tuple[float, float],
@@ -87,7 +86,7 @@ def random_with_total_utilization_specified(cpu_limit: Tuple[float, float],
     logging.debug("[randomizing workloads] cpu(all={}, l={}, r={}), mem(all={}, "
                   "l={}, r={}), N_nodes={})".format(cpu_all, cpu_target_l, cpu_target_r,
                                                     mem_all, mem_target_l, mem_target_r,
-                                                    len(nodes_capacities)-1))
+                                                    len(nodes_capacities) - 1))
 
     workloads_names = [workload_name for workload_name in workloads_set]
     workloads_list = [workloads_set[workload_name] for workload_name in workloads_names]
@@ -115,8 +114,8 @@ def random_with_total_utilization_specified(cpu_limit: Tuple[float, float],
         if cpu_curr <= cpu_target_r and mem_curr <= mem_target_r:
             found_solution = chosen_workloads
         else:
-            if (mem_curr/mem_all)/(cpu_curr/cpu_all) > best_for_now[1]/best_for_now[0]:
-                best_for_now = (round(cpu_curr/cpu_all, 4), round(mem_curr/mem_all, 4))
+            if (mem_curr / mem_all) / (cpu_curr / cpu_all) > best_for_now[1] / best_for_now[0]:
+                best_for_now = (round(cpu_curr / cpu_all, 4), round(mem_curr / mem_all, 4))
             iteration += 1
         if iteration > 0 and iteration % 1000 == 0:
             logging.debug("[randomizing workloads] Trying to find set of workloads already for {} "
@@ -126,10 +125,10 @@ def random_with_total_utilization_specified(cpu_limit: Tuple[float, float],
                 best_for_now[0], best_for_now[1]))
 
     logging.debug("[randomizing workloads] chosen solution feature: cpu={} mem={}".format(
-        round(cpu_curr/cpu_all, 2), round(mem_curr/mem_all, 2)))
+        round(cpu_curr / cpu_all, 2), round(mem_curr / mem_all, 2)))
     logging.debug("[randomizing workloads] chosen workloads:\n{}".format(pprint.pformat(
         chosen_workloads, indent=4)))
-    utilization = {'cpu': cpu_curr/cpu_all, 'mem': mem_curr/mem_all}
+    utilization = {'cpu': cpu_curr / cpu_all, 'mem': mem_curr / mem_all}
     return iteration, chosen_workloads, utilization
 
 
@@ -224,12 +223,13 @@ def run_workloads(workloads_run_order: List[str], workloads_counts: Dict[str, in
         irun += 1
 
 
-def run_workloads_equally_per_node(workloads_counts: Dict[str, int], nodes: Optional[List[str]] = None):
+def run_workloads_equally_per_node(workloads_counts: Dict[str, int],
+                                   nodes: Optional[List[str]] = None):
     """Make sure all nodes will end up with the same workloads being run - assumes that
        extender_scheduler is turned off. Needs to wait after tainting (5s)."""
     cmd_scale = "kubectl scale sts {workload} --replicas={replicas}"
     cmd_taint = "kubectl taint nodes {node} wca_runner=any:NoSchedule --overwrite"  # add taint
-    cmd_untaint = "kubectl taint nodes {node} wca_runner=any:NoSchedule- --overwrite"  # remove taint
+    cmd_untaint = "kubectl taint nodes {node} wca_runner=any:NoSchedule- --overwrite"  # remove
 
     all_nodes = ClusterInfoLoader.get_instance().get_nodes_names()
     # should be equal to all nodes available on cluster
@@ -266,7 +266,8 @@ def run_workloads_equally_per_node(workloads_counts: Dict[str, int], nodes: Opti
                 default_shell_run(cmd_untaint.format(node=nodename_), verbose=True)
         sleep(5)
 
-    workloads_count_all_target = {workload: len(nodes) * count for workload, count in workloads_counts.items()}
+    workloads_count_all_target = {workload: len(nodes) * count for workload, count in
+                                  workloads_counts.items()}
     assert workloads_count_all_walker == workloads_count_all_target
 
 
@@ -382,8 +383,10 @@ def get_max_count_per_smallest_node(workload: str, nodes: List[str]) -> int:
     """nodes -- nodes from which choose the smallest"""
     w_cpu = ClusterInfoLoader.get_instance().get_workloads()[workload]['cpu']
     w_mem = ClusterInfoLoader.get_instance().get_workloads()[workload]['mem']
-    min_mem = min(c['mem'] for n, c in ClusterInfoLoader.get_instance().get_nodes().items() if n in nodes)
-    min_cpu = min(c['cpu'] for n, c in ClusterInfoLoader.get_instance().get_nodes().items() if n in nodes)
+    min_mem = min(
+        c['mem'] for n, c in ClusterInfoLoader.get_instance().get_nodes().items() if n in nodes)
+    min_cpu = min(
+        c['cpu'] for n, c in ClusterInfoLoader.get_instance().get_nodes().items() if n in nodes)
     max_count = min(int(0.9 * min_cpu / w_cpu), int(0.95 * min_mem / w_mem))
     return max_count
 
@@ -394,7 +397,8 @@ def single_step1workload_experiment(run_mode: RunMode, workload: str,
                                     nodes: Optional[List[str]] = None,
                                     experiment_root_dir: str = 'results/tmp'):
     """nodes - on which nodes run experiments"""
-    logging.info('Running experiment >>single_step1workload_experiment<< for workload {}'.format(workload))
+    logging.info(
+        'Running experiment >>single_step1workload_experiment<< for workload {}'.format(workload))
 
     events = []
 
@@ -410,7 +414,8 @@ def single_step1workload_experiment(run_mode: RunMode, workload: str,
         if count_per_node_list is None:
             count_per_node_list = list(range(1, max_count + 1, int(max_count / 5 + 1)))
             logging.debug(
-                "[EQUAL_ON_ALL_NODES] will run experiment for {}(cpu={}, mem={}) with counts {} (possible_max={})".format(
+                "[EQUAL_ON_ALL_NODES] will run experiment for {}(cpu={}, mem={}) "
+                "with counts {} (possible_max={})".format(
                     workload, workload_cpu, workload_mem, count_per_node_list, max_count))
 
     # kubernetes only, 2lm on
@@ -424,7 +429,8 @@ def single_step1workload_experiment(run_mode: RunMode, workload: str,
         if run_mode == RunMode.EQUAL_ON_ALL_NODES:
             if count_per_node > max_count:
                 logging.info(
-                    '[EQUAL_ON_ALL_NODES] Skipping count={}, not enough space on nodes max_count={}'.format(
+                    '[EQUAL_ON_ALL_NODES] Skipping count={}, '
+                    'not enough space on nodes max_count={}'.format(
                         count_per_node, max_count))
                 continue
         elif run_mode == RunMode.RUN_ON_NODES_WHERE_ENOUGH_RESOURCES:
@@ -435,11 +441,13 @@ def single_step1workload_experiment(run_mode: RunMode, workload: str,
             # Log.
             if not nodes:
                 logging.info(
-                    '[RUN_ON_NODES_WHERE_ENOUGH_RESOURCES] Skipping run - cannot be run on any node.')
+                    '[RUN_ON_NODES_WHERE_ENOUGH_RESOURCES] '
+                    'Skipping run - cannot be run on any node.')
                 break
             else:
                 logging.info(
-                    '[RUN_ON_NODES_WHERE_ENOUGH_RESOURCES] Running on nodes {}. Totally {} pods'.format(
+                    '[RUN_ON_NODES_WHERE_ENOUGH_RESOURCES] '
+                    'Running on nodes {}. Totally {} pods'.format(
                         nodes, len(nodes) * count_per_node))
         else:
             raise Exception("Unsupported run_mode={}".format(run_mode))
@@ -507,8 +515,8 @@ def modify_configmap(regexes: List[(str)], experiment_index: int, experiment_roo
     # Apply changes
     command = "kubectl apply -k {path_to_kustomize_folder_wca_scheduler} " \
               "&& sleep {sleep_time}".format(
-        path_to_kustomize_folder_wca_scheduler=path,
-        sleep_time='10s')
+                path_to_kustomize_folder_wca_scheduler=path,
+                sleep_time='10s')
     default_shell_run(command)
     switch_extender(OnOffState.Off)
 
@@ -525,7 +533,8 @@ def create_experiment_root_dir(path: str, overwrite: bool):
 
 def annotate(text, tags=[], dashboard_id=90):
     GRAFANA_URL = "http://100.64.176.12:3000"
-    BEARER_TOKEN = "Bearer eyJrIjoiQXBwRnVwczdXMHVQWFJOQm42ejFVaXVLdDdHOTcxWW0iLCJuIjoicnVubmVyIiwiaWQiOjF9"
+    BEARER_TOKEN = \
+        "Bearer eyJrIjoiQXBwRnVwczdXMHVQWFJOQm42ejFVaXVLdDdHOTcxWW0iLCJuIjoicnVubmVyIiwiaWQiOjF9"
     URL_PATH = GRAFANA_URL + '/api/annotations'  # '/api/search?folderIds=78&query=&starred=false'
 
     url = URL_PATH
@@ -671,4 +680,5 @@ if __name__ == "__main__":
     # experimentset_test()
     # tune_stage(ClusterInfoLoader.get_instance().get_workloads_names())
     # experimentset_single_workload_at_once(experiment_root_dir='results/2020-05-13__stepping_single_workloads')
-    experimentset_main(iterations=20, configmap_regex_parameters=regexs_map, experiment_root_dir='results/2020-05-15__score2')
+    experimentset_main(iterations=20, configmap_regex_parameters=regexs_map,
+                       experiment_root_dir='results/2020-05-15__score2')
