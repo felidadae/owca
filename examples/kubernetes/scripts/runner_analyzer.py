@@ -104,7 +104,7 @@ class PrometheusClient:
 
 @dataclass
 class Stage:
-    def __init__(self, t_start: int, t_end: int):
+    def __init__(self, t_end: int):
         SAFE_DELTA = 60  # 60 seconds back
         t_end -= SAFE_DELTA
 
@@ -244,9 +244,6 @@ def calculate_task_summaries(tasks: List[Task], workloads_baseline: Dict[str, WS
             "L[q0.9][{}s]".format(WINDOW_LENGTH): task.get_latency('q0.9,'),
             "L[stdev][{}s]".format(WINDOW_LENGTH): task.get_latency('stdev'),
             "L[stdev][{}s][%]".format(WINDOW_LENGTH): -1 if task.get_latency('avg') == 0 else task.get_latency('stdev')/task.get_latency('avg') * 100,
-            # "LB_min": workloads_baseline[workload].latency._min,
-            # "LB_avg": workloads_baseline[workload].latency._avg,
-            # "LB_max": workloads_baseline[workload].latency._max,
             # ----
             "T": throughput,
             "T[avg][{}s]".format(WINDOW_LENGTH): throughput,
@@ -255,10 +252,6 @@ def calculate_task_summaries(tasks: List[Task], workloads_baseline: Dict[str, WS
             "T[stdev][{}s]".format(WINDOW_LENGTH): task.get_throughput('stdev'),
 
             "T[stdev][{}s][%]".format(WINDOW_LENGTH): -1 if task.get_throughput('avg') == 0 else task.get_throughput('stdev')/task.get_throughput('avg') * 100,
-            # "TB_min": workloads_baseline[workload].throughput._min,
-            # "TB_avg": workloads_baseline[workload].throughput._avg,
-            # "TB_max": workloads_baseline[workload].throughput._max,
-            # "B_count": workloads_baseline[workload].count,
             # ----
             "L_nice[%]": latency / workloads_baseline[workload].latency._max * 100,
             "T_nice[%]": throughput / workloads_baseline[workload].throughput._min * 100,
@@ -271,10 +264,6 @@ def calculate_task_summaries(tasks: List[Task], workloads_baseline: Dict[str, WS
             # ----
             "task": task.name, "app": task.workload_name, "node": task.node
         }
-        # for key, val in task_summary.items():
-        #     if '{window_length}' in key:
-        #         task_summary[key.format(window_length=WINDOW_LENGTH)] = val
-        #         del task_summary[key]
         for key, val in task_summary.items():
             if type(val) == float:
                 task_summary[key] = round(val, 3)
@@ -299,8 +288,7 @@ class StagesAnalyzer:
 
         self.stages = [] 
         for i in range(self.stages_count):
-            self.stages.append(Stage(t_start=events[i*2][0].timestamp()+T_DELTA,
-                                     t_end=events[i*2+1][0].timestamp() + T_DELTA))
+            self.stages.append(Stage(t_end=events[i*2+1][0].timestamp() + T_DELTA))
 
     def delete_report_files(self, report_root_dir):
         if os.path.isdir(report_root_dir):
@@ -337,9 +325,7 @@ class StagesAnalyzer:
             latencies_list =  [task.get_latency('avg') for task in tasks if task.get_latency('avg') is not None]
 
             if len(throughputs_list) == 0:
-                # TODO:  if len(throughputs_list) == 0 -> exception, len(workloads) != len(workloads_wstats)
-                # not having data at all ? - maybe inf?
-                exception_value = float('inf')  # 1
+                exception_value = float('inf')
                 t_max, t_min, t_avg, t_stdev = [exception_value] * 4
                 l_max, l_min, l_avg, l_stdev = [exception_value] * 4
             elif len(throughputs_list) == 1:
@@ -585,10 +571,7 @@ class TxtStagesExporter:
             self._fref.write('\n\n')
 
     def _metadata(self):
-        # self._fref.write("Experiment meta: {}\n\n".format(self.experiment_meta))
         self._fref.write("Experiment index: {}\n".format(self.experiment_index))
-        # for i in range(5):
-        #     self._fref.write("Time event {}: {}.\n".format(i, self.events_data[0][i][0].strftime("%d-%b-%Y (%H:%M:%S)")))
         self._fref.write("Time events from: {} to: {}.\n".format(self.events_data[0][0][0].strftime("%d-%b-%Y (%H:%M:%S)"),
                                                                  self.events_data[0][-1][0].strftime("%d-%b-%Y (%H:%M:%S)")))
 
@@ -760,10 +743,6 @@ class AnalyzerQueries:
 
         query_results = AnalyzerQueries.query_performance_metrics(time, function_args, metrics, window_length)
 
-        # s_l = set([r['metric']['task_name'] for r in query_results[Metric.TASK_LATENCY]['avg']])
-        # s_t = set([r['metric']['task_name'] for r in query_results[Metric.TASK_THROUGHPUT]['avg']])
-        # assert s_l == s_t, "For some tasks there is not information about latency of throughput, {}".format(s_l.symmetric_difference(s_t))
-
         for metric, query_result in query_results.items():
             for aggregation_name, result in query_result.items():
                 for per_app_result in result:
@@ -817,335 +796,13 @@ def analyze_3stage_experiment(experiment_meta: ExperimentMeta):
             stages_analyzer.aep_report(experiment_meta, experiment_index=i)
         except Exception:
             logging.error("Skipping the whole 3stage subexperiment number {} due to exception!".format(i))
-            # # @TODO remove raise
-            raise
-            # continue
-
-        # logging.error("@TODO remove this break")
-        # break
+            continue
 
 
 if __name__ == "__main__":
     ClusterInfoLoader.build_singleton()
 
-    experiments_meta = [
-        ExperimentMeta(
-            'results/2020-03-17_creatonealg__target_score_set__ugly_fixes', 
-            'making sure not PMEM app will be scheduled on DRAM',
-            'the same run as previous day',
-            {'target_score': -2},
-            'adding hack to make sure no PMEM app will be scheduled on DRAM', ''),
-
-        ExperimentMeta(
-            'results/2020-03-19__hp_enabled', 
-            'hp enabled; the same order of running workloads',
-            'first experiment with hp enabled - Score',
-            {'target_score': -2},
-            'enable hp; the same order of running workloads; new utilization cpu:0.25-mem:0.85', ''),
-
-        ExperimentMeta(
-            'results/2020-03-22__new_score', 
-            'score2',
-            'first experiment with new method of calculating score - Score2',
-            {'target_score': -4},
-            'score2', 'BUGS: POSSIBLE score2 was wrongly calculated, but not checked but rather not'),
-
-        ExperimentMeta(
-            'results/2020-03-24__new_score_3', 
-            'score2',
-            'second experiment with new method of calculating score - Score2',
-            {'target_score': -3},
-            'setting target_score to -3',
-            'BUGS: score2 was wrongly putting dram type apps on pmem nodes'),
-
-        ExperimentMeta(
-            'results/2020-03-25__score2', 
-            'score2',
-            'Rerunning previous experiment',
-            {'target_score': -3},
-            '',
-            'BUGS: score2 was wrongly putting dram type apps on pmem nodes'),
-
-        ExperimentMeta(
-            data_path='results/2020-03-26__score2', 
-            title='score2',
-            description='Rerunning previous experiment with fixed bugs (7 iterations only)',
-            params={'target_score': -3},
-            changelog='fixing SUPER IMPORTANT bug with wrongly scheduling DRAM apps',
-            bugs=''),
-
-        ExperimentMeta(
-            data_path='results/2020-03-26__score2_pepe_limited', 
-            title='score2 - limited workloads',
-            description='Running only subset of workloads: memcached-big/big-wss, sysbench-memory-big, stress-stream-big',
-            params={'target_score': -3},
-            changelog='',
-            bugs=''),
-
-        ExperimentMeta(
-            data_path='results/2020-03-29__each_workload_is_single', 
-            title='each workload single',
-            description='running each workload separately; 15 runs;',
-            params={'instances_count': 10, 'stabilize_phase_length [min]': [15, 1, 1]},
-            changelog='',
-            bugs=''),
-
-        ExperimentMeta(
-            data_path='results/2020-03-30__each_workload_is_single__stability_fixed_1', 
-            title='each workload single',
-            description='running each of 10 workloads separately; 15 runs;',
-            params={'instances_count': 'all machines', 'workloads_count': 10, 'stabilize_phase_length [min]': [35, 1, 1]},
-            changelog='multiple stability fixes, frequency set to 2.1GHz, turn off node201',
-            bugs='in seconds case all instances were run on single machine(dont know why)'),
-
-        ExperimentMeta(
-            data_path='results/2020-03-31__single', 
-            title='each workload single',
-            description='running each of workloads separately; 35 runs;',
-            params={'instances_count': 'all machines', 'workloads_count': 'all', 'stabilize_phase_length [min]': [35, 1, 1]},
-            changelog='turn off node102',
-            bugs='first three experiments were run not on all hosts (dont know why); frequency broken (rebooting machines)'),
-
-        # NOTE smoke test
-        # ExperimentMeta(
-        #     data_path='results/2020-04-01__single_stressng', 
-        #     title='only stressng',
-        #     description='only stressng',
-        #     params={'instances_count': 'all machines', 'workloads_count': '1', 'stabilize_phase_length [min]': [20, 1, 1]},
-        #     changelog='Setting frequency to 2.1MHz',
-        #     bugs=''),
-
-        ExperimentMeta(
-            data_path='results/2020-04-01__single_all', 
-            title='All workloads',
-            description='[part1] All workloads',
-            params={'instances_count': 'all machines', 'workloads_count': 'all', 'stabilize_phase_length [min]': [1, 20, 1]},
-            changelog='Setting frequency to 2.1MHz again after pepe rebooting machines',
-            bugs='Drop after specjbb, please merge with results_2020-04-01__single_all__',
-            experiment_type=ExperimentType.SingleWorkloadsRun,
-            experiment_baseline_index=1,),
-
-        ExperimentMeta(
-            data_path='results/2020-04-01__single_all__', 
-            title='All workloads',
-            description='[part2] All workloads',
-            params={'instances_count': 'all machines', 'workloads_count': 'all', 'stabilize_phase_length [min]': [1, 20, 1]},
-            changelog='Setting frequency to 2.1MHz again after pepe rebooting machines',
-            bugs='Drop after specjbb, please merge with results_2020-04-01__single_all__',
-            experiment_type=ExperimentType.SingleWorkloadsRun,
-            experiment_baseline_index=1,),
-
-        ExperimentMeta(
-            data_path='results/2020-04-04__stepping_single_workloads', 
-            title='Stepping workloads',
-            description='First time, almost all workloads',
-            params={'instances_count': 'up to 4', 'workloads_count': 'almost all', 'stabilize_phase_length [min]': [20]},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
-            experiment_baseline_index=0,),
-
-        ExperimentMeta(
-            data_path='results/2020-04-13__stepping_single_workloads', 
-            title='Stepping workloads',
-            description='4 workloads, one to max (with varying step size)',
-            params={'instances_count': 'up to max', 'workloads_count': '4', 'stabilize_phase_length [min]': [20]},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
-            experiment_baseline_index=0,),
-
-        ExperimentMeta(
-            data_path='results/2020-04-15__stepping_single_workloads', 
-            title='Stepping workloads',
-            description='3 workloads, one to max',
-            params={'instances_count': 'up to max', 'workloads_count': '4', 'stabilize_phase_length [min]': [20]},
-            changelog='better resolution for the workloads (if only possible to run on pmem, run there)',
-            bugs='',
-            experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
-            experiment_baseline_index=0,
-            commit_hash='35a1216a516b',),
-
-        ExperimentMeta(
-            data_path='results/2020-04-17__score2',
-            title='Score2',
-            description='Damian first run on cluster.',
-            params={},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.ThreeStageStandardRun,
-            experiment_baseline_index=0,
-            commit_hash='unknown',),
-
-        ExperimentMeta(
-            data_path='results/2020-04-17__score2',
-            title='Score2',
-            description='Damian changes analizer. NO new results',
-            params={},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.ThreeStageStandardRun,
-            experiment_baseline_index=0,
-            commit_hash='unknown', ),
-
-        ExperimentMeta(
-            data_path='results/2020-04-20__score2',
-            title='Score2',
-            description='Marta fix to set max 70% usage cpu',
-            params={},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.ThreeStageStandardRun,
-            experiment_baseline_index=0,
-            commit_hash='unknown', ),
-
-        ExperimentMeta(
-            data_path='results/2020-04-21__score2',
-            title='Score2',
-            description='Max 50% CPU usage, even number cores for workloads',
-            params={},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.ThreeStageStandardRun,
-            experiment_baseline_index=0,
-            commit_hash='unknown', ),
-
-        ExperimentMeta(
-            data_path='results/2020-04-22__score2',
-            title='Score2',
-            description='Max 50% CPU usage, Fixed redis-memtire with old images',
-            params={},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.ThreeStageStandardRun,
-            experiment_baseline_index=0,
-            commit_hash='unknown', ),
-
-        ExperimentMeta(
-            data_path='results/2020-04-23__score2',
-            title='Score2',
-            description='Max 70% CPU usage',
-            params={},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.ThreeStageStandardRun,
-            experiment_baseline_index=0,
-            commit_hash='unknown', ),
-
-        ExperimentMeta(
-            data_path='results/2020-04-23__stepping_single_workloads',
-            title='Stepping workloads',
-            description='redis',
-            params={'instances_count': '', 'workloads_count': '3',
-                    'stabilize_phase_length [min]': [20]},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
-            experiment_baseline_index=0,
-            commit_hash='', ),
-
-        ExperimentMeta(
-            data_path='results/2020-04-23__score2_xls',
-            title='Score2',
-            description='XLS',
-            params={},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.ThreeStageStandardRun,
-            experiment_baseline_index=0,
-            commit_hash='unknown', ),
-
-        ExperimentMeta(
-            data_path='results/2020-04-24__score2',
-            title='Score2',
-            description='Different value of score',
-            params={},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.ThreeStageStandardRun,
-            experiment_baseline_index=0,
-            commit_hash='unknown', ),
-
-        ExperimentMeta(
-            data_path='results/2020-04-27__stepping_single_workloads_redis',
-            title='Stepping workloads',
-            description='redis',
-            params={'instances_count': '', 'workloads_count': 'almost all',
-                    'stabilize_phase_length [min]': [20]},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
-            experiment_baseline_index=0,
-            commit_hash='', ),
-
-        ExperimentMeta(
-            data_path='results/2020-04-27__stepping_single_workloads_redis-big',
-            title='Stepping workloads',
-            description='redis',
-            params={'instances_count': '', 'workloads_count': 'almost all',
-                    'stabilize_phase_length [min]': [20]},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
-            experiment_baseline_index=0,
-            commit_hash='', ),
-
-        ExperimentMeta(
-            data_path='results/2020-04-28__score2',
-            title='Score2',
-            description='4 step, score -2.3',
-            params={},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.ThreeStageStandardRun,
-            experiment_baseline_index=0,
-            commit_hash='unknown', ),
-
-        ExperimentMeta(
-            data_path='results/2020-04-28__score2_2',
-            title='Score2',
-            description='',
-            params={},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.ThreeStageStandardRun,
-            experiment_baseline_index=0,
-            commit_hash='unknown', ),
-
-        ExperimentMeta(
-            data_path='results/2020-04-29__score2',
-            title='Score2 score -2.3 90% CPU',
-            description='',
-            params={},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.ThreeStageStandardRun,
-            experiment_baseline_index=0,
-            commit_hash='unknown', ),
-
-        ExperimentMeta(
-            data_path='results/2020-04-29__score2_full',
-            title='Score2 score -2.3 90% CPU',
-            description='',
-            params={},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.ThreeStageStandardRun,
-            experiment_baseline_index=0,
-            commit_hash='unknown', ),
-
-        ExperimentMeta(
-            data_path='results/2020-04-30__score2',
-            title='Score2 mojowka; many score, 90 and 70 cpu',
-            description='',
-            params={},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.ThreeStageStandardRun,
-            experiment_baseline_index=0,
-            commit_hash='unknown', ),
-
-        ExperimentMeta(
+    experiment_meta = ExperimentMeta(
             data_path='results/2020-05-05__stepping_single_workloads',
             title='Stepping workloads',
             description='redis',
@@ -1155,9 +812,7 @@ if __name__ == "__main__":
             bugs='',
             experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
             experiment_baseline_index=0,
-            commit_hash='', ),
-
-    ]
+            commit_hash='', )
 
     # copy data to summary dir with README
     summary_dir = "__SUMMARY_{}__".format(datetime.datetime.now().strftime('%Y-%m-%d'))
@@ -1167,18 +822,9 @@ if __name__ == "__main__":
 
     # save changelog
     with open(os.path.join(summary_dir, 'README.CHANGELOG'), 'w') as fref:
-        for experiment_meta in experiments_meta:
-            fref.write(str(experiment_meta))
-            fref.write('\n\n')
+        fref.write(str(experiment_meta))
+        fref.write('\n\n')
 
-    # for each experiment
-    for iem, experiment_meta in enumerate(experiments_meta):
-
-        # Run only for last experiment
-        if iem < len(experiments_meta) - 1:
-            logging.debug('Skipping experiment {}'.format(experiment_meta.data_path))
-            continue
-
-        analyze_3stage_experiment(experiment_meta)
-        copyfile(os.path.join(experiment_meta.data_path, 'runner_analyzer', 'results.txt'),
-                 os.path.join(summary_dir, experiment_meta.data_path_() + '.summary.txt'))
+    analyze_3stage_experiment(experiment_meta)
+    copyfile(os.path.join(experiment_meta.data_path, 'runner_analyzer', 'results.txt'),
+             os.path.join(summary_dir, experiment_meta.data_path_() + '.summary.txt'))
