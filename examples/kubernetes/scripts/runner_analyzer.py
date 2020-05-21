@@ -55,11 +55,12 @@ class PrometheusClient:
 
         Sample usage:
         r = instant_query("avg_over_time(task_llc_occupancy_bytes
-            {app='redis-memtier-big', host='node37', task_name='default/redis-memtier-big-0'}[3000s])",
+            {app='redis-memtier-big', host='node37',
+            task_name='default/redis-memtier-big-0'}[3000s])",
             1583395200)
         """
         urli = PrometheusClient.BASE_URL + '/api/v1/query?{}'.format(parse.urlencode(dict(
-            query=query, time=time,)))
+            query=query, time=time, )))
         try:
             r = requests.get(urli)
         except requests.exceptions.ConnectionError as e:
@@ -155,23 +156,38 @@ class Node:
         return {
             'name': self.name,
 
-            'cpu_requested': round(float(self.performance_metrics[Metric.PLATFORM_CPU_REQUESTED]['instant']), 2),
-            'cpu_requested [%]': round(float(self.performance_metrics[Metric.PLATFORM_CPU_REQUESTED]['instant'])/node_cpu*100, 2),
-            'cpu_util [experimental]': round(float(self.performance_metrics[Metric.PLATFORM_CPU_UTIL]['instant']),2),
+            'cpu_requested': round(
+                float(self.performance_metrics[Metric.PLATFORM_CPU_REQUESTED]['instant']), 2),
+            'cpu_requested [%]': round(float(
+                self.performance_metrics[Metric.PLATFORM_CPU_REQUESTED][
+                    'instant']) / node_cpu * 100, 2),
+            'cpu_util [experimental]': round(
+                float(self.performance_metrics[Metric.PLATFORM_CPU_UTIL]['instant']), 2),
 
-            'mem_requested': round(float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant']),2),
-            'mem_requested [%]': round(float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant'])/node_mem*100, 2),
+            'mem_requested': round(
+                float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant']), 2),
+            'mem_requested [%]': round(float(
+                self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant']) / node_mem * 100,
+                                       2),
 
-            'mbw_reads [GB]':  round(float(self.performance_metrics[Metric.PLATFORM_MBW_READS]['instant']),2),
-            'mbw_writes [GB]': round(float(self.performance_metrics[Metric.PLATFORM_MBW_WRITES]['instant']), 2),
-            'mbw_flat [GB]': round(3.7 * float(self.performance_metrics[Metric.PLATFORM_MBW_WRITES]['instant']) + float(self.performance_metrics[Metric.PLATFORM_MBW_READS]['instant']), 2),
+            'mbw_reads [GB]': round(
+                float(self.performance_metrics[Metric.PLATFORM_MBW_READS]['instant']), 2),
+            'mbw_writes [GB]': round(
+                float(self.performance_metrics[Metric.PLATFORM_MBW_WRITES]['instant']), 2),
+            'mbw_flat [GB]': round(3.7 * float(
+                self.performance_metrics[Metric.PLATFORM_MBW_WRITES]['instant']) + float(
+                self.performance_metrics[Metric.PLATFORM_MBW_READS]['instant']), 2),
 
-            'dram_hit_ratio [%]': round(float(self.performance_metrics[Metric.PLATFORM_DRAM_HIT_RATIO]['instant']) * 100,2),
+            'dram_hit_ratio [%]': round(
+                float(self.performance_metrics[Metric.PLATFORM_DRAM_HIT_RATIO]['instant']) * 100,
+                2),
 
-            'wss_used (aprox)': round(float(self.performance_metrics[Metric.PLATFORM_WSS_USED]['instant']),2),
+            'wss_used (aprox)': round(
+                float(self.performance_metrics[Metric.PLATFORM_WSS_USED]['instant']), 2),
 
-            'mem/cpu (requested)': round(float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant'])/
-                       float(self.performance_metrics[Metric.PLATFORM_CPU_REQUESTED]['instant']), 2)
+            'mem/cpu (requested)': round(
+                float(self.performance_metrics[Metric.PLATFORM_MEM_USAGE]['instant']) /
+                float(self.performance_metrics[Metric.PLATFORM_CPU_REQUESTED]['instant']), 2)
         }
 
     @staticmethod
@@ -201,14 +217,14 @@ class WStat:
             "LB_min": round(self.latency._min, 2),
             "LB_avg": round(self.latency._avg, 2),
             "LB_max": round(self.latency._max, 2),
-            "L_stdev":  round(self.latency._stdev, 2),
-            "L_stdev[%]":  round(self.latency._stdev /self.latency._avg * 100, 2),
+            "L_stdev": round(self.latency._stdev, 2),
+            "L_stdev[%]": round(self.latency._stdev / self.latency._avg * 100, 2),
             # ---
             "TB_min": round(self.throughput._min, 2),
             "TB_avg": round(self.throughput._avg, 2),
             "TB_max": round(self.throughput._max, 2),
-            "T_stdev":  round(self.throughput._stdev, 2),
-            "T_stdev[%]":  round(self.throughput._stdev / self.throughput._avg * 100, 2),
+            "T_stdev": round(self.throughput._stdev, 2),
+            "T_stdev[%]": round(self.throughput._stdev / self.throughput._avg * 100, 2),
             # ---
             "B_count": self.count,
             "app": self.name
@@ -219,7 +235,8 @@ class WStat:
         return pd.DataFrame([wstat.to_dict() for wstat in wstats])
 
 
-def calculate_task_summaries(tasks: List[Task], workloads_baseline: Dict[str, WStat]) -> List[Dict[str, Union[float, str]]]:
+def calculate_task_summaries(tasks: List[Task], workloads_baseline: Dict[str, WStat]) -> List[
+                             Dict[str, Union[float, str]]]:
     """
     Calculate summary for each task defined in >>tasks<< as comparison to workloads_baseline.
     @TODO what if there is no given task workload in workloads_baseline ?
@@ -243,7 +260,8 @@ def calculate_task_summaries(tasks: List[Task], workloads_baseline: Dict[str, WS
             "L[q0.1][{}s]".format(WINDOW_LENGTH): task.get_latency('q0.1,'),
             "L[q0.9][{}s]".format(WINDOW_LENGTH): task.get_latency('q0.9,'),
             "L[stdev][{}s]".format(WINDOW_LENGTH): task.get_latency('stdev'),
-            "L[stdev][{}s][%]".format(WINDOW_LENGTH): -1 if task.get_latency('avg') == 0 else task.get_latency('stdev')/task.get_latency('avg') * 100,
+            "L[stdev][{}s][%]".format(WINDOW_LENGTH): -1 if task.get_latency(
+                'avg') == 0 else task.get_latency('stdev') / task.get_latency('avg') * 100,
             # ----
             "T": throughput,
             "T[avg][{}s]".format(WINDOW_LENGTH): throughput,
@@ -251,7 +269,8 @@ def calculate_task_summaries(tasks: List[Task], workloads_baseline: Dict[str, WS
             "T[q0.1][{}s]".format(WINDOW_LENGTH): task.get_throughput('q0.1,'),
             "T[stdev][{}s]".format(WINDOW_LENGTH): task.get_throughput('stdev'),
 
-            "T[stdev][{}s][%]".format(WINDOW_LENGTH): -1 if task.get_throughput('avg') == 0 else task.get_throughput('stdev')/task.get_throughput('avg') * 100,
+            "T[stdev][{}s][%]".format(WINDOW_LENGTH): -1 if task.get_throughput(
+                'avg') == 0 else task.get_throughput('stdev') / task.get_throughput('avg') * 100,
             # ----
             "L_nice[%]": latency / workloads_baseline[workload].latency._max * 100,
             "T_nice[%]": throughput / workloads_baseline[workload].throughput._min * 100,
@@ -286,9 +305,9 @@ class StagesAnalyzer:
         # @Move to loader
         T_DELTA = os.environ.get('T_DELTA', 0)
 
-        self.stages = [] 
+        self.stages = []
         for i in range(self.stages_count):
-            self.stages.append(Stage(t_end=events[i*2+1][0].timestamp() + T_DELTA))
+            self.stages.append(Stage(t_end=events[i * 2 + 1][0].timestamp() + T_DELTA))
 
     def delete_report_files(self, report_root_dir):
         if os.path.isdir(report_root_dir):
@@ -311,31 +330,41 @@ class StagesAnalyzer:
         return [nodename for nodename in self.stages[stage_index].nodes]
 
     def calculate_per_workload_wstats_per_stage(self, workloads: Iterable[str],
-                                                stage_index: int, filter_nodes: List[str]) -> Dict[str, WStat]:
-        """Calculate WStat for all workloads in list for stage (stage_index). Takes data from all nodes."""
+                                                stage_index: int, filter_nodes: List[str]) -> Dict[
+                                                str, WStat]:
+        """
+        Calculate WStat for all workloads in list for stage (stage_index).
+        Takes data from all nodes.
+        """
         workloads_wstats: Dict[str, WStat] = {}
         for workload in workloads:
             # filter tasks of a given workload
-            tasks = [task for task in self.stages[stage_index].tasks.values() if task.workload_name == workload]
+            tasks = [task for task in self.stages[stage_index].tasks.values() if
+                     task.workload_name == workload]
             # filter out tasks which were run on >>filter_nodes<<
             tasks = [task for task in tasks if task.node not in filter_nodes]
 
             # avg but from 12 sec for a single task
-            throughputs_list = [task.get_throughput('avg') for task in tasks if task.get_throughput('avg') is not None]
-            latencies_list =  [task.get_latency('avg') for task in tasks if task.get_latency('avg') is not None]
+            throughputs_list = [task.get_throughput('avg') for task in tasks if
+                                task.get_throughput('avg') is not None]
+            latencies_list = [task.get_latency('avg') for task in tasks if
+                              task.get_latency('avg') is not None]
 
             if len(throughputs_list) == 0:
                 exception_value = float('inf')
                 t_max, t_min, t_avg, t_stdev = [exception_value] * 4
                 l_max, l_min, l_avg, l_stdev = [exception_value] * 4
             elif len(throughputs_list) == 1:
-                t_max, t_min, t_avg, t_stdev = [throughputs_list[0], throughputs_list[0], throughputs_list[0], 0]
-                l_max, l_min, l_avg, l_stdev = [throughputs_list[0], throughputs_list[0], throughputs_list[0], 0]
+                t_max, t_min, t_avg, t_stdev = [throughputs_list[0], throughputs_list[0],
+                                                throughputs_list[0], 0]
+                l_max, l_min, l_avg, l_stdev = [throughputs_list[0], throughputs_list[0],
+                                                throughputs_list[0], 0]
             else:
                 t_max, t_min, t_avg, t_stdev = max(throughputs_list), min(throughputs_list), \
-                                               statistics.mean(throughputs_list), statistics.stdev(throughputs_list)
+                                               statistics.mean(throughputs_list), statistics.stdev(
+                    throughputs_list)
                 l_max, l_min, l_avg, l_stdev = max(latencies_list), min(latencies_list), \
-                                               statistics.mean(latencies_list), statistics.stdev(latencies_list)
+                    statistics.mean(latencies_list), statistics.stdev(latencies_list)
 
             workloads_wstats[workload] = WStat(latency=Stat(l_avg, l_min, l_max, l_stdev),
                                                throughput=Stat(t_avg, t_min, t_max, t_stdev),
@@ -368,12 +397,14 @@ class StagesAnalyzer:
 
         for stage_index in range(0, self.get_stages_count()):
             workloads_wstat = self.calculate_per_workload_wstats_per_stage(
-                workloads=self.get_all_workloads_in_stage(stage_index), stage_index=stage_index, filter_nodes=aep_nodes)
+                workloads=self.get_all_workloads_in_stage(stage_index), stage_index=stage_index,
+                filter_nodes=aep_nodes)
             workloads_wstats.append(workloads_wstat)
 
         # Only take nodes node10*
         # @TODO replace with more generic solution, like param in MetaExperiment
-        nodes_to_filter = [node for node in self.get_all_nodes_in_stage(experiment_meta.experiment_baseline_index)
+        nodes_to_filter = [node for node in
+                           self.get_all_nodes_in_stage(experiment_meta.experiment_baseline_index)
                            if node in aep_nodes or not node.startswith('node10')]
         workloads_baseline = self.calculate_per_workload_wstats_per_stage(
             workloads=self.get_all_workloads_in_stage(experiment_meta.experiment_baseline_index),
@@ -381,30 +412,40 @@ class StagesAnalyzer:
             filter_nodes=nodes_to_filter)
 
         for stage_index in range(0, self.get_stages_count()):
-            tasks = self.get_all_tasks_in_stage_on_nodes(stage_index=stage_index, nodes=self.get_all_nodes_in_stage(stage_index))
+            tasks = self.get_all_tasks_in_stage_on_nodes(stage_index=stage_index,
+                                                         nodes=self.get_all_nodes_in_stage(
+                                                             stage_index))
             # ---
             tasks_summaries = calculate_task_summaries(tasks, workloads_baseline)
             tasks_summaries__per_stage.append(tasks_summaries)
             # ---
             nodes_capacities = ClusterInfoLoader.get_instance().get_nodes()
-            nodes_summaries = [self.stages[stage_index].nodes[node].to_dict(nodes_capacities) for node in self.get_all_nodes_in_stage(stage_index)]
+            nodes_summaries = [self.stages[stage_index].nodes[node].to_dict(nodes_capacities) for
+                               node in self.get_all_nodes_in_stage(stage_index)]
             nodes_summaries = [s for s in nodes_summaries if list(s.keys())]
             node_summaries__per_stage.append(nodes_summaries)
 
         # Transform to DataFrames keeping the same names
-        workloads_wstats: List[pd.DataFrame] = [WStat.to_dataframe(el.values()) for el in workloads_wstats]
-        tasks_summaries__per_stage: List[pd.DataFrame] = [pd.DataFrame(el) for el in tasks_summaries__per_stage]
-        node_summaries__per_stage: List[pd.DataFrame] = [pd.DataFrame(el) for el in node_summaries__per_stage]
+        workloads_wstats: List[pd.DataFrame] = [WStat.to_dataframe(el.values()) for el in
+                                                workloads_wstats]
+        tasks_summaries__per_stage: List[pd.DataFrame] = [pd.DataFrame(el) for el in
+                                                          tasks_summaries__per_stage]
+        node_summaries__per_stage: List[pd.DataFrame] = [pd.DataFrame(el) for el in
+                                                         node_summaries__per_stage]
 
-        tasks_summaries__per_stage: List[pd.DataFrame] = [el.sort_values(by='node') for el in tasks_summaries__per_stage]
+        tasks_summaries__per_stage: List[pd.DataFrame] = [el.sort_values(by='node') for el in
+                                                          tasks_summaries__per_stage]
 
         exporter = TxtStagesExporter(
             events_data=self.events_data,
             experiment_meta=experiment_meta,
             experiment_index=experiment_index,
             # ---
-            export_file_path=os.path.join(experiment_meta.data_path, 'runner_analyzer', 'results.txt'),
-            utilization_file_path=os.path.join(experiment_meta.data_path, 'chosen_workloads_utilization.{}.txt'.format(experiment_index)),
+            export_file_path=os.path.join(experiment_meta.data_path, 'runner_analyzer',
+                                          'results.txt'),
+            utilization_file_path=os.path.join(experiment_meta.data_path,
+                                               'chosen_workloads_utilization.{}.txt'.format(
+                                                   experiment_index)),
             # ---
             workloads_summaries=workloads_wstats,
             tasks_summaries=tasks_summaries__per_stage,
@@ -441,7 +482,8 @@ class TxtStagesExporter:
     def export_to_txt_single(self):
         logging.debug("Saving results to {}".format(self.export_file_path))
 
-        runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path, 'runner_analyzer')
+        runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path,
+                                                   'runner_analyzer')
         if not os.path.isdir(runner_analyzer_results_dir):
             os.mkdir(runner_analyzer_results_dir)
 
@@ -459,7 +501,8 @@ class TxtStagesExporter:
     def export_to_txt_stepping_single(self):
         logging.debug("Saving results to {}".format(self.export_file_path))
 
-        runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path, 'runner_analyzer')
+        runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path,
+                                                   'runner_analyzer')
         if not os.path.isdir(runner_analyzer_results_dir):
             os.mkdir(runner_analyzer_results_dir)
 
@@ -471,9 +514,15 @@ class TxtStagesExporter:
             for stage_index in range(len(self.workloads_summaries)):
                 self._seperator()
                 self._baseline(title="DRAM workload summary", stage_index=stage_index)
-                self._tasks_summaries_in_stage(stage_index=stage_index, title='Task summaries for PMEM:node101', filter_nodes=['node101'])
-                self._tasks_summaries_in_stage(stage_index=stage_index, title='Task summaries for DRAM:node103', filter_nodes=['node103'])
-                self._node_summaries_in_stage(stage_index=stage_index, title='Node summaries for DRAM:node103', filter_nodes=['node103'])
+                self._tasks_summaries_in_stage(stage_index=stage_index,
+                                               title='Task summaries for PMEM:node101',
+                                               filter_nodes=['node101'])
+                self._tasks_summaries_in_stage(stage_index=stage_index,
+                                               title='Task summaries for DRAM:node103',
+                                               filter_nodes=['node103'])
+                self._node_summaries_in_stage(stage_index=stage_index,
+                                              title='Node summaries for DRAM:node103',
+                                              filter_nodes=['node103'])
                 self._seperator(ending=True)
             self._fref = None
 
@@ -482,14 +531,16 @@ class TxtStagesExporter:
         self._fref.write(df.to_string())
         self._fref.write('\n')
 
-    def _tasks_summaries_in_stage(self, title: str, stage_index:int, filter_nodes: Optional[List[str]] = None):
+    def _tasks_summaries_in_stage(self, title: str, stage_index: int,
+                                  filter_nodes: Optional[List[str]] = None):
         df = self.tasks_summaries[stage_index]  # df == dataframe
         if filter_nodes is not None:
             df = df[df.node.isin(filter_nodes)]
 
         self._print_summaries_in_stage(df, title)
 
-    def _node_summaries_in_stage(self, title: str, stage_index: int, filter_nodes = Optional[List[str]]):
+    def _node_summaries_in_stage(self, title: str, stage_index: int,
+                                 filter_nodes=Optional[List[str]]):
         df = self.node_summaries[stage_index]  # df == dataframe
         if filter_nodes is not None:
             df = df[df.name.isin(filter_nodes)]
@@ -505,24 +556,31 @@ class TxtStagesExporter:
         writer.save()
 
     def export_to_xls(self):
-        logging.debug("Saving xls to {} for experiment {}".format(self.export_file_path, self.experiment_index))
+        logging.debug("Saving xls to {} for experiment {}".format(self.export_file_path,
+                                                                  self.experiment_index))
 
         runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path,
                                                    'runner_analyzer')
         if not os.path.isdir(runner_analyzer_results_dir):
             os.mkdir(runner_analyzer_results_dir)
 
-        with pd.ExcelWriter(os.path.join(runner_analyzer_results_dir, 'tasks_summaries_{}.xlsx'.format(self.experiment_index))) as writer:
+        with pd.ExcelWriter(os.path.join(runner_analyzer_results_dir,
+                                         'tasks_summaries_{}.xlsx'.format(
+                                             self.experiment_index))) as writer:
             self.tasks_summaries[0].to_excel(writer, sheet_name='BASELINE')
             self.tasks_summaries[1].to_excel(writer, sheet_name='KUBERNETES_BASELINE')
             self.tasks_summaries[2].to_excel(writer, sheet_name='WCA-SCHEDULER')
 
-        with pd.ExcelWriter(os.path.join(runner_analyzer_results_dir, 'node_summaries_{}.xlsx'.format(self.experiment_index))) as writer:
+        with pd.ExcelWriter(os.path.join(runner_analyzer_results_dir,
+                                         'node_summaries_{}.xlsx'.format(
+                                             self.experiment_index))) as writer:
             self.node_summaries[0].to_excel(writer, sheet_name='BASELINE')
             self.node_summaries[1].to_excel(writer, sheet_name='KUBERNETES_BASELINE')
             self.node_summaries[2].to_excel(writer, sheet_name='WCA-SCHEDULER')
 
-        with pd.ExcelWriter(os.path.join(runner_analyzer_results_dir, 'workloads_summaries_{}.xlsx'.format(self.experiment_index))) as writer:
+        with pd.ExcelWriter(os.path.join(runner_analyzer_results_dir,
+                                         'workloads_summaries_{}.xlsx'.format(
+                                             self.experiment_index))) as writer:
             self.workloads_summaries[0].to_excel(writer, sheet_name='BASELINE')
             self.workloads_summaries[1].to_excel(writer, sheet_name='KUBERNETES_BASELINE')
             self.workloads_summaries[2].to_excel(writer, sheet_name='WCA-SCHEDULER')
@@ -535,22 +593,51 @@ class TxtStagesExporter:
         if not os.path.isdir(runner_analyzer_results_dir):
             os.mkdir(runner_analyzer_results_dir)
 
-        self.tasks_summaries[0].to_csv(os.path.join(runner_analyzer_results_dir, 'tasks_summaries_{}_BASELINE.csv'.format(self.experiment_index)))
-        self.tasks_summaries[1].to_csv(os.path.join(runner_analyzer_results_dir,'tasks_summaries_{}_KUBERNETES_BASELINE.csv'.format(self.experiment_index)))
-        self.tasks_summaries[2].to_csv(os.path.join(runner_analyzer_results_dir,'tasks_summaries_{}_WCA-SCHEDULER.csv'.format(self.experiment_index)))
+        self.tasks_summaries[0].to_csv(
+            os.path.join(runner_analyzer_results_dir,
+                         'tasks_summaries_{}_BASELINE.csv'.format(
+                             self.experiment_index)))
+        self.tasks_summaries[1].to_csv(
+            os.path.join(runner_analyzer_results_dir,
+                         'tasks_summaries_{}_KUBERNETES_BASELINE.csv'.format(
+                             self.experiment_index)))
+        self.tasks_summaries[2].to_csv(
+            os.path.join(runner_analyzer_results_dir,
+                         'tasks_summaries_{}_WCA-SCHEDULER.csv'.format(
+                             self.experiment_index)))
 
-        self.node_summaries[0].to_csv(os.path.join(runner_analyzer_results_dir,'node_summaries_{}_BASELINE.csv'.format(self.experiment_index)))
-        self.node_summaries[1].to_csv(os.path.join(runner_analyzer_results_dir,'node_summaries_{}_KUBERNETES_BASELINE.csv'.format(self.experiment_index)))
-        self.node_summaries[2].to_csv(os.path.join(runner_analyzer_results_dir,'node_summaries_{}_WCA-SCHEDULER.csv'.format(self.experiment_index)))
+        self.node_summaries[0].to_csv(
+            os.path.join(runner_analyzer_results_dir,
+                         'node_summaries_{}_BASELINE.csv'.format(
+                             self.experiment_index)))
+        self.node_summaries[1].to_csv(
+            os.path.join(runner_analyzer_results_dir,
+                         'node_summaries_{}_KUBERNETES_BASELINE.csv'.format(
+                             self.experiment_index)))
+        self.node_summaries[2].to_csv(
+            os.path.join(runner_analyzer_results_dir,
+                         'node_summaries_{}_WCA-SCHEDULER.csv'.format(
+                             self.experiment_index)))
 
-        self.workloads_summaries[0].to_csv(os.path.join(runner_analyzer_results_dir,'workloads_summaries_{}_BASELINE.csv'.format(self.experiment_index)))
-        self.workloads_summaries[1].to_csv(os.path.join(runner_analyzer_results_dir,'workloads_summaries_{}_KUBERNETES_BASELINE.csv'.format(self.experiment_index)))
-        self.workloads_summaries[2].to_csv(os.path.join(runner_analyzer_results_dir,'workloads_summaries_{}_WCA-SCHEDULER.csv'.format(self.experiment_index)))
+        self.workloads_summaries[0].to_csv(
+            os.path.join(runner_analyzer_results_dir,
+                         'workloads_summaries_{}_BASELINE.csv'.format(
+                             self.experiment_index)))
+        self.workloads_summaries[1].to_csv(
+            os.path.join(runner_analyzer_results_dir,
+                         'workloads_summaries_{}_KUBERNETES_BASELINE.csv'.format(
+                             self.experiment_index)))
+        self.workloads_summaries[2].to_csv(
+            os.path.join(runner_analyzer_results_dir,
+                         'workloads_summaries_{}_WCA-SCHEDULER.csv'.format(
+                             self.experiment_index)))
 
     def export_to_txt(self):
-        logging.debug("Saving results to {} for experiment {}".format(self.export_file_path, self.experiment_index))
+        logging.debug("Saving results to {} for experiment {}".format(self.export_file_path,
+                                                                      self.experiment_index))
 
-        runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path, 'runner_analyzer')
+        runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path,
+                                                   'runner_analyzer')
         if not os.path.isdir(runner_analyzer_results_dir):
             os.mkdir(runner_analyzer_results_dir)
 
@@ -572,12 +659,16 @@ class TxtStagesExporter:
 
     def _metadata(self):
         self._fref.write("Experiment index: {}\n".format(self.experiment_index))
-        self._fref.write("Time events from: {} to: {}.\n".format(self.events_data[0][0][0].strftime("%d-%b-%Y (%H:%M:%S)"),
-                                                                 self.events_data[0][-1][0].strftime("%d-%b-%Y (%H:%M:%S)")))
+        self._fref.write("Time events from: {} to: {}.\n".format(
+            self.events_data[0][0][0].strftime("%d-%b-%Y (%H:%M:%S)"),
+            self.events_data[0][-1][0].strftime("%d-%b-%Y (%H:%M:%S)")))
 
-        workloads_list = ["({}, {})".format(workload, count) for workload, count in self.events_data[1].items()]
+        workloads_list = ["({}, {})".format(workload, count) for workload, count in
+                          self.events_data[1].items()]
         workloads_list = sorted(workloads_list)
-        self._fref.write("Workloads scheduled: {}\n{}".format(len(workloads_list), print_n_per_row(n=5, list_=workloads_list)))
+        self._fref.write(
+            "Workloads scheduled: {}\n{}".format(len(workloads_list),
+                                                 print_n_per_row(n=5, list_=workloads_list)))
 
         if os.path.isfile(self.utilization_file_path):
             utilization = open(self.utilization_file_path).readlines()[0].rstrip()
@@ -603,22 +694,22 @@ class TxtStagesExporter:
             self._fref.write('\n\n')
             # ---
             self._fref.write('Passed {}/{} avg limit >>{}<<\n'.format(
-                            len([val for val in self.tasks_summaries[istage]['pass_avg'] if val]),
-                            len(self.tasks_summaries[istage]['pass_avg']), self.limits))
+                len([val for val in self.tasks_summaries[istage]['pass_avg'] if val]),
+                len(self.tasks_summaries[istage]['pass_avg']), self.limits))
             self._fref.write('Passed {}/{} optimistic limit >>{}<<\n'.format(
-                            len([val for val in self.tasks_summaries[istage]['pass_nice'] if val]),
-                            len(self.tasks_summaries[istage]['pass_nice']), self.limits))
+                len([val for val in self.tasks_summaries[istage]['pass_nice'] if val]),
+                len(self.tasks_summaries[istage]['pass_nice']), self.limits))
             self._fref.write('Passed {}/{} strict limit >>{}<<\n'.format(
-                            len([val for val in self.tasks_summaries[istage]['pass_strict'] if val]),
-                            len(self.tasks_summaries[istage]['pass_strict']), self.limits))
+                len([val for val in self.tasks_summaries[istage]['pass_strict'] if val]),
+                len(self.tasks_summaries[istage]['pass_strict']), self.limits))
 
 
 def print_n_per_row(n, list_):
     r = ""
-    for i in range(int((len(list_)+1)/n)):
-        k = i*n
-        l = k+n if k+n < len(list_) else len(list_)
-        r += ", ".join(list_[k:l])
+    for i in range(int((len(list_) + 1) / n)):
+        k = i * n
+        m = k + n if k + n < len(list_) else len(list_)
+        r += ", ".join(list_[k:m])
         r += '\n'
     return r
 
@@ -638,7 +729,8 @@ class Metric(Enum):
     PLATFORM_MBW_WRITES = 'platform_mbw_writes'
     PLATFORM_DRAM_HIT_RATIO = 'platform_dram_hit_ratio'
     PLATFORM_WSS_USED = 'platform_wss_used'
-    
+
+
 MetricsQueries = {
     Metric.TASK_THROUGHPUT: 'apm_sli2',
     Metric.TASK_LATENCY: 'apm_sli',
@@ -650,11 +742,15 @@ MetricsQueries = {
     Metric.PLATFORM_MEM_USAGE: 'sum(task_requested_mem_bytes) by (nodename) / 1e9',
     Metric.PLATFORM_CPU_REQUESTED: 'sum(task_requested_cpus) by (nodename)',
     # @TODO check if correct (with htop as comparison)
-    Metric.PLATFORM_CPU_UTIL: "sum(1-rate(node_cpu_seconds_total{mode='idle'}[10s])) by(nodename) / sum(platform_topology_cpus) by (nodename)",
-    Metric.PLATFORM_MBW_READS: 'sum(platform_dram_reads_bytes_per_second + platform_pmm_reads_bytes_per_second) by (nodename) / 1e9',
-    Metric.PLATFORM_MBW_WRITES: 'sum(platform_dram_writes_bytes_per_second + platform_pmm_writes_bytes_per_second) by (nodename) / 1e9',
+    Metric.PLATFORM_CPU_UTIL: "sum(1-rate(node_cpu_seconds_total{mode='idle'}[10s])) "
+                              "by(nodename) / sum(platform_topology_cpus) by (nodename)",
+    Metric.PLATFORM_MBW_READS: 'sum(platform_dram_reads_bytes_per_second + '
+                               'platform_pmm_reads_bytes_per_second) by (nodename) / 1e9',
+    Metric.PLATFORM_MBW_WRITES: 'sum(platform_dram_writes_bytes_per_second + '
+                                'platform_pmm_writes_bytes_per_second) by (nodename) / 1e9',
     Metric.PLATFORM_DRAM_HIT_RATIO: 'avg(platform_dram_hit_ratio) by (nodename)',
-    Metric.PLATFORM_WSS_USED: 'sum(avg_over_time(task_wss_referenced_bytes[15s])) by (nodename) / 1e9',
+    Metric.PLATFORM_WSS_USED: 'sum(avg_over_time(task_wss_referenced_bytes[15s])) '
+                              'by (nodename) / 1e9',
 }
 
 
@@ -704,7 +800,7 @@ class AnalyzerQueries:
         metrics = (Metric.PLATFORM_MEM_USAGE, Metric.PLATFORM_CPU_REQUESTED,
                    Metric.PLATFORM_CPU_UTIL, Metric.PLATFORM_MBW_READS, Metric.PLATFORM_MBW_WRITES,
                    Metric.POD_SCHEDULED, Metric.PLATFORM_DRAM_HIT_RATIO, Metric.PLATFORM_WSS_USED)
-        
+
         for metric in metrics:
             query_results = PrometheusClient.instant_query(MetricsQueries[metric], time)
             for result in query_results:
@@ -714,7 +810,7 @@ class AnalyzerQueries:
 
     @staticmethod
     def query_performance_metrics(time: int, functions_args: List[Tuple[Function, str]],
-                metrics: List[Metric], window_length: int) -> Dict[str, Dict]:
+                                  metrics: List[Metric], window_length: int) -> Dict[str, Dict]:
         """performance metrics which needs aggregation over time"""
         query_results: Dict[Metric, Dict] = {}
         for metric in metrics:
@@ -741,7 +837,8 @@ class AnalyzerQueries:
         function_args = ((Function.AVG, ''), (Function.QUANTILE, '0.1,'), (Function.STDEV, ''),
                          (Function.QUANTILE, '0.9,'),)
 
-        query_results = AnalyzerQueries.query_performance_metrics(time, function_args, metrics, window_length)
+        query_results = AnalyzerQueries.query_performance_metrics(time, function_args, metrics,
+                                                                  window_length)
 
         for metric, query_result in query_results.items():
             for aggregation_name, result in query_result.items():
@@ -749,7 +846,8 @@ class AnalyzerQueries:
                     task_name = per_app_result['metric']['task_name']
                     value = per_app_result['value'][1]
                     if task_name not in tasks:
-                        logging.debug("Ignoring task {} as not found in object tasks".format(task_name))
+                        logging.debug(
+                            "Ignoring task {} as not found in object tasks".format(task_name))
                         continue
                     if metric in tasks[task_name].performance_metrics:
                         tasks[task_name].performance_metrics[metric][aggregation_name] = value
@@ -795,7 +893,8 @@ def analyze_3stage_experiment(experiment_meta: ExperimentMeta):
         try:
             stages_analyzer.aep_report(experiment_meta, experiment_index=i)
         except Exception:
-            logging.error("Skipping the whole 3stage subexperiment number {} due to exception!".format(i))
+            logging.error(
+                "Skipping the whole 3stage subexperiment number {} due to exception!".format(i))
             continue
 
 
@@ -803,16 +902,16 @@ if __name__ == "__main__":
     ClusterInfoLoader.build_singleton()
 
     experiment_meta = ExperimentMeta(
-            data_path='results/2020-05-05__stepping_single_workloads',
-            title='Stepping workloads',
-            description='redis',
-            params={'instances_count': '', 'workloads_count': 'almost all',
-                    'stabilize_phase_length [min]': [20]},
-            changelog='',
-            bugs='',
-            experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
-            experiment_baseline_index=0,
-            commit_hash='', )
+        data_path='results/2020-05-05__stepping_single_workloads',
+        title='Stepping workloads',
+        description='redis',
+        params={'instances_count': '', 'workloads_count': 'almost all',
+                'stabilize_phase_length [min]': [20]},
+        changelog='',
+        bugs='',
+        experiment_type=ExperimentType.SteppingSingleWorkloadsRun,
+        experiment_baseline_index=0,
+        commit_hash='', )
 
     # copy data to summary dir with README
     summary_dir = "__SUMMARY_{}__".format(datetime.datetime.now().strftime('%Y-%m-%d'))
