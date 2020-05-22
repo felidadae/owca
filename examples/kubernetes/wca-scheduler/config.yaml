@@ -6,7 +6,7 @@ kubeapi: &kubeapi !Kubeapi
   port: !Env KUBERNETES_SERVICE_PORT
 # reschedule_interval: 5
 algorithm: !Score
-  score_target: -2.0
+  score_target: -3.0
   max_node_score: 10000.
   dimensions:
     - mem
@@ -14,21 +14,21 @@ algorithm: !Score
     - membw_write
     - membw_read
     - wss
-  cpu_scale_factor: 0.9
+  cpu_scale_factor: 1.0
   data_provider: !ClusterScoreDataProvider
     kubeapi: *kubeapi
     prometheus: !Prometheus
       host: http://100.64.176.36
       port: 30900
       timeout: 5.0
-      time: "1589559381"  # Date: 2020-05-15 16:16:21.308265 Timestamp
+      time: "1586245624"  # Date: 2020-04-07 07:47:04
     queries: !Queries
       APP_REQUESTED_RESOURCES_QUERY_MAP:
-            cpu: 'app_cpu'
-            mem: 'app_mem'
-            membw_read: 'app_mbw_read'
-            membw_write: 'app_mbw_write'
-            wss: 'app_wss'
+            cpu: 'ceil(max(max_over_time(task_requested_cpus[10m])) by (app))'
+            mem: 'ceil(max(max_over_time(task_requested_mem_bytes[10m])) by (app) / 1e9)'
+            membw_read: 'ceil(max(max_over_time (task_membw_reads_bytes_per_second[10m])) by (app) / 1e9)'
+            membw_write: 'ceil(max(max_over_time (task_membw_writes_bytes_per_second[10m])) by (app) / 1e9)'
+            wss: 'ceil(max(max_over_time(task_wss_referenced_bytes[10m])) by (app) / 1e9)'
       MEMBW_CAPACITY_READ: 'ceil(sum(platform_nvdimm_read_bandwidth_bytes_per_second) by (nodename) / 1e9)*0.7'
       MEMBW_CAPACITY_WRITE: 'ceil(sum(platform_nvdimm_write_bandwidth_bytes_per_second) by (nodename) / 1e9)*0.7'
       NODES_PMM_MEMORY_MODE: 'sum(platform_mem_mode_size_bytes) by (nodename) != 0'

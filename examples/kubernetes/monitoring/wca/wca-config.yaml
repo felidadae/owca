@@ -26,7 +26,6 @@ runner: !MeasurementRunner
     - task_instructions
     - task_offcore_requests_demand_data_rd # required fro R/W characterization
     - task_offcore_requests_demand_rfo
-
   enable_derived_metrics: True
   uncore_event_names:
     - platform_cas_count_reads
