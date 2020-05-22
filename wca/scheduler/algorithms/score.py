@@ -39,10 +39,10 @@ def _get_app_node_type(
         score_target: Optional[float] = None) -> NodeType:
     if len(apps_profile) > MIN_APP_PROFILES:
         if score_target:
-            if app_name in apps_profile and apps_profile[app_name] >= score_target:
+            if app_name in apps_profile and apps_profile[app_name] <= score_target:
                 return NodeType.PMEM
         else:
-            sorted_apps_profile = sorted(apps_profile.items(), key=lambda x: x[1], reverse=True)
+            sorted_apps_profile = sorted(apps_profile.items(), key=lambda x: x[1], reverse=False)
             if app_name == sorted_apps_profile[0][0]:
                 return NodeType.PMEM
 

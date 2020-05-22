@@ -19,7 +19,7 @@ spec:
         goal: service
       containers:
         - name: redis
-          image: centos/redis
+          image: redis
           imagePullPolicy: Always
           securityContext:
             privileged: true
