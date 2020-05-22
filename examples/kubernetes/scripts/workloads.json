@@ -12,7 +12,7 @@
 	"redis-memtier-medium":
 		{"mem": 11, "cpu": 4, "membw_write": 1, "membw_read": 2, "wss": 1, "scale_weights": 1},
 	"redis-memtier-big":
-		{"mem": 70, "cpu": 4, "membw_write": 2, "membw_read": 3, "wss": 1, "scale_weights": 4},
+		{"mem": 70, "cpu": 4, "membw_write": 2, "membw_read": 3, "wss": 1, "scale_weights": 1},
 	"redis-memtier-big-wss":
 		{"mem": 70, "cpu": 4, "membw_write": 3, "membw_read": 2, "wss": 1, "scale_weights": 1},
 
