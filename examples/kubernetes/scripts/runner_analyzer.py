@@ -198,10 +198,10 @@ class Node:
 @dataclass
 class Stat:
     """Statistics"""
-    _avg: float
-    _min: float
-    _max: float
-    _stdev: float
+    avg: float
+    min: float
+    max: float
+    stdev: float
 
 
 @dataclass
@@ -214,17 +214,17 @@ class WStat:
 
     def to_dict(self):
         return {
-            "LB_min": round(self.latency._min, 2),
-            "LB_avg": round(self.latency._avg, 2),
-            "LB_max": round(self.latency._max, 2),
-            "L_stdev": round(self.latency._stdev, 2),
-            "L_stdev[%]": round(self.latency._stdev / self.latency._avg * 100, 2),
+            "LB_min": round(self.latency.min, 2),
+            "LB_avg": round(self.latency.avg, 2),
+            "LB_max": round(self.latency.max, 2),
+            "L_stdev": round(self.latency.stdev, 2),
+            "L_stdev[%]": round(self.latency.stdev / self.latency.avg * 100, 2),
             # ---
-            "TB_min": round(self.throughput._min, 2),
-            "TB_avg": round(self.throughput._avg, 2),
-            "TB_max": round(self.throughput._max, 2),
-            "T_stdev": round(self.throughput._stdev, 2),
-            "T_stdev[%]": round(self.throughput._stdev / self.throughput._avg * 100, 2),
+            "TB_min": round(self.throughput.min, 2),
+            "TB_avg": round(self.throughput.avg, 2),
+            "TB_max": round(self.throughput.max, 2),
+            "T_stdev": round(self.throughput.stdev, 2),
+            "T_stdev[%]": round(self.throughput.stdev / self.throughput.avg * 100, 2),
             # ---
             "B_count": self.count,
             "app": self.name
@@ -272,14 +272,14 @@ def calculate_task_summaries(tasks: List[Task], workloads_baseline: Dict[str, WS
             "T[stdev][{}s][%]".format(WINDOW_LENGTH): -1 if task.get_throughput(
                 'avg') == 0 else task.get_throughput('stdev') / task.get_throughput('avg') * 100,
             # ----
-            "L_nice[%]": latency / workloads_baseline[workload].latency._max * 100,
-            "T_nice[%]": throughput / workloads_baseline[workload].throughput._min * 100,
+            "L_nice[%]": latency / workloads_baseline[workload].latency.max * 100,
+            "T_nice[%]": throughput / workloads_baseline[workload].throughput.min * 100,
             # # ----
-            "L_avg[%]": latency / workloads_baseline[workload].latency._avg * 100,
-            "T_avg[%]": throughput / workloads_baseline[workload].throughput._avg * 100,
+            "L_avg[%]": latency / workloads_baseline[workload].latency.avg * 100,
+            "T_avg[%]": throughput / workloads_baseline[workload].throughput.avg * 100,
             # # ----
-            "L_strict[%]": latency / workloads_baseline[workload].latency._min * 100,
-            "T_strict[%]": throughput / workloads_baseline[workload].throughput._max * 100,
+            "L_strict[%]": latency / workloads_baseline[workload].latency.min * 100,
+            "T_strict[%]": throughput / workloads_baseline[workload].throughput.max * 100,
             # ----
             "task": task.name, "app": task.workload_name, "node": task.node
         }
