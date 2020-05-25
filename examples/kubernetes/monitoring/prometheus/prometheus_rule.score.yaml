@@ -120,13 +120,13 @@ spec:
 
     # very low metric
     - record: task_memory_rw_ratio
-      expr: rate(task_offcore_requests_demand_data_rd[10m]) / (rate(task_offcore_requests_demand_data_rd[10m]) + rate(task_offcore_requests_demand_rfo[10m]))
+      expr: (rate(task_offcore_requests_demand_data_rd[10m]) + rate(task_offcore_requests_demand_data_rfo[10m])) / (rate(task_offcore_requests_demand_data_rd[10m]) + 2*rate(task_offcore_requests_demand_rfo[10m]))
 
     # ---- low level metrics for apps [10m]
     - record: app_cpu
       expr: avg(max_over_time(task_requested_cpus[10m])) by (app)
     - record: app_cpu_usage
-      expr: ceil(avg(rate(task_cpu_usage_seconds[10m])) by (app))
+      expr: avg(rate(task_cpu_usage_seconds[10m])) by (app)
     - record: app_cpu_util
       expr: app_cpu_usage/app_cpu
 
@@ -144,12 +144,12 @@ spec:
     - record: app_mbw_rw
       expr: avg(task_memory_rw_ratio) by (app)
     - record: app_mbw_read
-      expr: ceil(app_mbw * app_mbw_rw)
+      expr: app_mbw * app_mbw_rw
     - record: app_mbw_write
-      expr: ceil(app_mbw * (1-app_mbw_rw))
+      expr: app_mbw * (1-app_mbw_rw)
     # --- wss [gb]
     - record: app_wss   # gb collected over 15s
-      expr: ceil((avg(avg_over_time(task_wss_referenced_bytes[10m])) by (app)) / 1e9)
+      expr: (avg(avg_over_time(task_wss_referenced_bytes[10m])) by (app)) / 1e9
 
     # just a mapping app_req to use labels: cpu, mem, mbw_read, mbw_write, wss
     - record: app_req
