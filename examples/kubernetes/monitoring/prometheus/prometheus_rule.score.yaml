@@ -20,41 +20,32 @@ spec:
     # wss
     # -- wss on 2lm is devaulated to 30% because of direct mapping (that is approximated by us unsafe maximum)
     # -- wss on 1lm nodes is just capacity of ram
-    - record: node_capacity
+    - record: node_capacity_unsafe
       expr: 'ceil(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (node) * 0.3 / 1e9) and on(node) platform_mem_mode_size_bytes!=0'
       labels:
         dim: wss
-    - record: node_capacity
+    - record: node_capacity_unsafe
       expr: 'ceil(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes==0'
       labels:
         dim: wss
     # mem
-    - record: node_capacity
+    - record: node_capacity_unsafe
       expr: 'ceil(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes==0'
       labels:
         dim: mem
-    - record: node_capacity
+    - record: node_capacity_unsafe
       expr: 'ceil((sum(platform_mem_mode_size_bytes) by (node) / 1e9)) and on(node) platform_mem_mode_size_bytes!=0'
       labels:
         dim: mem
     #mbw
-    - record: node_capacity
+    - record: node_capacity_unsafe
       expr: 'ceil(sum(platform_nvdimm_read_bandwidth_bytes_per_second) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes!=0'
       labels:
-        dim: mbw_read
-    - record: node_capacity
+        dim: mbw_flat
+    - record: node_capacity_unsafe
       expr: 'ceil(sum(platform_dimm_speed_bytes_per_second) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes==0'
       labels:
-        dim: mbw_read
-    - record: node_capacity
-      expr: 'ceil(sum(platform_nvdimm_write_bandwidth_bytes_per_second) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes!=0'
-      labels:
-        dim: mbw_write
-    - record: node_capacity
-      expr: 'ceil(sum(platform_dimm_speed_bytes_per_second) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes==0'
-      labels:
-        dim: mbw_write
-
+        dim: mbw_flat
 
     # safety weights: we don't want to fill any resource to it limit;
     - record: safety_weights
@@ -68,18 +59,14 @@ spec:
     - record: safety_weights
       expr: '0.7'
       labels:
-        dim: membw_read
-    - record: safety_weights
-      expr: '0.7'
-      labels:
-        dim: membw_write
+        dim: membw_flat
     - record: safety_weights
       expr: '0.66'
       labels:
         dim: wss
 
-    - record: node_capacity_safe
-      expr: node_capacity * safety_weights
+    - record: node_capacity
+      expr: node_capacity_unsafe * safety_weights
     
     # ---------------------------- node nvm profile -----------------------------------------
     # nvm profile only catch pmm nodes!!!!
@@ -91,17 +78,9 @@ spec:
       labels:
         index: cpu_ratio
     - record: profile_node_by_mem
-      expr: 'node_capacity{dim="mbw_read"} / on (node) node_capacity{dim="mem"}'
+      expr: 'node_capacity{dim="mbw_flat"} / on (node) node_capacity{dim="mem"}'
       labels:
-        index: membw_read_ratio
-    - record: profile_node_by_mem
-        expr: 'node_capacity{dim="mbw_read"} / on (node) node_capacity{dim="mem"}'
-        labels:
-          index: membw_flat_ratio
-    - record: profile_node_by_mem
-      expr: 'node_capacity{dim="mbw_write"} / on (node) node_capacity{dim="mem"}'
-      labels:
-        index: membw_write_ratio
+        index: membw_flat_ratio
     - record: profile_node_by_mem
       expr: 'node_capacity{dim="wss"} / on (node) node_capacity{dim="mem"}'
       labels:
@@ -114,14 +93,16 @@ spec:
         memory: 1lm
     # Note: average (avg) all PMEM nodes
     - record: profile_nodes_by_mem
-      expr: 'avg(profile_node_by_mem and on(node) platform_mem_mode_size_bytes!=0) by (index)'
+      expr: 'avg(profile_node_by_mem and on(node) platform_mem_mode_size_bytes != 0) by (index)'
       labels:
         memory: 2lm
 
-    # Additional metric: write penaulty (on 1lm equal to 1, on 2lm ~= 4)
+    # Additional metric: read/write assymetry ratio (on 1lm equal to 1, on 2lm ~= 4)
     - record: node_mbw_write_weight
-      expr: 'profile_nodes_by_mem{index="mbw_read", memory="2lm"} / ignoring(index) profile_nodes_by_mem{index="mbw_write", memory="2lm"}'
-
+      expr: '(avg(ceil(sum(platform_nvdimm_read_bandwidth_bytes_per_second)  by (node)) and on(node) platform_mem_mode_size_bytes!=0) by (node)) /
+             (avg(ceil(sum(platform_nvdimm_write_bandwidth_bytes_per_second) by (node)) and on(node) platform_mem_mode_size_bytes!=0) by (node))'
+      labels:
+        memory: 2lm
     # ============================ apps ===================================
 
     - record: app_count
@@ -194,7 +175,6 @@ spec:
       expr: 'app_wss'
       labels:
         dim: wss
-<
 
     # --------------------- Profiles APP -----------------------
     #
@@ -204,32 +184,21 @@ spec:
       labels:
         index: cpu_ratio_2lmscaled
     - record: profile_app_by_mem
-      expr: 'app_req{dim="mbw_read"} / on(app) app_req{dim="mem"}'
+      expr: 'app_req{dim="mbw_flat"} / on(app) app_req{dim="mem"}'
       labels:
-        index: mbw_read_ratio_2lmscaled
-    - record: profile_app_by_mem
-      expr: 'app_req{dim="mbw_write"} / on(app) app_req{dim="mem"}'
-      labels:
-        index: mbw_write_ratio_2lmscaled
+        index: mbw_flat_ratio_2lmscaled
     - record: profile_app_by_mem
       expr: 'app_req{dim="wss"} / on(app) app_req{dim="mem"}'
       labels:
         index: wss_ratio_2lmscaled
 
-
     # ======================== normalization profile ========================
     - record: profile_app_by_mem_norm
       expr: 'profile_app_by_mem / on (index) group_left profile_nodes_by_mem{memory="2lm"}'
 
-    # flat the mbw read/write; equal to mbw_read_ratio + K * mbwwrite_ratio (K=2lm_mbw_read_capacity/2lm_mbw_write_capacity)
-    - record: profile_app_by_mem_norm
-      expr: 'sum(profile_app_by_mem_norm{index=~"mbwread_ratio_2lmscaled|mbwwrite_ratio_2lmscaled"}) by (app)'
-      labels:
-        index: mbwflat_ratio_2lmscaled
-
     # ======================== SCORE calculation ==========================
     - record: profile_app_2lm_score_max # lower is better for 2lm
-      expr: 'max(profile_app_by_mem_norm{index=~"cpu_ratio_2lmscaled|mbwflat_ratio_2lmscaled|wss_ratio_2lmscaled"}) by (app)'
+      expr: 'max(profile_app_by_mem_norm{index=~"cpu_ratio_2lmscaled|mbw_flat_ratio_2lmscaled|wss_ratio_2lmscaled"}) by (app)'
 
   - name: cluster-score-data-provider
     rules:
