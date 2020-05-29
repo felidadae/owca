@@ -4,33 +4,29 @@ loggers:
 kubeapi: &kubeapi !Kubeapi
   host: !Env KUBERNETES_SERVICE_HOST
   port: !Env KUBERNETES_SERVICE_PORT
-# reschedule_interval: 5
 algorithm: !Score
   score_target: 1.5
   max_node_score: 10000.
   dimensions:
     - mem
     - cpu
-    - membw_write
-    - membw_read
+    - membw_flat
     - wss
-  cpu_scale_factor: 0.8
+  cpu_scale_factor: 1.0
   data_provider: !ClusterScoreDataProvider
     kubeapi: *kubeapi
     prometheus: !Prometheus
       host: http://100.64.176.36
       port: 30900
       timeout: 5.0
-      time: "1589559381"  # Date: 2020-05-15 16:16:21
     queries: !Queries
       APP_REQUESTED_RESOURCES_QUERY_MAP:
             cpu: 'app_cpu'
             mem: 'app_mem'
-            membw_read: 'app_mbw_read'
-            membw_write: 'app_mbw_write'
+            membw_flat: 'app_mbw_flat'
             wss: 'app_wss'
-      MEMBW_CAPACITY_READ: 'node_capacity{dim="membw_read"} * 0.7'
-      MEMBW_CAPACITY_WRITE: 'node_capacity{dim="membw_write"} * 0.7'
+      MEMBW_CAPACITY_READ: 'node_capacity{dim="mbw_read"}'
+      MEMBW_CAPACITY_WRITE: 'node_capacity{dim="mbw_write"}'
       NODES_PMM_MEMORY_MODE: 'sum(platform_mem_mode_size_bytes) by (nodename) != 0'
       NODE_CAPACITY_MEM_WSS: 'node_capacity{dim="wss"}'
-  NODE_CAPACITY_DRAM_MEMBW: 'ceil(platform_dimm_speed_bytes_per_second / 1e9)'
+      NODE_CAPACITY_DRAM_MEMBW: 'ceil(platform_dimm_speed_bytes_per_second / 1e9)'
