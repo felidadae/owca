@@ -105,17 +105,6 @@ spec:
         memory: 2lm
     # ============================ apps ===================================
 
-    - record: app_count
-      expr: count(task_up) by (app)
-    - record: app_cpu_usage
-      expr: 'avg(rate(task_cpu_usage_seconds[10m])) by (app)'
-    - record: app_cpu_util
-      expr: 'app_cpu_usage/app_cpu'
-    - record: app_mem_usage
-      expr: 'max(max_over_time(task_mem_usage_bytes[10m])) by(app) / 1e9'
-    - record: app_mem_util
-      expr: 'app_mem_usage/app_mem'
-
     # Helper metrics
     # Note: heuristic for approximation of R/W ratio for a task; 30s set to be sure to have in each range at least 2 points;
     - record: task_memory_rw_ratio
