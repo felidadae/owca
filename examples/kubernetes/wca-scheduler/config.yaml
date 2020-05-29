@@ -1,13 +1,17 @@
 loggers:
   wca.scheduler.server: INFO
   wca.scheduler.algorithms: TRACE
+
 kubeapi: &kubeapi !Kubeapi
   host: !Env KUBERNETES_SERVICE_HOST
   port: !Env KUBERNETES_SERVICE_PORT
 # reschedule_interval: 5
 algorithm: !Score
   score_target: 1.5
+
+  # @TODO what is that? how we should set it?
   max_node_score: 10000.
+
   dimensions:
     - mem
     - cpu
@@ -18,10 +22,15 @@ algorithm: !Score
   data_provider: !ClusterScoreDataProvider
     kubeapi: *kubeapi
     prometheus: !Prometheus
+
+      # @TODO hardcoded our cluster address
       host: http://100.64.176.36
       port: 30900
       timeout: 5.0
+
+      # @TODO should be removed from official configuration file
       time: "1589559381"  # Date: 2020-05-15 16:16:21
+
     queries: !Queries
       APP_REQUESTED_RESOURCES_QUERY_MAP:
             cpu: 'app_cpu'
@@ -29,8 +38,6 @@ algorithm: !Score
             membw_read: 'app_mbw_read'
             membw_write: 'app_mbw_write'
             wss: 'app_wss'
-      MEMBW_CAPACITY_READ: 'node_capacity{dim="membw_read"} * 0.7'
-      MEMBW_CAPACITY_WRITE: 'node_capacity{dim="membw_write"} * 0.7'
-      NODES_PMM_MEMORY_MODE: 'sum(platform_mem_mode_size_bytes) by (nodename) != 0'
+      MEMBW_CAPACITY_READ: 'node_capacity{dim="membw_read"}'
+      MEMBW_CAPACITY_WRITE: 'node_capacity{dim="membw_write"}'
       NODE_CAPACITY_MEM_WSS: 'node_capacity{dim="wss"}'
-  NODE_CAPACITY_DRAM_MEMBW: 'ceil(platform_dimm_speed_bytes_per_second / 1e9)'

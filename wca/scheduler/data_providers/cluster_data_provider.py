@@ -30,24 +30,23 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class Queries:
-    NODES_PMM_MEMORY_MODE: str = 'sum(platform_mem_mode_size_bytes) by (nodename) != 0'
-    MEMBW_CAPACITY_READ: str = 'sum(platform_nvdimm_read_bandwidth_bytes_per_second) by (nodename)'
-    MEMBW_CAPACITY_WRITE: str =\
-        'sum(platform_nvdimm_write_bandwidth_bytes_per_second) by (nodename)'
-    NODES_DRAM_HIT_RATIO: str = 'platform_dram_hit_ratio'
+    """ For defaults to work, it is required to upload prometheus rules >>score<<, otherwise
+        define proper queries in the configuration file of wca-scheduler overwriting this values. """
 
-    NODE_CAPACITY_MEM_WSS: str =\
-        'sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (nodename)'
+    MEMBW_CAPACITY_READ: str = 'node_capacity{dim="membw_read"}'
+    MEMBW_CAPACITY_WRITE: str = 'node_capacity{dim="membw_write"}'
+    NODE_CAPACITY_MEM_WSS: str = 'node_capacity{dim="wss"}'
     NODE_CAPACITY_DRAM_MEMBW: str = 'platform_dimm_speed_bytes_per_second'
 
+    NODES_PMM_MEMORY_MODE: str = 'sum(platform_mem_mode_size_bytes) by (nodename) != 0'
+    NODES_DRAM_HIT_RATIO: str = 'platform_dram_hit_ratio'
+
     APP_REQUESTED_RESOURCES_QUERY_MAP: Dict[ResourceType, str] = field(default_factory=lambda: {
-            ResourceType.CPU: 'max(max_over_time(task_requested_cpus[3h])) by (app)',
-            ResourceType.MEM: 'max(max_over_time(task_requested_mem_bytes[3h])) by (app)',
-            ResourceType.MEMBW_READ:
-            'max(max_over_time(task_membw_reads_bytes_per_second[3h])) by (app)',
-            ResourceType.MEMBW_WRITE:
-            'max(max_over_time(task_membw_writes_bytes_per_second[3h])) by (app)',
-            ResourceType.WSS: 'max(max_over_time(task_wss_referenced_bytes[3h])) by (app)',
+            ResourceType.CPU: 'app_cpu',
+            ResourceType.MEM: 'app_mem',
+            ResourceType.MEMBW_READ: 'app_mbw_read',
+            ResourceType.MEMBW_WRITE: 'app_mbw_write',
+            ResourceType.WSS: 'node_capacity{dim="wss"}',
     })
 
 
@@ -243,7 +242,7 @@ class ClusterDataProvider(DataProvider):
                 app = result['metric'].get('app')
                 value = float(result['value'][1])
                 if app:
-                    app_requested_resources[app][resource] = int(value)
+                    app_requested_resources[app][resource] = float(value)
 
         app_requested_resources = {k: dict(v) for k, v in app_requested_resources.items()}
         log.debug('Resources requested by apps: %r' % app_requested_resources)
