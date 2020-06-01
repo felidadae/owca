@@ -13,15 +13,11 @@ spec:
 
     # ============================ node ===================================
     # cpu
-    - record: node_capacity
+    - record: node_capacity_unsafe
       expr: 'sum(platform_topology_cpus) by (node)'
       labels:
         dim: cpu
     # mem
-    - record: node_capacity_unsafe
-      expr: 'ceil(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes==0'
-      labels:
-        dim: mem
     - record: node_capacity_unsafe
       expr: 'ceil((sum(platform_mem_mode_size_bytes) by (node) / 1e9)) and on(node) platform_mem_mode_size_bytes!=0'
       labels:
@@ -31,19 +27,11 @@ spec:
       expr: 'ceil(sum(platform_nvdimm_read_bandwidth_bytes_per_second) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes!=0'
       labels:
         dim: mbw_flat
-    - record: node_capacity_unsafe
-      expr: 'ceil(sum(platform_dimm_speed_bytes_per_second) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes==0'
-      labels:
-        dim: mbw_flat
     # wss
     # -- wss on 2lm is devaulated to 30% because of direct mapping (that is approximated by us unsafe maximum)
     # -- wss on 1lm nodes is just capacity of ram
     - record: node_capacity_unsafe
       expr: 'ceil(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (node) * 0.3 / 1e9) and on(node) platform_mem_mode_size_bytes!=0'
-      labels:
-        dim: wss
-    - record: node_capacity_unsafe
-      expr: 'ceil(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes==0'
       labels:
         dim: wss
 
@@ -86,11 +74,6 @@ spec:
       labels:
         index: wss
 
-    # By specific nodes
-    - record: profile_nodes_by_mem
-      expr: 'avg(profile_node_by_mem and on(node) platform_mem_mode_size_bytes==0) by (index)'
-      labels:
-        memory: 1lm
     # Note: average (avg) all PMEM nodes
     - record: profile_nodes_by_mem
       expr: 'avg(profile_node_by_mem and on(node) platform_mem_mode_size_bytes != 0) by (index)'
