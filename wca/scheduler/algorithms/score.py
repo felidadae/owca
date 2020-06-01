@@ -191,7 +191,7 @@ class Score(Fit, DramHitRatioProvision):
                 else:
                     raise RuntimeError('Capacities of %r not available!', node)
 
-        sorted_apps_profile = sorted(apps_profile.items(), key=lambda x: x[1], reverse=True)
+        sorted_apps_profile = sorted(apps_profile.items(), key=lambda x: x[1], reverse=False)
 
         # Start from the newest tasks.
         sorted_consider = {}
@@ -200,7 +200,7 @@ class Score(Fit, DramHitRatioProvision):
                 sorted_consider[app] = []
                 for node in consider[app]:
                     sorted_consider[app].extend(consider[app][node])
-                sorted_consider[app] = sorted(sorted_consider[app], reverse=True)
+                sorted_consider[app] = sorted(sorted_consider[app], reverse=False)
 
         nodes_capacities = self.data_provider.get_nodes_capacities(self.dimensions)
         pmem_nodes_capacities = {

@@ -48,24 +48,24 @@ def do_query_side_effect(*args, **kwargs):
 
 
 APPS_PROFILE = {
-        'memcached-mutilate-big': -0.15827586206896552,
-        'memcached-mutilate-big-wss': -1.2382758620689656,
-        'memcached-mutilate-medium': -0.6069458128078817,
-        'memcached-mutilate-small': -0.4119297494110088,
-        'mysql-hammerdb-small': -0.16182266009852214,
-        'redis-memtier-big': -0.5262368815592204,
-        'redis-memtier-big-wss': -1.532769329620904,
-        'redis-memtier-medium': -0.5187192118226601,
-        'redis-memtier-small': -0.5261083743842364,
-        'specjbb-preset-big-120': -1.1172413793103446,
-        'specjbb-preset-medium': -1.7359605911330047,
-        'specjbb-preset-small': -1.2834975369458126,
-        'stress-stream-big': -11.66708609980724,
-        'stress-stream-medium': -11.55591133004926,
-        'stress-stream-small': -8.531109445277362,
-        'sysbench-memory-big': -10.901103019918613,
-        'sysbench-memory-medium': -16.144356393231956,
-        'sysbench-memory-small': -16.412615121010923
+        'memcached-mutilate-big': 0.15827586206896552,
+        'memcached-mutilate-big-wss': 1.2382758620689656,
+        'memcached-mutilate-medium': 0.6069458128078817,
+        'memcached-mutilate-small': 0.4119297494110088,
+        'mysql-hammerdb-small': 0.16182266009852214,
+        'redis-memtier-big': 0.5262368815592204,
+        'redis-memtier-big-wss': 1.532769329620904,
+        'redis-memtier-medium': 0.5187192118226601,
+        'redis-memtier-small': 0.5261083743842364,
+        'specjbb-preset-big-120': 1.1172413793103446,
+        'specjbb-preset-medium': 1.7359605911330047,
+        'specjbb-preset-small': 1.2834975369458126,
+        'stress-stream-big': 11.66708609980724,
+        'stress-stream-medium': 11.55591133004926,
+        'stress-stream-small': 8.531109445277362,
+        'sysbench-memory-big': 10.901103019918613,
+        'sysbench-memory-medium': 16.144356393231956,
+        'sysbench-memory-small': 16.412615121010923
 }
 
 

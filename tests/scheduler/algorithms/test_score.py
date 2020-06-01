@@ -18,7 +18,7 @@ from tests.scheduler.data_providers.test_cluster_score_data_provider import (
 from wca.scheduler.algorithms.score import _get_app_node_type, Score
 from wca.scheduler.data_providers.score import NodeType
 
-SCORE_TARGET = -2.0
+SCORE_TARGET = 2.0
 
 
 @pytest.mark.parametrize('apps_profile, app_name, score_target, result', [

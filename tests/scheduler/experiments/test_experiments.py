@@ -46,7 +46,6 @@ def test_experiment_score():
     results = experiments_iterator(
         'score',
         [  # Simulator & data provider configuration
-            dict(retry_scheduling=True, data_provider_args=dict(normalization_dimension=CPU)),
             dict(retry_scheduling=True, data_provider_args=dict(normalization_dimension=MEM)),
         ],
         [20],
@@ -65,21 +64,8 @@ def test_experiment_score():
         charts=False,
         metrics=False,  # can be as list of metric names
     )
-    assert len(results) == 2
+    assert len(results) == 1
     assert results == [{'ALGO': 'Score(2)',
-                        'NODES': '2(aep=1,dram=1)',
-                        'SIM': 'retry=1,norm=cpu',
-                        'TASKS': '9(cpu=3,mbw=3,mem=3)',
-                        'assigned%': 100,
-                        'assigned_broken%': 0,
-                        'balance': 0.90892333984375,
-                        'cpu_util%': 30.0,
-                        'cpu_util(AEP)%': 7.5,
-                        'mem_util%': 38.00335570469799,
-                        'mem_util(AEP)%': 30.0,
-                        'scheduled': 9,
-                        'utilization%': 34},
-                       {'ALGO': 'Score(2)',
                         'NODES': '2(aep=1,dram=1)',
                         'SIM': 'retry=1,norm=mem',
                         'TASKS': '9(cpu=3,mbw=3,mem=3)',

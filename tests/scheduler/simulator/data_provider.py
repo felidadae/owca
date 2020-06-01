@@ -67,7 +67,7 @@ def _calculate_score_for_apps(app_requested_resources, dimensions, node_capaciti
                                for app, app_profile
                                in app_profile_norm_by_resource.items()}
 
-    # and calculate score accroding following formula:
+    # and calculate score according to following formula:
     # MEM - max(BW_READ, BW_WRITE, WSS)
     if normalization_dimension == CPU:
         def score(r):
@@ -79,7 +79,7 @@ def _calculate_score_for_apps(app_requested_resources, dimensions, node_capaciti
         def score(r):
             negatives = [r[d] for d in [CPU, MEMBW_READ, MEMBW_WRITE, WSS] if d in r]
             negative = max(negatives) if negatives else 0
-            return -negative
+            return negative
     else:
         def score(_):
             return 0
@@ -90,7 +90,7 @@ def _calculate_score_for_apps(app_requested_resources, dimensions, node_capaciti
 
 class ClusterSimulatorDataProvider(ClusterScoreDataProvider):
 
-    def __init__(self, simulator: ClusterSimulator, normalization_dimension: ResourceType = CPU):
+    def __init__(self, simulator: ClusterSimulator, normalization_dimension: ResourceType = MEM):
         self.simulator = simulator
         self.normalization_dimension = normalization_dimension
 
