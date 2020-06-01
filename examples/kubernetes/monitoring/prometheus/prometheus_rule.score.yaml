@@ -111,10 +111,6 @@ spec:
       expr: 'max(max_over_time(task_requested_cpus[10m])) by (app)'
     - record: app_mem
       expr: 'max(max_over_time(task_requested_mem_bytes[10m])) by (app) / 1e9'
-    - record: app_mbw_read
-      expr: 'app_mbw * app_mbw_rw'
-    - record: app_mbw_write
-      expr: 'app_mbw * (1-app_mbw_rw)'
     - record: app_mbw_flat
       expr: 'max(quantile_over_time(0.95, task_mbw_flat[20m:10m])) by (app)'
     - record: app_wss
@@ -128,14 +124,6 @@ spec:
       expr: 'app_mem'
       labels:
         dim: mem
-    - record: app_req
-      expr: 'app_mbw_read'
-      labels:
-        dim: mbw_read
-    - record: app_req
-      expr: 'app_mbw_write'
-      labels:
-        dim: mbw_write
     - record: app_req
       expr: 'app_mbw_flat'
       labels:
