@@ -5,39 +5,36 @@ loggers:
 kubeapi: &kubeapi !Kubeapi
   host: !Env KUBERNETES_SERVICE_HOST
   port: !Env KUBERNETES_SERVICE_PORT
-# reschedule_interval: 5
 algorithm: !Score
   score_target: 1.5
-
-  # @TODO what is that? how we should set it?
   max_node_score: 10000.
-
   dimensions:
     - mem
     - cpu
-    - membw_write
     - membw_read
+    - membw_write
     - wss
-  cpu_scale_factor: 0.8
   data_provider: !ClusterScoreDataProvider
     kubeapi: *kubeapi
     prometheus: !Prometheus
-
-      # @TODO hardcoded our cluster address
+      # Note: our internal cluster address.
       host: http://100.64.176.36
       port: 30900
       timeout: 5.0
 
-      # @TODO should be removed from official configuration file
+      # Note: set for internal usage for repeatability of the results.
       time: "1589559381"  # Date: 2020-05-15 16:16:21
 
+    # Note: as currently we are 'flattening' membw write/read in prometheus score rules,
+    #   we set to mbw_read the flat value, and to mbw_write 0 (we need to multiply by flat value to keep the needed
+    #   labels)
     queries: !Queries
       APP_REQUESTED_RESOURCES_QUERY_MAP:
             cpu: 'app_cpu'
             mem: 'app_mem'
-            membw_read: 'app_mbw_read'
-            membw_write: 'app_mbw_write'
+            membw_read: 'app_mbw_flat'
+            membw_write: 'app_mbw_flat * 0'
             wss: 'app_wss'
-      MEMBW_CAPACITY_READ: 'node_capacity{dim="membw_read"}'
-      MEMBW_CAPACITY_WRITE: 'node_capacity{dim="membw_write"}'
+      MEMBW_CAPACITY_READ: 'node_capacity{dim="membw_flat"}'
+      MEMBW_CAPACITY_WRITE: 'node_capacity{dim="membw_flat"} * 0'
       NODE_CAPACITY_MEM_WSS: 'node_capacity{dim="wss"}'

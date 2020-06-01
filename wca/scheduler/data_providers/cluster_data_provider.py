@@ -33,8 +33,8 @@ class Queries:
     """ For defaults to work, it is required to upload prometheus rules >>score<<, otherwise
         define proper queries in the configuration file of wca-scheduler overwriting this values. """
 
-    MEMBW_CAPACITY_READ: str = 'node_capacity{dim="membw_read"}'
-    MEMBW_CAPACITY_WRITE: str = 'node_capacity{dim="membw_write"}'
+    MEMBW_CAPACITY_READ: str = 'node_capacity{dim="membw_flat"}'
+    MEMBW_CAPACITY_WRITE: str = 'node_capacity{dim="membw_flat"} * 0'
     NODE_CAPACITY_MEM_WSS: str = 'node_capacity{dim="wss"}'
     NODE_CAPACITY_DRAM_MEMBW: str = 'platform_dimm_speed_bytes_per_second'
 
@@ -44,9 +44,9 @@ class Queries:
     APP_REQUESTED_RESOURCES_QUERY_MAP: Dict[ResourceType, str] = field(default_factory=lambda: {
             ResourceType.CPU: 'app_cpu',
             ResourceType.MEM: 'app_mem',
-            ResourceType.MEMBW_READ: 'app_mbw_read',
-            ResourceType.MEMBW_WRITE: 'app_mbw_write',
-            ResourceType.WSS: 'node_capacity{dim="wss"}',
+            ResourceType.MEMBW_READ: 'app_mbw_flat',
+            ResourceType.MEMBW_WRITE: 'app_mbw_flat * 0',
+            ResourceType.WSS: 'app_wss',
     })
 
 
