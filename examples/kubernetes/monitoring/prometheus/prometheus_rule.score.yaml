@@ -14,7 +14,7 @@ spec:
     # ============================ node ===================================
     # cpu
     - record: node_capacity_unsafe
-      expr: 'sum(platform_topology_cpus) by (node)'
+      expr: 'sum(platform_topology_cpus) by (node) and on(node) platform_mem_mode_size_bytes!=0'
       labels:
         dim: cpu
     # mem
