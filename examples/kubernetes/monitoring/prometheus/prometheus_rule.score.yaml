@@ -29,7 +29,6 @@ spec:
         dim: mbw_flat
     # wss
     # -- wss on 2lm is devaulated to 30% because of direct mapping (that is approximated by us unsafe maximum)
-    # -- wss on 1lm nodes is just capacity of ram
     - record: node_capacity_unsafe
       expr: 'ceil(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (node) * 0.3 / 1e9) and on(node) platform_mem_mode_size_bytes!=0'
       labels:
@@ -56,9 +55,7 @@ spec:
     - record: node_capacity
       expr: node_capacity_unsafe * on(dim) group_left safety_weights
     
-    # ---------------------------- node nvm profile -----------------------------------------
-    # nvm profile only catch pmm nodes!!!!
-    # # and on(node) platform_mem_mode_size_bytes!=0
+    # ---------------------------- node PMEM profile -----------------------------------------
 
     # Profile by mem
     - record: profile_node_by_mem
