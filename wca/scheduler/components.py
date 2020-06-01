@@ -25,7 +25,7 @@ from wca.scheduler.data_providers.cluster_data_provider import (
 from wca.scheduler.algorithms.score import Score
 from wca.scheduler.data_providers.score.cluster import ClusterScoreDataProvider
 from wca.scheduler.kubeapi import Kubeapi
-from wca.scheduler.prometheus import Prometheus
+from wca.prometheus import Prometheus
 
 
 def register_algorithms():

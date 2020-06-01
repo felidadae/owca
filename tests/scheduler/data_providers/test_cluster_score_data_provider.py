@@ -20,7 +20,7 @@ from tests.scheduler.data_providers.test_cluster_data_provider import (
 
 from wca.scheduler.data_providers.score.cluster import ClusterScoreDataProvider
 from wca.scheduler.kubeapi import Kubeapi
-from wca.scheduler.prometheus import Prometheus
+from wca.prometheus import Prometheus
 
 
 def get_mocked_cluster_data_provider():

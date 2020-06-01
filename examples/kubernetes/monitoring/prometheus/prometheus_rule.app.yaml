@@ -63,6 +63,10 @@ spec:
         - record: app_contention_sensitivity
           expr: clamp_max(app_memory_intensity * app_memory_utilization / app_rw, 5)  # for DEMO1
 
+        # Requested to WSS ratio in %
+        - record: app_wss_to_mem_ratio
+          expr: app_wss / app_mem * 100
+
 # ----------------------------- TASK_DERIVED -------------------------------------
     - name: wca_task_derived
       rules:

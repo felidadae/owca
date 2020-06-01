@@ -1,0 +1,15 @@
+{
+    "node37": {"cpu": 80, "mem": 201, "membw_read": 256, "membw_write": 256, "wss": 201},
+    "node38": {"cpu": 80, "mem": 404, "membw_read": 256, "membw_write": 256, "wss": 404},
+    "node39": {"cpu": 80, "mem": 404, "membw_read": 256, "membw_write": 256, "wss": 404},
+    "node40": {"cpu": 80, "mem": 201, "membw_read": 256, "membw_write": 256, "wss": 201},
+
+    "node101": {"cpu": 72, "mem": 1596, "membw_read": 57, "membw_write": 16, "wss": 58},
+    "node103": {"cpu": 72, "mem": 201, "membw_read": 256, "membw_write": 256, "wss": 201},
+    "node104": {"cpu": 72, "mem": 201, "membw_read": 256, "membw_write": 256, "wss": 201},
+    "node105": {"cpu": 72, "mem": 201, "membw_read": 256, "membw_write": 256, "wss": 201},
+
+    "node200": {"cpu": 96, "mem": 201, "membw_read": 256, "membw_write": 256, "wss": 201},
+    "node202": {"cpu": 96, "mem": 201, "membw_read": 256, "membw_write": 256, "wss": 201},
+    "node203": {"cpu": 96, "mem": 201, "membw_read": 256, "membw_write": 256, "wss": 201}
+}

@@ -20,7 +20,7 @@ from wca.scheduler.data_providers.cluster_data_provider import (
         ClusterDataProvider, MissingBasicResources,
         Queries, WSSWithoutMemoryBandwidth)
 from wca.scheduler.kubeapi import Kubeapi
-from wca.scheduler.prometheus import Prometheus
+from wca.prometheus import Prometheus
 from wca.scheduler.types import ResourceType
 
 TEST_QUERIES = Queries()

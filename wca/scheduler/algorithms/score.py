@@ -82,7 +82,8 @@ class Score(Fit, DramHitRatioProvision):
             node_type: NodeType) -> Tuple[bool, str]:
 
         if log.getEffectiveLevel() <= TRACE:
-            log.log(TRACE, '[Filter:PMEM specific] apps_profile: \n%s', str(apps_profile))
+            log.log(TRACE, '[Filter:PMEM specific] apps_profile: \n%s',
+                    str(sorted(apps_profile.items(), key=lambda x: x[1], reverse=True)))
             log.log(TRACE, '[Filter:PMEM specific] node_type: \n%s', str(node_type))
 
         app_type = _get_app_node_type(apps_profile, app_name, self.score_target)

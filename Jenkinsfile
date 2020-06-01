@@ -218,7 +218,9 @@ pipeline {
                     docker push ${IMAGE_NAME}
                     docker tag ${IMAGE_NAME} ${BRANCH_IMAGE_NAME}
                     docker push ${BRANCH_IMAGE_NAME}
-                    docker rmi ${IMAGE_NAME} ${BRANCH_IMAGE_NAME}
+                    # Building Cassandra Stress Docker image take too long (30min),
+                    # the commented line below is for caching purpose
+                    # docker rmi ${IMAGE_NAME} ${BRANCH_IMAGE_NAME}
                     '''
                     }
                 }

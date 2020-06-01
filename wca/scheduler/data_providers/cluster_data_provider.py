@@ -20,7 +20,7 @@ from typing import Iterable, Dict, Optional, List, Tuple
 from wca.resources import _MEMORY_UNITS
 from wca.scheduler.data_providers import DataProvider, AppsOnNode
 from wca.scheduler.kubeapi import Kubeapi
-from wca.scheduler.prometheus import Prometheus
+from wca.prometheus import Prometheus
 from wca.scheduler.types import (
         Resources, ResourceType, NodeName, AppName,
         NodeCapacities, AppsCount)

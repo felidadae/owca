@@ -1,0 +1,8 @@
+loggers:
+  wca.admission_controller.service: INFO
+data_provider: !AppDataProvider
+  prometheus: !Prometheus
+    host: http://100.64.176.35
+    port: 30900
+hmem_threshold: 20.0
+dram_threshold: 80.0
