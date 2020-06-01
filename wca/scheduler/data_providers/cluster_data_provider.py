@@ -31,7 +31,8 @@ log = logging.getLogger(__name__)
 @dataclass
 class Queries:
     """ For defaults to work, it is required to upload prometheus rules >>score<<, otherwise
-        define proper queries in the configuration file of wca-scheduler overwriting this values. """
+        define proper queries in the configuration file of wca-scheduler
+        overwriting this values. """
 
     MEMBW_CAPACITY_READ: str = 'node_capacity{dim="membw_flat"}'
     MEMBW_CAPACITY_WRITE: str = 'node_capacity{dim="membw_flat"} * 0'
