@@ -35,7 +35,7 @@ For example, if score=2 is assigned to a workload A, it means that by scheduling
 we can maximally use 50% (½*100%) of memory of that node not having expected by heuristic shared resource saturation.
 
 .. csv-table::
-	:header: "value", "memory max usage"
+	:header: "Value", "Memory max usage"
 	:widths: 5, 5
 
     "1", "100%"
