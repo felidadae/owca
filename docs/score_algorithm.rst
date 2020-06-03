@@ -36,13 +36,13 @@ we can maximally use 50% (½*100%) of memory of that node not having expected by
 
 .. csv-table::
 	:header: "value", "memory max usage"
-	:widths: 5, 5, 5, 5, 5, 5, 5
+	:widths: 5, 5
 
-    1, 100%
-    1.5,75%
-    2,50%
-    3,33%
-    10,10%
+    "1", "100%"
+    "1.5", "75%"
+    "2", "50%"
+    "3", "33%"
+    "10", "10%"
 
 As we see score of value 10 indicates that the workload does not fit PMEM node at all – scheduling it into PMEM
 is a waste of space which could be used by another workload with better score.
