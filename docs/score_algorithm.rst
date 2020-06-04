@@ -4,20 +4,20 @@ Score algorithm overview
 
 We constructed a heuristic for automatic assessment of how well a workload match a node with
 Intel PMEM memory installed ran in 2LM mode. The heuristic is trying to reach two goals:
-1) use as much of memory as possible on PMEM nodes 2) minimize chance of worse than DRAM
-performance of scheduled on PMEM nodes workloads. The 2) is approached with idea that performance
-can be degraded mostly when any of memory bandwidth, L4 cache (in 2LM mode DRAM runs as a next
-level cache) shared resources are saturated.
+1) use as much of memory as possible on PMEM nodes 2) minimize chance of worsing workloads performance.
+The 2) is approached with idea that performance can be degraded mostly when any of memory bandwidth,
+L4 cache (in 2LM mode DRAM runs as a next level cache) shared resources are saturated.
 
-The heuristic assigns to each workload a single positive rational number – thus creating a sorted list if
-taking into consideration all workloads. That single number, we call a workload’s score.
+The heuristic assigns to each workload a single positive rational number, thus creating a sorted list if
+taking into consideration all workloads. That single number, we call a workloads score.
 Lower the number, better a workload fits the PMEM node according to our heuristic.
 The value of score does not depends on different workloads, but only on workload innate features.
 
-But what the algorithm considers a *workload*? As a workload the solution treats a Kubernetes
-*statefulset* or a *deployment*. All pods of a statefulset/deployment are treated as instances of the same workload.
+But what the algorithm considers a **workload**? As a workload the solution treats a Kubernetes
+**statefulset** or a **deployment**. All pods of a statefulset/deployment are treated as instances
+of the same workload.
 
-The algorithm is implemented as a set of Prometheus rules. Thanks to that can be easily visualized,
+The algorithm is implemented as a set of **Prometheus rules**. Thanks to that can be easily visualized,
 simply understood and tweaked by a cluster operator.
 
 
@@ -32,12 +32,11 @@ By sticking to that limit *(1/S * 100%)* the node shared resources such as CPU, 
 bandwidth and L4 cache should not be saturated.
 
 For example, if score=2 is assigned to a workload A, it means that by scheduling only that workload to a PMEM node,
-we can maximally use 50% (½*100%) of memory of that node not having expected by heuristic shared resource saturation.
+we can maximally use 50% (0.5*100%) of memory of that node not having expected by heuristic shared resource saturation.
 
 .. csv-table::
-	:header: "Value", "Memory max usage"
-	:widths: 5, 5
 
+    "Score", "PMEM Memory max usage"
     "1", "100%"
     "1.5", "75%"
     "2", "50%"
@@ -54,18 +53,22 @@ a workload performance and left more space for workloads with worse score value.
 Scores for our testing workloads
 ################################
 
-Below we provide screenshot of additional Graphana dashboard provided by us for visualization of final and
+Below we provide a screenshot of additional Graphana dashboard provided by us for visualization of final and
 transitional results of the algorithm. For our testing workloads the score values are widely scattered.
-As a far best workload with score=0.88 is considered redis-memtier-big.
-[image showing list of scores for workloads from our cluster]
+As a far best workload with score=1.1 is considered redis-memtier-big.
 
+.. image:: score_sorted_list.png
+  :width: 400
+  :alt: Image showing sorted list of scores of workloads from our testing cluster
 
 Workloads characterization
 ##########################
 
 The heuristic approximates for each workload among others:
+
 - peak memory bandwidth used (traffic from caches to RAM memory) with division on read/write,
 - peak working set size (number of touched memory pages in a short period of time).
+
 All this is calculated based on historical data (as default history window is set to 7 days).
 
 Setting cut-off Score value
@@ -74,23 +77,57 @@ Setting cut-off Score value
 The created workloads list, ranked by the best the Score, can be used to manually place workloads
 to make the best use of PMEM.
 
-We recommend to schedule only workloads with score of value  S_cutoff <= 1.5 on PMEM nodes.
-If workloads are scheduled manually, make sure only 1/S_cutoff * 100% of total available
+We recommend to schedule only workloads with score of value  **S <= S_cutoff** where **S_cutoff=1.5** on PMEM nodes.
+If workloads are scheduled manually, make sure only **1/S_cutoff * 100%** of total available
 memory is used by workloads.
 
-Our additional tool WCA-Scheduler can perform that task automatically taking into consideration more factors.
+Our additional tool **WCA-Scheduler** can perform that task automatically taking into consideration more factors.
 
 
 Gathering required metrics
 ##########################
 
-The score is calculated based on the metrics provided by WCA or cAdvisor.
+The score is calculated based on the metrics provided by `WCA` or `cAdvisor`.
 
 WCA
 ***
-For calculating Score some metrics which are provided by WCA agent are needed.
+For calculating Score some metrics provided by WCA agent are needed.
+Please use below defined configuration file for WCA agent
 
-To WCA expose needed metrics, it is necessary to set in its configuration file:
+.. code-block:: yaml
+
+  runner: !MeasurementRunner
+  interval: 5.0
+  node: !KubernetesNode
+    cgroup_driver: cgroupfs
+    monitored_namespaces: ["default"]
+    kubeapi_host: !Env KUBERNETES_SERVICE_HOST
+    kubeapi_port: !Env KUBERNETES_SERVICE_PORT
+    node_ip: !Env HOST_IP
+
+  metrics_storage: !LogStorage
+    overwrite: True
+    output_filename: /var/lib/wca/metrics.prom
+
+  extra_labels:
+    node: !Env HOSTNAME
+  event_names:
+    - task_cycles
+    - task_instructions
+    - task_offcore_requests_demand_data_rd
+    - task_offcore_requests_demand_rfo
+  enable_derived_metrics: True
+  uncore_event_names:
+    - platform_cas_count_reads
+    - platform_cas_count_writes
+    - platform_pmm_bandwidth_reads
+    - platform_pmm_bandwidth_writes
+
+  wss_reset_interval: 1
+  gather_hw_mm_topology: True
+
+To `WCA` expose needed metrics, it is necessary to set in its configuration file:
+
 - gather_hw_mm_topology set as True;
 - enable_derived_metrics set as True;
 - In event_names enable Task_offcore_requests_demand_data_rd, Task_offcore_requests_demand_rfo
@@ -109,7 +146,7 @@ Future work. It’s not yet fully supported.
 Calculating the Score by use Prometheus rules.
 ##############################################
 
-The Score is calculated by rules in Prometheus.
+The score is calculated by rules in Prometheus.
 
 Configuring the Prometheus
 **************************
@@ -121,7 +158,7 @@ No deployed Prometheus on the cluster
 *************************************
 
 We use configuration prepared in the repository under the path `examples/kubernetes/monitoring` by using
-kustomize (https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/).
+`kustomize` (https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/).
 It deploys all monitoring required for calculating the Score.
 
 Existing Prometheus on the cluster
@@ -137,7 +174,7 @@ Configuring the Score
 As mentioned in $(Workloads characterization) the approximators of workloads features are calculated
 as maximum value (in reality we do not calculate max value but 95 percentile for cutting off outliers)
 over period of time. By default the period length is set to 7 days, but can be changed using
-script `examples/kubernetes/monitoring/prometheus/generate_score_prometheus_rule.py`.
+script `examples/kubernetes/scripts/generator_prometheus_rules.py`_.
 
 Smaller the length of period higher chance of not capturing high traffic behavior of the workload,
 bigger higher chance that the feature will be usually overestimated (resulting in
@@ -145,7 +182,7 @@ undersubscription of the node).
 
 .. code-block:: shell
 
-    python3 generator_prometheus_rules.py --features_history_period 7d –output prometheus_rules_score.yaml
+    python3 examples/kubernetes/scripts/generator_prometheus_rules.py --features_history_period 7d –output prometheus_rules_score.yaml
 
 `features_history_period` is time used in rules. Prometheus query language supports time
 durations specified as a number, followed immediately by one of the following
@@ -154,6 +191,6 @@ units: s - seconds, m - minutes, h - hours, d - days, w - weeks, y - years.
 Grafana dashboard
 *****************
 
-We prepared graphana dashboard for visualization of the results mentioned in $(Scores for our testing workloads).
-The dashbord yaml file is available at: `examples/kubernetes/monitoring/prometheus/graphana_score.yaml`
+We prepared graphana dashboard for visualization of the results mentioned in `Scores for our testing workloads`_.
+The dashbord yaml file is available at: `examples/kubernetes/monitoring/prometheus/graphana_score.yaml`_.
 
