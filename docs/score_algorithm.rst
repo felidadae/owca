@@ -70,6 +70,7 @@ The heuristic approximates for each workload among others:
 - peak working set size (number of touched memory pages in a short period of time).
 
 All this is calculated based on historical data (as default history window is set to 7 days).
+Please refer to `examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml`_.
 
 Setting cut-off Score value
 ###########################
