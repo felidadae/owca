@@ -1,3 +1,6 @@
+# Rules needed for calculating score (prometheus_rule.score.yaml) if on the cluster there is no
+# PMEM nodes. Adds virtual PMEM node.
+
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:

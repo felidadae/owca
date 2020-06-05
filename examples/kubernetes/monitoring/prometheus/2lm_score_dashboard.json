@@ -15,9 +15,99 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 91,
+  "id": 92,
+  "iteration": 1591351638512,
   "links": [],
   "panels": [
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus-operator",
+      "description": "",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 9,
+        "w": 23,
+        "x": 0,
+        "y": 0
+      },
+      "hiddenSeries": false,
+      "id": 14,
+      "interval": "15s",
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "count(app_req{dim=\"cpu\"}) by (dim)",
+          "legendFormat": "profiled_count",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "How many workloads profiling data is available",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
     {
       "activePatternIndex": 1,
       "datasource": "Prometheus-operator",
@@ -61,11 +151,12 @@
         "valueName": "avg"
       },
       "default_title_for_rows": "Metric",
+      "description": "Application approximated resources peak requirements.",
       "gridPos": {
-        "h": 19,
-        "w": 9,
+        "h": 11,
+        "w": 8,
         "x": 0,
-        "y": 0
+        "y": 9
       },
       "id": 2,
       "options": {},
@@ -114,7 +205,7 @@
           "bgColors_overrides": "0->green|2->red|1->yellow",
           "clickable_cells_link": "",
           "col_name": "_1_",
-          "decimals": "0",
+          "decimals": "2",
           "defaultBGColor": "",
           "defaultTextColor": "",
           "delimiter": "|",
@@ -212,10 +303,10 @@
       },
       "default_title_for_rows": "Metric",
       "gridPos": {
-        "h": 14,
-        "w": 15,
-        "x": 9,
-        "y": 0
+        "h": 11,
+        "w": 7,
+        "x": 8,
+        "y": 9
       },
       "id": 3,
       "options": {},
@@ -280,61 +371,21 @@
       "type": "yesoreyeram-boomtable-panel"
     },
     {
+      "content": "\nDefintion | Unit | Equation | Description\n------------ | ---- | ---------| ----\n**cpu_ratio** | `[cpu/GB]`  | `cpu` / `mem` | app resources \n**mbw_flat_ratio** | `[GBs/GB]` | `mbw_flat` / `mem` | app resources \n**wss_ratio** | `[GB/GB]` | `wss` / `mem` | app resources\n**2lm_cpu_ratio** | `[cpu/GB]`  | `cpu` / `mem` | 2LM node resources\n**2lm_mbw_flat_ratio** | `[GBs/GB]` | `mbw_flat` / `mem` | 2LM node resources \n**2lm_wss_ratio** | `[GB/GB]` | `wss` / `mem` | 2LM node resources\n**cpu_ratio_2lmscaled** | `None`  | `cpu_ratio` / `2lm_cpu_ratio` | app resources shape in comparison to 2LM resources shape\n**mbw_flat_ratio_2lmscaled** | `None` | `mbw_ratio` / `2lm_mbw_ratio` | app resources shape in comparison to 2LM resources shape \n**wss_ratio_2lmscaled** | `None` | `wss_ratio` / `2lm_wss_ratio` | app resources shape in comparison to 2LM resources shape\n**score** | `None` | max(`cpu_ratio_2lmscaled`, `mbw_flat_ratio_2lmscaled`, `wss_ratio_2lmscaled`) | lower is better\n\n\n\n\n\n\n\n",
       "datasource": null,
       "gridPos": {
-        "h": 5,
-        "w": 15,
-        "x": 9,
-        "y": 14
+        "h": 16,
+        "w": 8,
+        "x": 15,
+        "y": 9
       },
-      "id": 7,
-      "options": {
-        "colorMode": "value",
-        "fieldOptions": {
-          "calcs": [
-            "last"
-          ],
-          "defaults": {
-            "decimals": 1,
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "#EAB839",
-                  "value": 1
-                },
-                {
-                  "color": "red",
-                  "value": 10
-                }
-              ]
-            },
-            "title": ""
-          },
-          "overrides": [],
-          "values": false
-        },
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto"
-      },
-      "pluginVersion": "6.6.0",
-      "targets": [
-        {
-          "expr": "profile_nodes_by_cpu{memory=\"2lm\"}",
-          "legendFormat": "{{index}}",
-          "refId": "A"
-        }
-      ],
+      "id": 11,
+      "mode": "markdown",
+      "options": {},
       "timeFrom": null,
       "timeShift": null,
-      "title": "profile_nodes_by_cpu{memory=\"2lm\"}",
-      "type": "stat"
+      "title": "Legend",
+      "type": "text"
     },
     {
       "activePatternIndex": 0,
@@ -380,10 +431,10 @@
       },
       "default_title_for_rows": "Metric",
       "gridPos": {
-        "h": 19,
-        "w": 9,
+        "h": 11,
+        "w": 8,
         "x": 0,
-        "y": 19
+        "y": 20
       },
       "id": 5,
       "options": {},
@@ -475,7 +526,7 @@
       },
       "targets": [
         {
-          "expr": "profile_app_by_cpu_norm",
+          "expr": "profile_app_by_mem_norm{index=~\"cpu|mbw_flat|wss\"}",
           "instant": true,
           "legendFormat": "{{app}} | {{index}}",
           "refId": "A"
@@ -483,65 +534,8 @@
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "profile_app_by_cpu_norm",
+      "title": "resource_ratio_2lmscaled",
       "type": "yesoreyeram-boomtable-panel"
-    },
-    {
-      "datasource": null,
-      "gridPos": {
-        "h": 5,
-        "w": 15,
-        "x": 9,
-        "y": 19
-      },
-      "id": 12,
-      "options": {
-        "colorMode": "value",
-        "fieldOptions": {
-          "calcs": [
-            "last"
-          ],
-          "defaults": {
-            "decimals": 1,
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "#EAB839",
-                  "value": 1
-                },
-                {
-                  "color": "red",
-                  "value": 10
-                }
-              ]
-            },
-            "title": ""
-          },
-          "overrides": [],
-          "values": false
-        },
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto"
-      },
-      "pluginVersion": "6.6.0",
-      "targets": [
-        {
-          "expr": "profile_nodes_by_cpu{memory=\"1lm\"}",
-          "legendFormat": "{{index}}",
-          "refId": "A"
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "profile_nodes_by_cpu{memory=\"1lm\"}",
-      "type": "stat"
     },
     {
       "activePatternIndex": 0,
@@ -587,16 +581,16 @@
       },
       "default_title_for_rows": "Metric",
       "gridPos": {
-        "h": 19,
-        "w": 4,
-        "x": 9,
-        "y": 24
+        "h": 11,
+        "w": 7,
+        "x": 8,
+        "y": 20
       },
       "id": 9,
       "options": {},
       "patterns": [
         {
-          "bgColors": "red|orange|green",
+          "bgColors": "green|orange|red",
           "bgColors_overrides": "0->green|2->red|1->yellow",
           "clickable_cells_link": "",
           "col_name": "_1_",
@@ -627,7 +621,7 @@
           "row_name": "_0_",
           "textColors": "red|orange|green",
           "textColors_overrides": "0->red|2->green|1->yellow",
-          "thresholds": "-3,-0.3",
+          "thresholds": "2.5",
           "time_based_thresholds": [],
           "tooltipTemplate": "Series : _series_ <br/>Row Name : _row_name_ <br/>Col Name : _col_name_ <br/>Value : _value_",
           "transform_values": "_value_|_value_|_value_",
@@ -639,7 +633,7 @@
       "row_col_wrapper": "_",
       "sorting_props": {
         "col_index": 0,
-        "direction": "desc"
+        "direction": "asc"
       },
       "targets": [
         {
@@ -651,37 +645,173 @@
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "profile_app_by_cpu_norm",
+      "title": "SCORE",
       "type": "yesoreyeram-boomtable-panel"
     },
     {
-      "content": "\nDefintion | Unit | Equation | Description\n------------ | ---- | ---------| ----\n**mem_density** | `[GB/cpu]`  | `mem` / `cpu` | higher is better \n**mem_intensity (read/write)** | `[GBs/cpu]` | `mbw` / `cpu` | lower is better \n**mem_utilization** | `[GB/cpu]` | `wss` / `cpu` | lower is better\n**SCORE**    | |  `mem_density` - `max`(`mem_intensity`, `mem_utilization`) | higher is better\n\n\n\n\n\n\n\n",
-      "datasource": null,
-      "gridPos": {
-        "h": 10,
-        "w": 11,
-        "x": 13,
-        "y": 24
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "#299c46",
+        "rgba(237, 129, 40, 0.89)",
+        "#d44a3a"
+      ],
+      "datasource": "Prometheus-operator",
+      "description": "This is simple heuristic which tries to approximates how many PMEM nodes are needed on the cluster for all applications with score less than choosen in the top of the dashboard. We sum up the memory used of all applications multiplied by their score. In the end, we divide by PMEM size.",
+      "format": "none",
+      "gauge": {
+        "maxValue": 100,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
       },
-      "id": 11,
-      "mode": "markdown",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 15,
+        "y": 25
+      },
+      "id": 16,
+      "interval": null,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
       "options": {},
+      "postfix": "",
+      "postfixFontSize": "50%",
+      "prefix": "",
+      "prefixFontSize": "50%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": false,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": false,
+        "ymax": null,
+        "ymin": null
+      },
+      "tableColumn": "",
+      "targets": [
+        {
+          "expr": "ceil((sum(abs(profile_app_2lm_score_max < $Score) * on(app) app_count * on(app) app_mem) )  / 1000 )",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "Legend",
-      "type": "text"
+      "title": "Calculated required number of PMEM nodes for choosen Score",
+      "type": "singlestat",
+      "valueFontSize": "80%",
+      "valueMaps": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null"
+        }
+      ],
+      "valueName": "avg"
     }
   ],
+  "refresh": false,
   "schemaVersion": 22,
   "style": "dark",
-  "tags": [
-    "2lm"
-  ],
+  "tags": [],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "selected": true,
+          "text": "1.5",
+          "value": "1.5"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": null,
+        "multi": false,
+        "name": "Score",
+        "options": [
+          {
+            "selected": false,
+            "text": "0.5",
+            "value": "0.5"
+          },
+          {
+            "selected": false,
+            "text": "1.0",
+            "value": "1.0"
+          },
+          {
+            "selected": true,
+            "text": "1.5",
+            "value": "1.5"
+          },
+          {
+            "selected": false,
+            "text": "2.0",
+            "value": "2.0"
+          },
+          {
+            "selected": false,
+            "text": "2.5",
+            "value": "2.5"
+          },
+          {
+            "selected": false,
+            "text": "3.0",
+            "value": "3.0"
+          },
+          {
+            "selected": false,
+            "text": "4.0",
+            "value": "4.0"
+          },
+          {
+            "selected": false,
+            "text": "5.0",
+            "value": "5.0"
+          },
+          {
+            "selected": false,
+            "text": "6.0",
+            "value": "6.0"
+          },
+          {
+            "selected": false,
+            "text": "10.0",
+            "value": "10.0"
+          }
+        ],
+        "query": "0.5,1.0,1.5,2.0,2.5,3.0,4.0,5.0,6.0,10.0",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
   },
   "time": {
-    "from": "now-1m",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {
@@ -699,7 +829,7 @@
     ]
   },
   "timezone": "",
-  "title": "2LM score dashboard",
-  "uid": "Wh9lRnXWk",
-  "version": 17
+  "title": "Intel WCA Score dashboard",
+  "uid": "vttla09Zk",
+  "version": 33
 }

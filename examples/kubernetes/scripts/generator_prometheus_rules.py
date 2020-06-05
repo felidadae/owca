@@ -3,6 +3,7 @@ import argparse
 import fileinput
 from shutil import copyfile
 import re
+import os
 
 
 if __name__ == '__main__':
@@ -26,11 +27,13 @@ if __name__ == '__main__':
     assert re.match(r'\d+\w', period)
 
     # Prepare regex
-    period_regex_search = r'\[7d]'  # r'\[\d+\w\]'
-    period_regex_replace = '[{}]'.format(period)
+    period_regex_search = r'\[7d'  # r'\[\d+\w\]'
+    period_regex_replace = '[{}'.format(period)
 
     # Copy template
-    copyfile('../monitoring/prometheus/prometheus_rule.score.yaml', config_name)
+    copyfile(os.path.dirname(os.path.abspath(__file__)) +
+                 '/../monitoring/prometheus/prometheus_rule.score.yaml',
+             config_name)
 
     # Replace
     with fileinput.FileInput(config_name, inplace=True) as file:
