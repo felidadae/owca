@@ -59,7 +59,7 @@ transitional results of the algorithm. For our testing workloads the score value
 As a far best workload with *score=1.1* is considered *redis-memtier-big*.
 
 .. image:: score_sorted_list.png
-  :width: 400
+  :width: 300
   :alt: Image showing sorted list of scores of workloads from our testing cluster
 
 Workloads characterization
@@ -224,6 +224,6 @@ There are few limitations of our solution, which depending on usage can constitu
 
 - no support for statefulset/deployment versions,
 - due to used mentioned in `Configuring the Score` prometheus functions, requirements of some
-workload can be overestimated if workload is wrongly configured and keeps restarting after a short period of time
+workload can be overestimated, e.g. if workload is wrongly configured and keeps restarting after a short period of time
 - as we take CPU/MEM requiremnts from Kubernetes defined limits, if workload does not have that data defined
 will be ignored.
