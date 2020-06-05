@@ -8,7 +8,7 @@ Intel PMEM memory installed ran in 2LM mode. The heuristic is trying to reach tw
 (comparing to DRAM). The 2) is approached with idea that performance can be degraded mostly when any of: memory bandwidth,
 L4 cache (in 2LM mode DRAM runs as a next level cache) shared resources are saturated.
 
-*The **heuristic** assigns to each workload a single positive rational number*, thus creating a sorted list if
+*The heuristic assigns to each workload a single positive rational number*, thus creating a sorted list, if
 taking into consideration all workloads. That single number, we call a workloads **score**.
 **Lower** the number, **better** a workload fits the PMEM node according to our heuristic.
 The value of score does not depends on different workloads, but only on workload innate features.
@@ -27,8 +27,9 @@ Score value interpretation
 Nice feature of the algorithms is that the score value has intuitive interpretation, which is explained below.
 
 Having a workload with score of value *S=score(workload)*, by scheduling only instances of that workload to PMEM node we
-should according to the heuristic maximally use **1/S * 100%** capacity of memory of that node (the heuristic
-ignores the fact that we cannot schedule `part` of the workload).
+should according to the heuristic maximally use **1/S * 100%** capacity of memory of that node (the heuristic on purpose
+ignores the fact that we cannot schedule `part` of the workload as the main focus is really the proportions between
+resources requirements, not the absolute values).
 By sticking to that limit *(1/S * 100%)* the node shared resources such as: CPU, memory, memory
 bandwidth and L4 cache, should not be saturated.
 
@@ -49,12 +50,12 @@ As we see score of value *10* indicates that the workload does not fit PMEM node
 is a waste of space which could be used by another workload with better score.
 
 If a workload has score lower than 1, by putting it into equation, we get memory usage which is bigger than 100%.
-It can be interpreted that we could increase the PMEM node memory space still not experiencing resources saturation.
+It can be interpreted that we should increase the PMEM node memory space to experience resources saturation.
 
 Scores for our testing workloads
 ################################
 
-Below we provide a screenshot of additional Graphana dashboard provided by us for visualization of final and
+Below we provide a screenshot of Graphana dashboard provided by us for visualization of final and
 transitional results of the algorithm. For our testing workloads the score values are widely scattered.
 As a far best workload with *score=1.1* is considered *redis-memtier-big*.
 
@@ -71,7 +72,7 @@ For each workload the heuristic approximates (among others):
 - peak **working set size** (number of touched memory pages in a period of time).
 
 All this is calculated based on historical data (as default history window is set to 7 days).
-Please refer to `examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml`_.
+Please refer to `prometheus_rule.score.yaml <examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml>`_.
 
 Setting cut-off Score value
 ###########################
