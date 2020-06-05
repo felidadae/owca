@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     # Copy template
     copyfile(os.path.dirname(os.path.abspath(__file__)) +
-                 '/../monitoring/prometheus/prometheus_rule.score.yaml',
+             '/../monitoring/prometheus/prometheus_rule.score.yaml',
              config_name)
 
     # Replace
