@@ -10,15 +10,15 @@ spec:
           resources:
             requests:
               cpu: 4
-              memory: 90G
+              memory: 130G
             limits:
               cpu: 4
-              memory: 90G
+              memory: 130G
         - name: mutilate
           resources:
             requests:
-              cpu: 6
+              cpu: 4
               memory: 1G
             limits:
-              cpu: 6
+              cpu: 4
               memory: 1G
