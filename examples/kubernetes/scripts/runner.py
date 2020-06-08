@@ -464,7 +464,7 @@ def tune_stage(workloads: List[str], sleep_time: int = 25 * MINUTE):
 
     logging.debug("Running >>tuning<<")
     scale_down_all_workloads(wait_time=20)
-    switch_extender(OnOffState.Off)
+    # switch_extender(OnOffState.Off)
     taint_nodes_class(NodesClass._2LM)
     run_workloads(workloads_run_order, {workload: 1 for workload in workloads})
     sleep(sleep_time)
@@ -637,9 +637,9 @@ def experimentset_test(experiment_root_dir='results/__test__'):
         workloads_set=ClusterInfoLoader.get_instance().get_workloads())
     single_3stage_experiment(experiment_id=0,
                              workloads=workloads,
-                             wait_periods={WaitPeriod.SCALE_DOWN: 10,
-                                           WaitPeriod.STABILIZE: MINUTE},
-                             stages=[False, False, True],
+                             wait_periods={WaitPeriod.SCALE_DOWN: 60,
+                                           WaitPeriod.STABILIZE: 150 * MINUTE},
+                             stages=[True, False, False],
                              experiment_root_dir=experiment_root_dir)
 
 
@@ -664,6 +664,6 @@ if __name__ == "__main__":
     }
 
     # experimentset_test()
-    # tune_stage(ClusterInfoLoader.get_instance().get_workloads_names())
+    tune_stage(ClusterInfoLoader.get_instance().get_workloads_names())
     # experimentset_single_workload_at_once(experiment_root_dir='results/2020-05-13__stepping_single_workloads')
-    experimentset_main(iterations=20, configmap_regex_parameters=regexs_map, experiment_root_dir='results/2020-05-15__score2')
+    # experimentset_main(iterations=20, configmap_regex_parameters=regexs_map, experiment_root_dir='results/demo')

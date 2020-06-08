@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.6
 
 import os
+import math
 import statistics
 import requests
 import datetime
@@ -191,6 +192,21 @@ class Stat:
     _max: float
     _stdev: float
 
+    def merge_with_other(self, other, self_count: int, other_count: int):
+        if math.isnan(self._avg):
+            self._min = other._min
+            self._max = other._max
+            self._avg = other._avg
+            self._stdev = other._stdev
+        elif math.isnan(other._avg):
+            return
+        else:
+            self._min = min(self._min, other._min)
+            self._max = max(self._max, other._max)
+            self._avg = (self._avg * self_count + other._avg * other_count)/(self_count+other_count)
+            # cannot be calculated precisely, lose that value
+            self._stdev = float('NaN')
+
 
 @dataclass
 class WStat:
@@ -199,6 +215,11 @@ class WStat:
     latency: Stat
     throughput: Stat
     count: int
+
+    def merge_with_other(self, other: 'WStat'):
+        self.latency.merge_with_other(other.latency, self.count, other.count)
+        self.throughput.merge_with_other(other.throughput, self.count, other.count)
+        self.count += other.count
 
     def to_dict(self):
         return {
@@ -335,28 +356,25 @@ class StagesAnalyzer:
         return [nodename for nodename in self.stages[stage_index].nodes]
 
     def calculate_per_workload_wstats_per_stage(self, workloads: Iterable[str],
-                                                stage_index: int, filter_nodes: List[str]) -> Dict[str, WStat]:
+                                                stage_index: int, filterout_nodes: List[str]) -> Dict[str, WStat]:
         """Calculate WStat for all workloads in list for stage (stage_index). Takes data from all nodes."""
         workloads_wstats: Dict[str, WStat] = {}
         for workload in workloads:
-            # filter tasks of a given workload
             tasks = [task for task in self.stages[stage_index].tasks.values() if task.workload_name == workload]
-            # filter out tasks which were run on >>filter_nodes<<
-            tasks = [task for task in tasks if task.node not in filter_nodes]
+            tasks = [task for task in tasks if task.node not in filterout_nodes]
 
             # avg but from 12 sec for a single task
             throughputs_list = [task.get_throughput('avg') for task in tasks if task.get_throughput('avg') is not None]
             latencies_list =  [task.get_latency('avg') for task in tasks if task.get_latency('avg') is not None]
 
             if len(throughputs_list) == 0:
-                # TODO:  if len(throughputs_list) == 0 -> exception, len(workloads) != len(workloads_wstats)
-                # not having data at all ? - maybe inf?
-                exception_value = float('inf')  # 1
+                # @TODO should be leave inf? What are consequences
+                exception_value = float('NaN')  # 1
                 t_max, t_min, t_avg, t_stdev = [exception_value] * 4
                 l_max, l_min, l_avg, l_stdev = [exception_value] * 4
             elif len(throughputs_list) == 1:
                 t_max, t_min, t_avg, t_stdev = [throughputs_list[0], throughputs_list[0], throughputs_list[0], 0]
-                l_max, l_min, l_avg, l_stdev = [throughputs_list[0], throughputs_list[0], throughputs_list[0], 0]
+                l_max, l_min, l_avg, l_stdev = [latencies_list[0], latencies_list[0], latencies_list[0], 0]
             else:
                 t_max, t_min, t_avg, t_stdev = max(throughputs_list), min(throughputs_list), \
                                                statistics.mean(throughputs_list), statistics.stdev(throughputs_list)
@@ -371,40 +389,47 @@ class StagesAnalyzer:
     def get_stages_count(self):
         return self.stages_count
 
-    def aep_report(self, experiment_meta: ExperimentMeta, experiment_index: int):
-        """
-        Compare results from AEP to DRAM:
-        1) list all workloads which are run on AEP (Task.workload.name) in stage 3 (or 2)
-          a) for all this workloads read performance on DRAM in stage 1
-        2) for assertion and consistency we could also check how compare results in all stages
-        3) compare results which we got AEP vs DRAM separately for stage 2 and 3
-          a) for each workload:
-        """
-        # baseline results in stage0 on DRAM
+    def nodes_to_filterout_local(self, experiment_meta):
+        """Used in private lab"""
+        aep_nodes = ClusterInfoLoader.get_instance().get_aep_nodes()
+        nodes_to_filterout = [node for node in self.get_all_nodes_in_stage(experiment_meta.experiment_baseline_index)
+                              if node in aep_nodes or not 'node10' in node]
+        return nodes_to_filterout
+
+    def calc_baseline(self, experiment_meta: ExperimentMeta):
+        nodes_to_filterout = self.nodes_to_filterout_local(experiment_meta)
+        workloads_baseline = self.calculate_per_workload_wstats_per_stage(
+            workloads=self.get_all_workloads_in_stage(experiment_meta.experiment_baseline_index),
+            stage_index=experiment_meta.experiment_baseline_index,
+            filterout_nodes=nodes_to_filterout)
+        return workloads_baseline
+
+    def aep_report(self, experiment_meta: ExperimentMeta, experiment_index: int, workloads_baseline: Optional[Dict[str, WStat]]):
+        """If workloads_baseline not available use stage 0 as baseline"""
         for i in range(len(self.stages)):
             check = self.get_all_tasks_count_in_stage(0)
             assert check > 5
 
+        # Each workload aggregated statistics per stage
         workloads_wstats: List[Dict[str, WStat]] = []
+        # Each task (workload instance) statistics per stage, very raw data,
+        #  workloads_stats can be recreated from this (almost)
         tasks_summaries__per_stage: List[List[Dict]] = []
+        # Information about nodes states.
         node_summaries__per_stage: List[List[Dict]] = []
-        workloads_baseline: Dict[str, WStat] = None
 
-        aep_nodes = ClusterInfoLoader.get_instance().get_aep_nodes()
+        # Used in tasks_summaries for adding additional column whether task instance succeded or not.
+        # Currently uses workloads_wstats for that, by could also use some static data.
+        if workloads_baseline is None:
+            workloads_baseline = self.calc_baseline(experiment_meta)
 
+        nodes_to_filterout  = self.nodes_to_filterout_local(experiment_meta)
         for stage_index in range(0, self.get_stages_count()):
             workloads_wstat = self.calculate_per_workload_wstats_per_stage(
-                workloads=self.get_all_workloads_in_stage(stage_index), stage_index=stage_index, filter_nodes=aep_nodes)
+                workloads=self.get_all_workloads_in_stage(stage_index),
+                stage_index=stage_index,
+                filterout_nodes=nodes_to_filterout)
             workloads_wstats.append(workloads_wstat)
-
-        # Only take nodes node10*
-        # @TODO replace with more generic solution, like param in MetaExperiment
-        nodes_to_filter = [node for node in self.get_all_nodes_in_stage(experiment_meta.experiment_baseline_index)
-                           if node in aep_nodes or not node.startswith('node10')]
-        workloads_baseline = self.calculate_per_workload_wstats_per_stage(
-            workloads=self.get_all_workloads_in_stage(experiment_meta.experiment_baseline_index),
-            stage_index=experiment_meta.experiment_baseline_index,
-            filter_nodes=nodes_to_filter)
 
         for stage_index in range(0, self.get_stages_count()):
             tasks = self.get_all_tasks_in_stage_on_nodes(stage_index=stage_index, nodes=self.get_all_nodes_in_stage(stage_index))
@@ -418,6 +443,7 @@ class StagesAnalyzer:
             node_summaries__per_stage.append(nodes_summaries)
 
         # Transform to DataFrames keeping the same names
+        workloads_baseline: pd.DataFrame = WStat.to_dataframe(workloads_baseline.values())
         workloads_wstats: List[pd.DataFrame] = [WStat.to_dataframe(el.values()) for el in workloads_wstats]
         tasks_summaries__per_stage: List[pd.DataFrame] = [pd.DataFrame(el) for el in tasks_summaries__per_stage]
         node_summaries__per_stage: List[pd.DataFrame] = [pd.DataFrame(el) for el in node_summaries__per_stage]
@@ -432,6 +458,7 @@ class StagesAnalyzer:
             export_file_path=os.path.join(experiment_meta.data_path, 'runner_analyzer', 'results.txt'),
             utilization_file_path=os.path.join(experiment_meta.data_path, 'choosen_workloads_utilization.{}.txt'.format(experiment_index)),
             # ---
+            workloads_baseline=workloads_baseline,
             workloads_summaries=workloads_wstats,
             tasks_summaries=tasks_summaries__per_stage,
             node_summaries=node_summaries__per_stage)
@@ -456,6 +483,7 @@ class TxtStagesExporter:
     export_file_path: str
     utilization_file_path: str
 
+    workloads_baseline: pd.DataFrame
     workloads_summaries: List[pd.DataFrame]
     tasks_summaries: List[pd.DataFrame]
     node_summaries: List[pd.DataFrame]
@@ -545,6 +573,9 @@ class TxtStagesExporter:
         if not os.path.isdir(runner_analyzer_results_dir):
             os.mkdir(runner_analyzer_results_dir)
 
+        with pd.ExcelWriter(os.path.join(runner_analyzer_results_dir, 'total_10x_baseline.xlsx'.format(self.experiment_index))) as writer:
+            self.workloads_baseline.to_excel(writer, sheet_name='total_10x_baseline')
+
         with pd.ExcelWriter(os.path.join(runner_analyzer_results_dir, 'tasks_summaries_{}.xlsx'.format(self.experiment_index))) as writer:
             self.tasks_summaries[0].to_excel(writer, sheet_name='BASELINE')
             self.tasks_summaries[1].to_excel(writer, sheet_name='KUBERNETES_BASELINE')
@@ -581,7 +612,6 @@ class TxtStagesExporter:
         self.workloads_summaries[2].to_csv(os.path.join(runner_analyzer_results_dir,'workloads_summaries_{}_WCA-SCHEDULER.csv'.format(self.experiment_index)))
 
     def export_to_txt(self):
-        # import ipdb; ipdb.set_trace()
         logging.debug("Saving results to {}".format(self.export_file_path))
 
         runner_analyzer_results_dir = os.path.join(self.experiment_meta.data_path, 'runner_analyzer')
@@ -622,13 +652,9 @@ class TxtStagesExporter:
         else:
             self._fref.write("Utilization of resources: unknown\n")
 
-    def _baseline(self, title="BASELINE", stage_index=0):
+    def _baseline(self, title="COMMON BASELINE", stage_index=0):
         self._fref.write("***{}(stage_index={})***\n".format(title, stage_index))
-        self._fref.write(str(self.workloads_summaries[stage_index].to_string()))
-        self._fref.write('\n\n')
-        self._fref.write(str(self.node_summaries[stage_index].to_string()))
-        self._fref.write('\n\n')
-        self._fref.write(str(self.tasks_summaries[stage_index].to_string()))
+        self._fref.write(str(self.workloads_baseline.to_string()))
         self._fref.write('\n\n')
 
     def _aep_tasks(self):
@@ -823,27 +849,44 @@ def load_events_file(filename):
     return [(workloads, events) for workloads, events in zip(workloads_, events_)]
 
 
+def calculate_common_baseline(baselines):
+    common_baseline = {}
+    for baseline in baselines:
+        for workload_name, wstat in baseline.items():
+            if workload_name in common_baseline:
+                common_baseline[workload_name].merge_with_other(wstat)
+            else:
+                common_baseline[workload_name] = wstat
+    return common_baseline
+
+
 def analyze_3stage_experiment(experiment_meta: ExperimentMeta):
     logging.debug('Started work on {}'.format(experiment_meta.data_path))
     events_file = os.path.join(experiment_meta.data_path, 'events.txt')
     report_root_dir = os.path.join(experiment_meta.data_path, 'runner_analyzer')
 
-    # Loads data from event file created in runner stage.
+    stages_analyzer_list = []
     for i, (workloads, events) in enumerate(load_events_file(events_file)):
-        stages_analyzer = StagesAnalyzer(events, workloads)
-        if i == 0:
-            stages_analyzer.delete_report_files(report_root_dir)
+        # if i not in (7,10):
+        #     continue
+        stages_analyzer_list.append((i, StagesAnalyzer(events, workloads)))
 
+    if stages_analyzer_list:
+        stages_analyzer_list[0][1].delete_report_files(report_root_dir)
+
+    # calc baseline based on all data available, average
+    all_data_baseline = []
+    for _, stages_analyzer in stages_analyzer_list:
+        all_data_baseline.append(stages_analyzer.calc_baseline(experiment_meta))
+    workloads_baseline = calculate_common_baseline(all_data_baseline)
+
+    for i, stages_analyzer in stages_analyzer_list:
         try:
-            stages_analyzer.aep_report(experiment_meta, experiment_index=i)
+            stages_analyzer.aep_report(experiment_meta, experiment_index=i,
+                                       workloads_baseline=workloads_baseline)
         except Exception:
             logging.error("Skipping the whole 3stage subexperiment number {} due to exception!".format(i))
-            # # @TODO remove raise
             raise
-            # continue
-
-        # logging.error("@TODO remove this break")
-        # break
 
 
 if __name__ == "__main__":
@@ -1139,6 +1182,17 @@ if __name__ == "__main__":
             description='',
             params={},
             changelog='',
+            bugs='',
+            experiment_type=ExperimentType.ThreeStageStandardRun,
+            experiment_baseline_index=0,
+            commit_hash='unknown', ),
+
+        ExperimentMeta(
+            data_path='results/2020-05-15__score2',
+            title='Score2',
+            description='',
+            params={},
+            changelog='return to old method of calculating score',
             bugs='',
             experiment_type=ExperimentType.ThreeStageStandardRun,
             experiment_baseline_index=0,
