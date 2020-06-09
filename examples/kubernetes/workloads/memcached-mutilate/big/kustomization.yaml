@@ -9,10 +9,11 @@ configMapGenerator:
 - name: mutilate
   behavior: merge
   literals:
-  - threads=6
-  - records=1000000  # 1M
-  - value=120000     # 120kB * 1M  <= 100GB
-  - qps=20000        # 2M
+  - threads=3
+  - load_records=1500000
+  - records=1500000  # 1.5M
+  - value=80000      # 80kB * 1.5M  <= 120GB
+  - qps=15000        # 15k
 
 patchesStrategicMerge:
   - resources.yaml
