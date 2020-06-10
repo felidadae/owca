@@ -11,9 +11,9 @@ configMapGenerator:
   literals:
   - threads=3
   - load_records=1500000
-  - records=1500000  # 1.5M
+  - records=1500000   # 1.5M
   - value=80000      # 80kB * 1.5M  <= 120GB
-  - qps=15000        # 15k
+  - qps=13000        # 13k
 
 patchesStrategicMerge:
   - resources.yaml
