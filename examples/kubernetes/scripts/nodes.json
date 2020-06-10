@@ -10,6 +10,7 @@
     "node105": {"cpu": 72, "mem": 201, "membw_read": 256, "membw_write": 256, "wss": 201},
 
     "node200": {"cpu": 96, "mem": 201, "membw_read": 256, "membw_write": 256, "wss": 201},
+    "node201": {"cpu": 96, "mem": 201, "membw_read": 256, "membw_write": 256, "wss": 201},
     "node202": {"cpu": 96, "mem": 201, "membw_read": 256, "membw_write": 256, "wss": 201},
     "node203": {"cpu": 96, "mem": 201, "membw_read": 256, "membw_write": 256, "wss": 201}
 }

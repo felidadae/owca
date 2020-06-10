@@ -1,23 +1,14 @@
 {
-	"stress-stream-small":
-		{"mem": 7, "cpu": 2, "scale_weights": 1},
-	"stress-stream-medium":
-		{"mem": 13, "cpu": 2, "scale_weights": 1},
+	"stress-stream-small":        {"mem": 7, "cpu": 2, "scale_weights": 1},
+	"stress-stream-medium":       {"mem": 13, "cpu": 2, "scale_weights": 1},
 
-	"sysbench-memory-medium":
-		{"mem": 4, "cpu": 4, "scale_weights": 1},
-	"sysbench-memory-small":
-		{"mem": 2, "cpu": 2, ""scale_weights": 1},
+	"sysbench-memory-medium":     {"mem": 4, "cpu": 4, "scale_weights": 1},
+	"sysbench-memory-small":      {"mem": 2, "cpu": 2, "scale_weights": 1},
 
-	"redis-memtier-medium":
-		{"mem": 11, "cpu": 4, "scale_weights": 1},
-	"redis-memtier-big":
-		{"mem": 70, "cpu": 4, "scale_weights": 1},
-	"redis-memtier-big-wss":
-		{"mem": 70, "cpu": 4, "scale_weights": 1},
+	"redis-memtier-medium":       {"mem": 11, "cpu": 4, "scale_weights": 1},
+	"redis-memtier-big":          {"mem": 100, "cpu": 4, "scale_weights": 1},
+	"redis-memtier-big-wss":      {"mem": 70, "cpu": 4, "scale_weights": 1},
 
-	"memcached-mutilate-big":
-		{"mem": 141, "cpu": 7, "scale_weights": 1},
-	"memcached-mutilate-big-wss":
-		{"mem": 91, "cpu": 10, "scale_weights": 1}
+	"memcached-mutilate-big":     {"mem": 141, "cpu": 7, "scale_weights": 1},
+	"memcached-mutilate-big-wss": {"mem": 91, "cpu": 10, "scale_weights": 1}
 }
