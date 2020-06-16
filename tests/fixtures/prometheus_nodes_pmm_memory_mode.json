@@ -1,1 +1,1 @@
-{"status":"success","data":{"resultType":"vector","result":[{"metric":{"nodename":"node101"},"value":[1585298717.026,"1623497637888"]}]}}
+{"status":"success","data":{"resultType":"vector","result":[{"metric":{"node":"node101", "nodename":"node101"},"value":[1585298717.026,"1623497637888"]}]}}

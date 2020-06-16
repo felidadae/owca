@@ -32,23 +32,30 @@ log = logging.getLogger(__name__)
 class Queries:
     """ For defaults to work, it is required to upload prometheus rules >>score<<, otherwise
         define proper queries in the configuration file of wca-scheduler
-        overwriting this values. """
+        overwriting this values.
 
-    MEMBW_CAPACITY_READ: str = 'node_capacity{dim="membw_flat"}'
-    MEMBW_CAPACITY_WRITE: str = 'node_capacity{dim="membw_flat"} * 0'
-    NODE_CAPACITY_MEM_WSS: str = 'node_capacity{dim="wss"}'
-    NODE_CAPACITY_DRAM_MEMBW: str = 'platform_dimm_speed_bytes_per_second'
-
-    NODES_PMM_MEMORY_MODE: str = 'sum(platform_mem_mode_size_bytes) by (nodename) != 0'
-    NODES_DRAM_HIT_RATIO: str = 'platform_dram_hit_ratio'
+        ResourceType.CPU and ResourceType.MEM are not present in NODE_CAPACITY_RESOURCES_QUERY_MAP
+        dict as this special basic types of resources are fetched from kubeabi.
+    """
 
     APP_REQUESTED_RESOURCES_QUERY_MAP: Dict[ResourceType, str] = field(default_factory=lambda: {
-            ResourceType.CPU: 'app_cpu',
-            ResourceType.MEM: 'app_mem',
-            ResourceType.MEMBW_READ: 'app_mbw_flat',
-            ResourceType.MEMBW_WRITE: 'app_mbw_flat * 0',
-            ResourceType.WSS: 'app_wss',
+        ResourceType.CPU: 'app_cpu',
+        ResourceType.MEM: 'app_mem',
+        ResourceType.MEMBW_READ: 'app_mbw_read',
+        ResourceType.MEMBW_WRITE: 'app_mbw_write',
+        ResourceType.MEMBW_FLAT: 'app_mbw_flat',
+        ResourceType.WSS: 'app_wss',
     })
+    NODE_CAPACITY_RESOURCES_QUERY_MAP: Dict[ResourceType, str] = field(default_factory=lambda: {
+        # CPU and MEM are fetched directly from kubeapi.
+        ResourceType.MEMBW_READ: 'node_capacity{dim="mbw_read"}',
+        ResourceType.MEMBW_WRITE: 'node_capacity{dim="mbw_write"}',
+        ResourceType.MEMBW_FLAT: 'node_capacity{dim="mbw_flat"}',
+        ResourceType.WSS: 'node_capacity{dim="wss"}',
+    })
+
+    NODES_PMM_MEMORY_MODE: str = 'sum(platform_mem_mode_size_bytes) by (node) != 0'
+    NODES_DRAM_HIT_RATIO: str = 'platform_dram_hit_ratio'
 
 
 def _convert_k8s_memory_capacity(memory: str) -> float:
@@ -62,7 +69,7 @@ class MissingBasicResources(Exception):
     pass
 
 
-class WSSWithoutMemoryBandwidth(Exception):
+class MissingQueryForResource(Exception):
     pass
 
 
@@ -77,7 +84,7 @@ class ClusterDataProvider(DataProvider):
         query_result = self.prometheus.do_query(self.queries.NODES_PMM_MEMORY_MODE)
         nodes_with_pmm = []
         for row in query_result:
-            nodes_with_pmm.append(row['metric']['nodename'])
+            nodes_with_pmm.append(row['metric']['node'])
         return nodes_with_pmm
 
     def _get_nodes_capacities_from_query(
@@ -88,7 +95,7 @@ class ClusterDataProvider(DataProvider):
 
         query_result = self.prometheus.do_query(query)
         for row in query_result:
-            node = row['metric']['nodename']
+            node = row['metric']['node']
             if node in nodes:
                 value = float(row['value'][1])
                 for resource in resources:
@@ -98,59 +105,9 @@ class ClusterDataProvider(DataProvider):
 
         return node_capacities
 
-    def _get_membw_and_wss_node_capacities(
-            self, nodes: List[NodeName], memory_node_capacities: NodeCapacities,
-            gather_wss: bool) -> NodeCapacities:
-
-        nodes_with_pmm = self.get_pmem_nodes()
-        # Every other node should be DRAM only.
-        nodes_with_dram = list(nodes - nodes_with_pmm)
-
-        node_capacities = {node: {} for node in nodes}
-
-        # Read Memory Bandwidth from PMem nodes.
-        if len(nodes_with_pmm) > 0:
-
-            membw_read_capacities = self._get_nodes_capacities_from_query(
-                    nodes_with_pmm, [ResourceType.MEMBW_READ],
-                    self.queries.MEMBW_CAPACITY_READ)
-
-            membw_write_capacities = self._get_nodes_capacities_from_query(
-                    nodes_with_pmm, [ResourceType.MEMBW_WRITE],
-                    self.queries.MEMBW_CAPACITY_WRITE)
-
-            for node in nodes_with_pmm:
-                node_capacities[node] = {
-                    **membw_read_capacities[node], **membw_write_capacities[node]}
-
-            if gather_wss:
-                wss_capacities = self._get_nodes_capacities_from_query(
-                        nodes_with_pmm, [ResourceType.WSS],
-                        self.queries.NODE_CAPACITY_MEM_WSS)
-
-                for node in nodes_with_pmm:
-                    node_capacities[node] = {
-                        **node_capacities[node], **wss_capacities[node]}
-
-        # Read Memory Bandwidth from PMem nodes.
-        if len(nodes_with_dram) > 0:
-            membw_dram_capacities = self._get_nodes_capacities_from_query(
-                nodes_with_dram, [ResourceType.MEMBW_READ, ResourceType.MEMBW_WRITE],
-                self.queries.NODE_CAPACITY_DRAM_MEMBW)
-
-            for node in nodes_with_dram:
-                node_capacities[node] = {**node_capacities[node], **membw_dram_capacities[node]}
-
-            if gather_wss:
-                for node in nodes_with_dram:
-                    node_capacities[node][ResourceType.WSS] = memory_node_capacities[node]
-
-        return node_capacities
-
     def get_nodes_capacities(self, resources: Iterable[ResourceType]) -> Dict[NodeName, Resources]:
-        # Check if basic resources are needed. If not, something is wrong.
         if ResourceType.CPU not in resources or ResourceType.MEM not in resources:
-            raise MissingBasicResources
+            raise MissingBasicResources('Resources (CPU, MEM) are required.')
 
         # CPU and Memory capacity source.
         kubeapi_nodes_data = list(self.kubeapi.request_kubeapi('/api/v1/nodes')['items'])
@@ -166,23 +123,26 @@ class ClusterDataProvider(DataProvider):
                 if 'node-role.kubernetes.io/master' not in node['metadata']['labels']
         }
 
-        nodes = node_capacities.keys()
+        nodes = list(node_capacities.keys())
 
-        if ResourceType.MEMBW_READ in resources and ResourceType.MEMBW_WRITE in resources:
-            calculate_wss = ResourceType.WSS in resources
-            memory_node_capacities = {
-                    node: node_capacities[node][ResourceType.MEM]
-                    for node in nodes}
-            membw_and_wss_node_capacities = self._get_membw_and_wss_node_capacities(
-                    nodes, memory_node_capacities, calculate_wss)
+        def update_subdicts(main, sub):
+            for key in main:
+                main[key] = {**main[key], **sub[key]}
+            return None
 
-            node_capacities = {
-                node: {**node_capacities[node], **membw_and_wss_node_capacities[node]}
-                for node in nodes}
+        for resource in resources:
+            if resource in (ResourceType.CPU, ResourceType.MEM):
+                log.debug('Skipping resource {} as pulled '
+                          'from kubeapi data source'.format(resource))
+                continue
+            elif resource not in self.queries.NODE_CAPACITY_RESOURCES_QUERY_MAP:
+                raise MissingQueryForResource('Missing query for'
+                                              ' node capacity for resource {}'.format(resource))
 
-        elif ResourceType.WSS in resources:
-            raise WSSWithoutMemoryBandwidth(
-                    'Cannot calculate WSS without MEMBW READS and WRITES!')
+            nodes_resource_capacity = self._get_nodes_capacities_from_query(
+                nodes, [resource],
+                self.queries.NODE_CAPACITY_RESOURCES_QUERY_MAP[resource])
+            update_subdicts(node_capacities, nodes_resource_capacity)
 
         log.debug('Node capacities: %r' % node_capacities)
 
@@ -253,6 +213,6 @@ class ClusterDataProvider(DataProvider):
         query_result = self.prometheus.do_query(self.queries.NODES_DRAM_HIT_RATIO)
         dram_hit_ratio_per_node = {}
         for row in query_result:
-            dram_hit_ratio_per_node[row['metric']['nodename']] = float(row['value'][1])
+            dram_hit_ratio_per_node[row['metric']['node']] = float(row['value'][1])
 
         return dram_hit_ratio_per_node

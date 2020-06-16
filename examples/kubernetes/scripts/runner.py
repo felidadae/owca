@@ -583,7 +583,7 @@ def experimentset_main(
             modify_configmap(configmap_regex_parameters.get(i), i, experiment_root_dir)
 
         iterations, workloads, utilization = random_with_total_utilization_specified(
-            cpu_limit=(0.25, 0.46), mem_limit=(0.81, 0.9),  # total cluster cpu/mem usage
+            cpu_limit=(0.22, 0.46), mem_limit=(0.75, 0.9),  # total cluster cpu/mem usage
             nodes_capacities=ClusterInfoLoader.get_instance().get_nodes(),
             workloads_set=ClusterInfoLoader.get_instance().get_workloads())
         with open(
@@ -673,12 +673,12 @@ if __name__ == "__main__":
     # }
 
     regexs_map = {
-        0: [(r'score_target: -\d.\d', 'score_target: -1.0'), ],
-        10: [(r'score_target: -\d.\d', 'score_target: -2.5'), ],
+        # 0: [(r'score_target: -\d.\d', 'score_target: -1.0'), ],
+        # 10: [(r'score_target: -\d.\d', 'score_target: -2.5'), ],
     }
 
     # experimentset_test()
     # tune_stage(ClusterInfoLoader.get_instance().get_workloads_names())
     # experimentset_single_workload_at_once(experiment_root_dir='results/2020-05-13__stepping_single_workloads')
-    experimentset_main(iterations=20, configmap_regex_parameters=regexs_map,
-                       experiment_root_dir='results/2020-05-15__score2')
+    experimentset_main(iterations=10, configmap_regex_parameters=regexs_map,
+                       experiment_root_dir='results/final-demo-2lm')

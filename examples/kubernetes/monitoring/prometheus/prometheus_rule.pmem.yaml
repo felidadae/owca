@@ -1,0 +1,52 @@
+# Rules needed for calculating score (prometheus_rule.score.yaml) if on the cluster there is no
+# PMEM nodes. Adds virtual PMEM node.
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    role: prometheus-rules
+  name: prometheus-wca-pmem
+  namespace: prometheus
+spec:
+  groups:
+  - name: pmem
+    rules:
+    # ======================== example node pmem ===============================
+    # Xeon Gold 6230R, 26 core;
+    # 2-2-1, 8x128GB, 1T; 192 DRAM;
+    # wss 192 * 0.3 = 57.6;
+    # mbw_read 54.4, mbw_write 14.8;
+    - record: node_capacity_unsafe
+      expr: '104'
+      labels:
+        dim: cpu
+        node: 'virtual_node_pmem'
+    - record: node_capacity_unsafe
+      expr: '1024'
+      labels:
+        dim: mem
+        node: 'virtual_node_pmem'
+    - record: node_capacity_unsafe
+      expr: '58'
+      labels:
+        dim: wss
+        node: 'virtual_node_pmem'
+    - record: node_capacity_unsafe
+      expr: '54'
+      labels:
+        dim: mbw_flat
+        node: 'virtual_node_pmem'
+
+    - record: platform_mem_mode_size_bytes
+      expr: '1085958258688'
+      labels:
+        node: 'virtual_node_pmem'
+    - record: platform_nvdimm_write_bandwidth_bytes_per_second
+      expr: '14800000000'
+      labels:
+        node: 'virtual_node_pmem'
+    - record: platform_nvdimm_read_bandwidth_bytes_per_second
+      expr: '54400000000'
+      labels:
+        node: 'virtual_node_pmem'

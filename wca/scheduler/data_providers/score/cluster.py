@@ -30,5 +30,5 @@ class ClusterScoreDataProvider(ClusterDataProvider, ScoreDataProvider):
 
     def get_nodes_type(self) -> NodesType:
         query_result = self.prometheus.do_query(self.node_type_query, use_time=True)
-        return {row['metric']['nodename']: row['metric']['nodetype']
+        return {row['metric']['node']: row['metric']['nodetype']
                 for row in query_result}

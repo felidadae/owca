@@ -18,7 +18,7 @@ import pytest
 from tests.testing import create_json_fixture_mock
 from wca.scheduler.data_providers.cluster_data_provider import (
         ClusterDataProvider, MissingBasicResources,
-        Queries, WSSWithoutMemoryBandwidth)
+        Queries)
 from wca.scheduler.kubeapi import Kubeapi
 from wca.prometheus import Prometheus
 from wca.scheduler.types import ResourceType
@@ -54,15 +54,12 @@ def do_query_side_effect(*args):
 
     if args[0] == TEST_QUERIES.NODES_PMM_MEMORY_MODE:
         return create_json_fixture_mock('prometheus_nodes_pmm_memory_mode').json()['data']['result']
-    elif args[0] == TEST_QUERIES.MEMBW_CAPACITY_READ:
+    elif args[0] == TEST_QUERIES.NODE_CAPACITY_RESOURCES_QUERY_MAP[ResourceType.MEMBW_READ]:
         return create_json_fixture_mock('prometheus_membw_capacity_read').json()['data']['result']
-    elif args[0] == TEST_QUERIES.MEMBW_CAPACITY_WRITE:
+    elif args[0] == TEST_QUERIES.NODE_CAPACITY_RESOURCES_QUERY_MAP[ResourceType.MEMBW_WRITE]:
         return create_json_fixture_mock('prometheus_membw_capacity_write').json()['data']['result']
-    elif args[0] == TEST_QUERIES.NODE_CAPACITY_MEM_WSS:
+    elif args[0] == TEST_QUERIES.NODE_CAPACITY_RESOURCES_QUERY_MAP[ResourceType.WSS]:
         return create_json_fixture_mock('prometheus_node_capacity_mem_wss').json()['data']['result']
-    elif args[0] == TEST_QUERIES.NODE_CAPACITY_DRAM_MEMBW:
-        return create_json_fixture_mock(
-                'prometheus_node_capacity_dram_membw').json()['data']['result']
     elif args[0] == TEST_QUERIES.APP_REQUESTED_RESOURCES_QUERY_MAP[ResourceType.CPU]:
         return create_json_fixture_mock(
                 'prometheus_app_requested_cpu').json()['data']['result']
@@ -96,18 +93,6 @@ def test_get_nodes_capacities_raise_exception_no_cpu_or_mem(resources):
         cluster_dp.get_nodes_capacities(resources)
 
 
-@pytest.mark.parametrize('resources', [
-    [ResourceType.CPU, ResourceType.MEM, ResourceType.WSS],
-    [ResourceType.CPU, ResourceType.MEM, ResourceType.WSS, ResourceType.MEMBW_READ],
-    [ResourceType.CPU, ResourceType.MEM, ResourceType.WSS, ResourceType.MEMBW_WRITE],
-    ])
-def test_get_nodes_capacities_raise_exception_wss_without_mb(resources):
-    cluster_dp = get_mocked_cluster_data_provider()
-
-    with pytest.raises(WSSWithoutMemoryBandwidth):
-        cluster_dp.get_nodes_capacities(resources)
-
-
 CLUSTER_CPU_MEM_CAPACITIES = {
     'node101': {'cpu': 72.0, 'mem': 1596},
     'node102': {'cpu': 72.0, 'mem': 404},
@@ -128,13 +113,13 @@ CLUSTER_CPU_MEM_CAPACITIES = {
 CLUSTER_MEMBW_CAPACITIES = {
     'node101': {'membw_read': 255999960000, 'membw_write': 255999960000},
     'node102': {'membw_read': 255999960000, 'membw_write': 255999960000},
-    'node103': {'membw_read': 255999960000, 'membw_write': 255999960000},
-    'node104': {'membw_read': 255999960000, 'membw_write': 255999960000},
-    'node105': {'membw_read': 255999960000, 'membw_write': 255999960000},
-    'node200': {'membw_read': 255999960000, 'membw_write': 255999960000},
+    'node103': {},
+    'node104': {},
+    'node105': {},
+    'node200': {},
     'node201': {},
-    'node202': {'membw_read': 255999960000, 'membw_write': 255999960000},
-    'node203': {'membw_read': 255999960000, 'membw_write': 255999960000},
+    'node202': {},
+    'node203': {},
     'node37': {'membw_read': 54400000000, 'membw_write': 14800000000},
     'node38': {'membw_read': 255999960000, 'membw_write': 255999960000},
     'node39': {'membw_read': 255999960000, 'membw_write': 255999960000},
@@ -215,47 +200,46 @@ def test_get_apps_counts(apps_count):
 
 
 APP_REQUESTED_CPU_MEM = {
-     'memcached-mutilate-big-wss': {'cpu': 10, 'mem': 91000000000},
-     'memcached-mutilate-medium': {'cpu': 10, 'mem': 51000000000},
-     'redis-memtier-big': {'cpu': 3, 'mem': 70000000000},
-     'redis-memtier-big-wss': {'cpu': 3, 'mem': 75000000000},
-     'redis-memtier-medium': {'cpu': 3, 'mem': 11000000000},
-     'redis-memtier-small': {'cpu': 3, 'mem': 10000000000},
-     'specjbb-preset-medium': {'cpu': 9, 'mem': 26000000000},
-     'sysbench-memory-big': {'cpu': 4, 'mem': 10000000000},
-     'sysbench-memory-medium': {'cpu': 3, 'mem': 4000000000},
-     'sysbench-memory-small': {'cpu': 2, 'mem': 2000000000}
+    'memcached-mutilate-big-wss': {'cpu': 10, 'mem': 91000000000},
+    'memcached-mutilate-medium': {'cpu': 10, 'mem': 51000000000},
+    'redis-memtier-big': {'cpu': 3, 'mem': 70000000000},
+    'redis-memtier-big-wss': {'cpu': 3, 'mem': 75000000000},
+    'redis-memtier-medium': {'cpu': 3, 'mem': 11000000000},
+    'redis-memtier-small': {'cpu': 3, 'mem': 10000000000},
+    'specjbb-preset-medium': {'cpu': 9, 'mem': 26000000000},
+    'sysbench-memory-big': {'cpu': 4, 'mem': 10000000000},
+    'sysbench-memory-medium': {'cpu': 3, 'mem': 4000000000},
+    'sysbench-memory-small': {'cpu': 2, 'mem': 2000000000}
 }
 
 
 APP_REQUESTED_MEMBW = {
-        'memcached-mutilate-big-wss': {'membw_read': 2622597731,
-                                       'membw_write': 2805136872},
-        'memcached-mutilate-medium': {'membw_read': 2839845719, 'membw_write': 2634252554},
-        'redis-memtier-big': {'membw_read': 1627937868, 'membw_write': 1085064491},
-        'redis-memtier-big-wss': {'membw_read': 1980646146, 'membw_write': 3163513620},
-        'redis-memtier-medium': {'membw_read': 1591126817, 'membw_write': 1049019197},
-        'redis-memtier-small': {'membw_read': 1393914170, 'membw_write': 1039516290},
-        'specjbb-preset-medium': {'membw_read': 3411658124, 'membw_write': 1192782848},
-        'sysbench-memory-big': {'membw_read': 115604853, 'membw_write': 14738247436},
-        'sysbench-memory-medium': {'membw_read': 35819087, 'membw_write': 10940491266},
-        'sysbench-memory-small': {'membw_read': 19041364, 'membw_write': 5890534725}
+    'memcached-mutilate-big-wss': {'membw_read': 2622597731, 'membw_write': 2805136872},
+    'memcached-mutilate-medium': {'membw_read': 2839845719, 'membw_write': 2634252554},
+    'redis-memtier-big': {'membw_read': 1627937868, 'membw_write': 1085064491},
+    'redis-memtier-big-wss': {'membw_read': 1980646146, 'membw_write': 3163513620},
+    'redis-memtier-medium': {'membw_read': 1591126817, 'membw_write': 1049019197},
+    'redis-memtier-small': {'membw_read': 1393914170, 'membw_write': 1039516290},
+    'specjbb-preset-medium': {'membw_read': 3411658124, 'membw_write': 1192782848},
+    'sysbench-memory-big': {'membw_read': 115604853, 'membw_write': 14738247436},
+    'sysbench-memory-medium': {'membw_read': 35819087, 'membw_write': 10940491266},
+    'sysbench-memory-small': {'membw_read': 19041364, 'membw_write': 5890534725}
 }
 
 APP_REQUESTED_CPU_MEM_MEMBW = {app: {**APP_REQUESTED_CPU_MEM[app], **APP_REQUESTED_MEMBW[app]}
                                for app in APP_REQUESTED_CPU_MEM}
 
 APP_REQUESTED_WSS = {
-        'memcached-mutilate-big-wss': {'wss': 10686448000},
-        'memcached-mutilate-medium': {'wss': 7230696000},
-        'redis-memtier-big': {'wss': 3525264000},
-        'redis-memtier-big-wss': {'wss': 4841892000},
-        'redis-memtier-medium': {'wss': 2503720000},
-        'redis-memtier-small': {'wss': 1967084000},
-        'specjbb-preset-medium': {'wss': 12415120000},
-        'sysbench-memory-big': {'wss': 8396076000},
-        'sysbench-memory-medium': {'wss': 2104676000},
-        'sysbench-memory-small': {'wss': 1056096000}
+    'memcached-mutilate-big-wss': {'wss': 10686448000},
+    'memcached-mutilate-medium': {'wss': 7230696000},
+    'redis-memtier-big': {'wss': 3525264000},
+    'redis-memtier-big-wss': {'wss': 4841892000},
+    'redis-memtier-medium': {'wss': 2503720000},
+    'redis-memtier-small': {'wss': 1967084000},
+    'specjbb-preset-medium': {'wss': 12415120000},
+    'sysbench-memory-big': {'wss': 8396076000},
+    'sysbench-memory-medium': {'wss': 2104676000},
+    'sysbench-memory-small': {'wss': 1056096000}
 }
 
 APP_REQUESTED_ALL_RESOURCES = {app: {**APP_REQUESTED_CPU_MEM_MEMBW[app], **APP_REQUESTED_WSS[app]}

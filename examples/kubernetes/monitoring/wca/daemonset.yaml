@@ -51,7 +51,9 @@ spec:
             mountPath: /etc/wca/
           - name: proc
             mountPath: /proc
-        # Use default entrypoint that is different for 
+          - name: devices
+            mountPath: /sys/devices
+        # Use default entrypoint that is different for
         # devel and standalone based images.
         # command:
         #   - /usr/bin/wca.pex
@@ -105,6 +107,9 @@ spec:
         - name: dev-cpu
           hostPath:
             path: /dev/cpu
+        - name: devices
+          hostPath:
+            path: /sys/devices
 
         # Paths for nodeexporter to collect metrics
         - name: proc

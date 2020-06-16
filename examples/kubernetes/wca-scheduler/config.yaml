@@ -1,6 +1,8 @@
 loggers:
+  wca: DEBUG
   wca.scheduler.server: INFO
   wca.scheduler.algorithms: TRACE
+  wca.scheduler.data_providers: DEBUG
 
 kubeapi: &kubeapi !Kubeapi
   host: !Env KUBERNETES_SERVICE_HOST
@@ -11,30 +13,20 @@ algorithm: !Score
   dimensions:
     - mem
     - cpu
-    - membw_read
-    - membw_write
+    - membw_flat
     - wss
   data_provider: !ClusterScoreDataProvider
     kubeapi: *kubeapi
     prometheus: !Prometheus
-      # Note: our internal cluster address.
       host: http://100.64.176.36
       port: 30900
       timeout: 5.0
-
-      # Note: set for internal usage for repeatability of the results.
-      time: "1589559381"  # Date: 2020-05-15 16:16:21
-
-    # Note: as currently we are 'flattening' membw write/read in prometheus score rules,
-    #   we set to mbw_read the flat value, and to mbw_write 0 (we need to multiply by flat value to keep the needed
-    #   labels)
     queries: !Queries
       APP_REQUESTED_RESOURCES_QUERY_MAP:
-            cpu: 'app_cpu'
-            mem: 'app_mem'
-            membw_read: 'app_mbw_flat'
-            membw_write: 'app_mbw_flat * 0'
-            wss: 'app_wss'
-      MEMBW_CAPACITY_READ: 'node_capacity{dim="membw_flat"}'
-      MEMBW_CAPACITY_WRITE: 'node_capacity{dim="membw_flat"} * 0'
-      NODE_CAPACITY_MEM_WSS: 'node_capacity{dim="wss"}'
+        cpu: 'app_req{dim="cpu"}'
+        mem: 'app_req{dim="mem"}'
+        membw_flat: 'app_req{dim="mbw_flat"}'
+        wss: 'app_req{dim="wss"}'
+      NODE_CAPACITY_RESOURCES_QUERY_MAP:
+        membw_flat: 'node_capacity{dim="mbw_flat"}'
+        wss: 'node_capacity{dim="wss"}'
