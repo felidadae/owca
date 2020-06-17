@@ -235,7 +235,7 @@ Limitations
 There are few limitations of our solution, which depending on usage can constitute a problem:
 
 - no support for **versions** of statefulset/deployment, which means, that a statefulset/deployment is considered as
-the same workload as long as the **name** of the statefulset/deployment matches.
+    the same workload as long as the **name** of the statefulset/deployment matches.
 - requirements of some workload can be overestimated,
-e.g. if workload is wrongly configured and keeps restarting after a short period of time
+    e.g. if workload is wrongly configured and keeps restarting after a short period of time
 - we support only workloads with defined CPU/MEM requirements.
