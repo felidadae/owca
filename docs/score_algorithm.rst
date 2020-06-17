@@ -4,60 +4,68 @@ Score algorithm overview
 
 We constructed a heuristic for automatic assessment of how well a workload match a node with
 Intel PMEM memory installed ran in 2LM mode. The heuristic is trying to reach two goals:
-1) use as much of memory as possible on PMEM nodes 2) minimize a chance of worsening workloads performance
-(comparing to DRAM). The 2) is approached with idea that performance can be degraded mostly when any of: memory bandwidth,
-L4 cache (in 2LM mode DRAM runs as a next level cache) shared resources are saturated on a node.
 
-*The heuristic assigns to each workload a single positive rational number*, thus creating a sorted list, if
-taking into consideration all workloads. That single number, we call a workload's **score**.
+- use as much of memory as possible on PMEM nodes
+- minimize a chance of worsening workloads performance (comparing to DRAM).
+
+The second is approached with idea that performance can be degraded mostly when any of:
+
+- memory bandwidth,
+- L4 cache (in 2LM mode DRAM runs as a next level cache)
+
+is saturated on a node.
+
+*The heuristic assigns to each workload a single positive rational number*, thus creating a preference workloads list.
+That single number, we call a workload's **score**.
 **Lower** the number, **better** a workload fits the PMEM node according to our heuristic.
-The value of score does not depends on different workloads, but only on workload innate features and
-resources capacity of target PMEM node.
+The value of score depends only on workload innate features and resources capacity of target PMEM node.
 
-But what the algorithm considers a **workload**? As a workload the solution treats a Kubernetes
-**statefulset** or a **deployment**. All pods of a statefulset/deployment are treated as instances
+But what the algorithm considers a **workload**? The solution treats a Kubernetes
+**statefulset** or a **deployment** as a workload. All pods of a statefulset/deployment are treated as instances
 of the same workload.
 
 The algorithm is implemented as a set of **Prometheus rules**. Thanks to that, it can be easily visualized,
 simply understood and tweaked by a cluster operator.
 
-
+<
 Score value interpretation
 ##########################
 
 Nice feature of the algorithms is that the score value has intuitive interpretation, which is explained below.
 
-Having a workload with score of value *S=score(workload)*, by scheduling only instances of that workload to a PMEM node we
-should according to the heuristic maximally use **1/S * 100%** capacity of memory of that node (the heuristic on purpose
-ignores the fact that we cannot schedule `part` of the workload as the main focus is really the proportions between
-resources requirements, not the absolute values).
-By sticking to that limit *(1/S * 100%)* the node shared resources such as: CPU, memory, memory
+Let's assume we have workload A with score *S=score(workload=A)*.
+When scheduling only that workload on PMEM node we should **maximally** use **1/S * 100%** capacity of memory of that node.
+
+By sticking to **that upper bound of memory usage** *1/S * 100%* the node other resources such as: CPU, memory, memory
 bandwidth and L4 cache, should not be saturated.
 
-For example, if *S=score(workload_A)=2* is assigned to a workload *A*, it means that by scheduling
-only that workload to a PMEM node, we can maximally use *50%* (0.5*100%) of memory of that node
-not experiencing expected by heuristic shared resource saturation.
+For example, if *S=score(workload=A)=2* is assigned to a workload *A*, it means that by scheduling
+only that workload to a PMEM node, we can maximally use *50%* (0.5*100%) of memory.
+By doing that we should not cause saturation of other resources on the node.
 
 .. csv-table::
 
-    "Score", "PMEM Memory max usage"
+    "Score", "PMEM upper bound of memory usage"<
+    "0.5", "200%"
+    "0.75", "133%"
     "1", "100%"
-    "1.5", "75%"
+    "1.5", "67%"
     "2", "50%"
     "3", "33%"
     "10", "10%"
 
-As we see score of value *10* indicates that the workload does not fit PMEM node at all – scheduling it into PMEM
+As we see score of value *10* indicates that the workload does not fit PMEM node at all – scheduling it on a PMEM node
 is a waste of space which could be used by another workload with better score.
 
-If a workload has score lower than 1, by putting it into equation, we get upper bound of memory usage which
-is bigger than 100% - thus having bigger margin of safety for not saturating resources on the node.
-That situation is very desired.
+If a workload has score lower than 1, then equation **1/S * 100%** gives number larger than 100% (e.g. S=0.5 --> 200%).
+It is a **desired** situation. Having workloads with **smaller score than 1** we **increase safety margin**
+for shared resources **saturation** on the node.
+
 
 Scores for our testing workloads
 ################################
 
-Below we provide a screenshot of Graf`ana dashboard provided by us for visualization of final and
+Below we provide a screenshot of Grafana dashboard provided by us for visualization of final and
 transitional results of the algorithm. For our testing workloads the score values are widely scattered.
 As a far best workload with *score=1.1* is considered *redis-memtier-big*.
 
@@ -226,8 +234,8 @@ Limitations
 
 There are few limitations of our solution, which depending on usage can constitute a problem:
 
-- no support for **versions** of statefulset/deployment,
-- due to used mentioned in `Configuring the Score` prometheus functions, requirements of some
-workload can be overestimated, e.g. if workload is wrongly configured and keeps restarting after a short period of time
-- as we take CPU/MEM requirements from Kubernetes defined limits, if workload does not have that data defined,
-will be ignored.
+- no support for **versions** of statefulset/deployment, which means, that a statefulset/deployment is considered as
+the same workload as long as the **name** of the statefulset/deployment matches.
+- requirements of some workload can be overestimated,
+e.g. if workload is wrongly configured and keeps restarting after a short period of time
+- we support only workloads with defined CPU/MEM requirements.
