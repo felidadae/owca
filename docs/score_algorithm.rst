@@ -27,7 +27,7 @@ of the same workload.
 The algorithm is implemented as a set of **Prometheus rules**. Thanks to that, it can be easily visualized,
 simply understood and tweaked by a cluster operator.
 
-<
+
 Score value interpretation
 ##########################
 
