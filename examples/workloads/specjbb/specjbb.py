@@ -16,7 +16,7 @@ import os
 import math
 from common import cpu, command, image_name, image_tag, cpu_list, \
     initContainers, json, securityContext, pod, wrapper_kafka_brokers, \
-    wrapper_log_level, wrapper_kafka_topic, wrapper_labels, slo, volumeMounts
+    wrapper_kafka_topic, wrapper_labels, slo, volumeMounts
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -85,7 +85,7 @@ controller_cmd = """{wrapper} --command '{command}' --stderr 0 \
                               \"const\" --slo {slo} --sli_metric_name \
                               specjbb_p99_total_purchase""".format(
     wrapper=specjbb_wrapper, command=controller_cmd,
-    brokers=wrapper_kafka_brokers, log=wrapper_log_level,
+    brokers=wrapper_kafka_brokers,
     kafka_topic=wrapper_kafka_topic, labels=json.dumps(wrapper_labels),
     peak_load=qps, slo=slo)
 

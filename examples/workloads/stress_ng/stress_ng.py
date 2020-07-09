@@ -39,7 +39,6 @@ stress_ng_run_cmd = """/usr/bin/stress_ng_wrapper.pex --command '{stress_ng_cmd}
 --labels '{labels}' \
 --slo {slo} --sli_metric_name '{sli_metric_name}'""".format(
     stress_ng_cmd=stress_ng_cmd,
-    application=application,
     metric_name_prefix=application + "_",
     kafka_brokers=wrapper_kafka_brokers,
     kafka_topic=wrapper_kafka_topic,

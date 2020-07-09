@@ -58,7 +58,7 @@ elif application == 'redis':
     rpcperf_protocol = 'redis'
 else:
     raise Exception("Not supported application type >>{application}<<.".format(
-                                                                application))
+                                                                application=application))
 
 # SLI and Load base metrics.
 sli_metric_name = "{application}_p99".format(application=application)
