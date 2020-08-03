@@ -29,7 +29,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - source ./env/bin/activate && python wca/admission-controller/main.py -c /etc/admission-controller/config.yaml && deactivate
+          - source ./env/bin/activate && python wca/admission_controller/main.py -c /etc/admission-controller/config.yaml && deactivate
         imagePullPolicy: Always
       volumes:
         - name: certs

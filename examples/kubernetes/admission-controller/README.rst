@@ -85,6 +85,9 @@ The Secret will be forwarded to wca-scheduler.
     # Download the Certificate
     kubectl get csr webhook.webhook -o jsonpath='{.status.certificate}' | base64 --decode > server.crt
 
+    # Create namespace webhook
+    kubectl create namespace webhook
+
     # Create Secret with the certificate and the private key
     kubectl create secret generic webhook-secret --from-file server.crt --from-file server-key.pem --namespace webhook
 
@@ -103,14 +106,20 @@ Build and push image for admission-controller
 
     ``docker push 100.64.176.12:80/webhook:latest``
 
-Create namespace
-----------------
-
-    ``kubectl create namespace webhook``
 
 Create webhook
 --------------
 
+.. code-block:: shell
+
   kubectl apply -f webhook-deployment.yaml
   kubectl apply -f webhook-svc.yaml
   kubectl apply -f mutating-webhook.yaml
+
+After a change in any of the mentioned files it is safer to delete all previously created objects:
+
+.. code-block:: shell
+
+  kubectl delete -f webhook-deployment.yaml
+  kubectl delete -f webhook-svc.yaml
+  kubectl delete -f mutating-webhook.yaml
