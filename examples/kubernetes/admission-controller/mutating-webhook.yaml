@@ -4,6 +4,9 @@ metadata:
   name: webhook
 webhooks:
   - name: webhook.k8s.io
+    sideEffects: None
+    admissionReviewVersions:
+        - v1beta1
     clientConfig:
       service:
         name: webhook

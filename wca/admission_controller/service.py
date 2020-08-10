@@ -15,6 +15,7 @@
 import base64
 import copy
 from enum import Enum
+import logging
 from typing import Dict
 
 import jsonpatch
@@ -22,6 +23,7 @@ from flask import Flask, jsonify, request
 
 from wca.admission_controller.app_data_provider import AppDataProvider
 
+log = logging.getLogger(__name__)
 
 class AnnotatingService:
     def __init__(self, configuration: Dict[str, str]):
@@ -75,10 +77,19 @@ class AnnotatingService:
         modified_spec = copy.deepcopy(spec)
         annotations = {}
 
+        log.debug("[_mutate_pod] modified_spec={}".format(modified_spec))
+        log.debug("[_mutate_pod] request={}".format(request.json["request"]))
+
+        if request.json["request"]["namespace"] not in self.monitored_namespaces:
+            return self._create_patch(spec, modified_spec)
+
         app_name = modified_spec["metadata"]["labels"]["app"]
         ratio = self._get_wss_to_mem_ratio(app_name)
         ratio_annotation = self._get_wss_to_mem_ratio_annotation(ratio)
         annotations.update(ratio_annotation)
+
+        log.debug("Mutating pod of app={} with wss_to_mem_ratio={}".format(app_name, ratio))
+
         if ratio:
             memory_type_annotation = self._get_memory_type_annotation(float(ratio))
             annotations.update(memory_type_annotation)

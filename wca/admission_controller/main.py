@@ -13,6 +13,7 @@
 # limitations under the License
 import argparse
 import logging
+import os
 
 from wca.config import load_config, ConfigLoadError
 from wca.admission_controller.service import AnnotatingService
@@ -33,6 +34,10 @@ def main():
     log_levels = {}
     log_levels.setdefault(DEFAULT_MODULE, 'info')
     logger.configure_loggers_from_dict(log_levels)
+
+    log.warning('This software is pre-production and should not be deployed to production servers!')
+    log.debug('started PID=%r', os.getpid())
+    log.info('Starting wca-admission-controller.')
 
     register_components()
 
