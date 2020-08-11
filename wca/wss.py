@@ -21,7 +21,6 @@ from wca.metrics import Measurements, MetricName
 log = logging.getLogger(__name__)
 
 MB = 1024 * 1024
-KB = 1024
 
 
 class WSS:
@@ -38,16 +37,15 @@ class WSS:
         self.stable_cycles = stable_duration
         self.stable_cycles_counter = 0
 
-        # That kept in [B].
-        self.last_stable__task_working_set_size_bytes = None
+        self.last_stable__task_working_set_size_bytes = None  # [B]
 
         # @TODO we only needs last two values.
-        self.history_referenced = []  # [MB]
-        self.prev_membw = None  # [MB/s]
-        self.history_membw_delta = []  # [MB/s]
+        self.history_referenced = []  # [B]
+        self.prev_membw = None  # [B/s]
+        self.history_membw_delta = []  # [B/s]
 
     def get_curr_membw_delta(self):
-        """Returns last membw delta (diff between two consecutive values) as [MB/s]"""
+        """Returns last membw delta (diff between two consecutive values)"""
         if not self.history_membw_delta:
             return 0
         else:
@@ -71,14 +69,14 @@ class WSS:
         """Updates stable counter, which tells how many stable cycles in a row there were.
         stable: not changing rapidly in relation to previous values
 
-        curr_membw: [MB/s], curr_referenced: [MB]
+        curr_membw: [B/s], curr_referenced: [B]
         """
 
         self.calculate_membw_delta(curr_membw)
         curr_membw_delta = self.get_curr_membw_delta()
 
         if len(self.history_referenced) > 0:
-            curr_referenced_delta = float(curr_referenced - self.history_referenced[-1]) / self.cycle_duration_s  # [MB/s]
+            curr_referenced_delta = float(curr_referenced - self.history_referenced[-1]) / self.cycle_duration_s
 
             # Heuristic and magic number >>100<<.
             membw_threshold = curr_membw_delta / 100
@@ -91,21 +89,21 @@ class WSS:
                         '[%3.0fs] curr_referenced[MB]=%d curr_referenced_delta[MB/s]=+%d '
                         'membw_threshold=+%d referenced_threshold=+%d curr_membw_delta[MB/s]=%d -> stable '
                         'stable_cycles_counter=%d',
-                        time.time() - self.started, curr_referenced, curr_referenced_delta,
-                        membw_threshold, referenced_threshold,
-                        curr_membw_delta, self.stable_cycles_counter)
+                        time.time() - self.started, curr_referenced/MB, curr_referenced_delta/MB,
+                        membw_threshold/MB, referenced_threshold/MB,
+                        curr_membw_delta/MB, self.stable_cycles_counter)
                 else:
                     self.stable_cycles_counter = 0
             else:
                 self.stable_cycles_counter = 0
         else:
             log.debug('[%3.0fs] curr_referenced[MB]=%d curr_membw_delta[MB/s]=%d',
-                      time.time() - self.started, curr_referenced, curr_membw_delta)
+                      time.time() - self.started, curr_referenced/MB, curr_membw_delta/MB)
             self.stable_cycles_counter = 0
 
     @staticmethod
     def _get_referenced(pids):
-        """Returns referenced pages in [MB]"""
+        """Returns referenced pages in [Bytes]"""
         if pids:
             dbg = {}
             for pid in pids:
@@ -119,7 +117,7 @@ class WSS:
                     print('WARN: process lookup error:', pid)
                     pass
                 dbg[pid] = referenced
-            return int(sum(dbg.values()) / KB)  # scale as MB
+            return int(sum(dbg.values()) * 1024)  # Scale to Bytes (read as KB)
         return 0
 
     @staticmethod
@@ -138,12 +136,12 @@ class WSS:
         pids = self._discover_pids()
         log.debug('calculating wss for pids %s', pids)
         referenced = self._get_referenced(pids)
-        measurements[MetricName.TASK_WSS_REFERENCED_BYTES] = referenced * MB
+        measurements[MetricName.TASK_WSS_REFERENCED_BYTES] = referenced
 
         if rdt_measurements and MetricName.TASK_MEM_BANDWIDTH_BYTES in rdt_measurements:
             self._update_stable_counter(
-                rdt_measurements.get(MetricName.TASK_MEM_BANDWIDTH_BYTES)/MB,  # [MB/s]
-                referenced)  # [MB]
+                rdt_measurements.get(MetricName.TASK_MEM_BANDWIDTH_BYTES),
+                referenced)
         else:
             log.warning('task_mem_bandwidth_bytes missing! Not measuring WSS!')
             return {}
@@ -151,8 +149,8 @@ class WSS:
         if self.stable_cycles != 0 and self.stable_cycles_counter == self.stable_cycles:
             self.stable_cycles_counter = 0
             should_reset = True
-            measurements[MetricName.TASK_WORKING_SET_SIZE_BYTES] = referenced * MB
-            self.last_stable__task_working_set_size_bytes = referenced * MB
+            measurements[MetricName.TASK_WORKING_SET_SIZE_BYTES] = referenced
+            self.last_stable__task_working_set_size_bytes = referenced
         else:
             should_reset = False
             if self.last_stable__task_working_set_size_bytes:
