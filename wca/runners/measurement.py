@@ -390,7 +390,8 @@ class MeasurementRunner(Runner):
             enable_derived_metrics=self._enable_derived_metrics,
             wss_reset_interval=self._wss_reset_interval,
             wss_stable_duration=self._wss_stable_duration,
-            perf_aggregate_cpus=self._perf_aggregate_cpus
+            perf_aggregate_cpus=self._perf_aggregate_cpus,
+            interval=self._interval
         )
 
         self._init_uncore_pmu_events(self._enable_derived_metrics, self._uncore_events, platform)
