@@ -76,18 +76,21 @@ class WSS:
         curr_membw_delta = self.get_curr_membw_delta()
 
         if len(self.history_referenced) > 0:
-            curr_referenced_delta = float(curr_referenced - self.history_referenced[-1]) / self.cycle_duration_s
+            curr_referenced_delta = \
+                float(curr_referenced - self.history_referenced[-1]) / self.cycle_duration_s
 
             # Heuristic and magic number >>100<<.
             membw_threshold = curr_membw_delta / 100
             referenced_threshold = curr_referenced / 100
 
             if curr_referenced_delta >= 0:
-                if curr_referenced_delta < membw_threshold or curr_referenced_delta < referenced_threshold:
+                if curr_referenced_delta < membw_threshold \
+                        or curr_referenced_delta < referenced_threshold:
                     self.stable_cycles_counter += 1
                     log.debug(
                         '[%3.0fs] curr_referenced[MB]=%d curr_referenced_delta[MB/s]=+%d '
-                        'membw_threshold=+%d referenced_threshold=+%d curr_membw_delta[MB/s]=%d -> stable '
+                        'membw_threshold=+%d referenced_threshold=+%d '
+                        'curr_membw_delta[MB/s]=%d -> stable '
                         'stable_cycles_counter=%d',
                         time.time() - self.started, curr_referenced/MB, curr_referenced_delta/MB,
                         membw_threshold/MB, referenced_threshold/MB,
@@ -154,7 +157,8 @@ class WSS:
         else:
             should_reset = False
             if self.last_stable__task_working_set_size_bytes:
-                measurements[MetricName.TASK_WORKING_SET_SIZE_BYTES] = self.last_stable__task_working_set_size_bytes
+                measurements[MetricName.TASK_WORKING_SET_SIZE_BYTES] = \
+                    self.last_stable__task_working_set_size_bytes
             else:
                 measurements[MetricName.TASK_WORKING_SET_SIZE_BYTES] = 0
         self.history_referenced.append(referenced)
