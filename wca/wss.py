@@ -85,6 +85,7 @@ class WSS:
 
     @staticmethod
     def _get_referenced(pids):
+        """Returns referenced pages in [MB]"""
         if pids:
             dbg = {}
             for pid in pids:
@@ -99,6 +100,7 @@ class WSS:
                     pass
                 dbg[pid] = referenced
             referenced = sum(dbg.values())
+            referenced = int(referenced / 1024)  # scale as MB
             return referenced
         return 0
 
