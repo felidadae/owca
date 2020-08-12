@@ -37,7 +37,7 @@ def test_get_measurements(*mocks):
 
         # In megabytes: ( 1 + 2 + 3 + 4 + 5 ) * 1024 / 1024
         assert wss.get_measurements({'task_mem_bandwidth_bytes': 1234567}) == \
-            {MetricName.TASK_WSS_REFERENCED_BYTES: 15728640, 'task_working_set_size_bytes': 0}
+            {MetricName.TASK_WSS_REFERENCED_BYTES: 15360000, 'task_working_set_size_bytes': 0}
 
         # Check if gets info from smaps
         for smap in smaps:

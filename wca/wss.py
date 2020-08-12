@@ -20,7 +20,7 @@ from wca.metrics import Measurements, MetricName
 
 log = logging.getLogger(__name__)
 
-MB = 1024 * 1024
+MB = 1000000
 
 
 class WSS:
@@ -120,7 +120,7 @@ class WSS:
                     print('WARN: process lookup error:', pid)
                     pass
                 dbg[pid] = referenced
-            return int(sum(dbg.values()) * 1024)  # Scale to Bytes (read as KB)
+            return int(sum(dbg.values()) * 1000)  # Scale to Bytes (read as KB)
         return 0
 
     @staticmethod
