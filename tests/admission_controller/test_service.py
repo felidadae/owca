@@ -37,9 +37,10 @@ def test_get_pmem_ratio(app_name, ratio_per_app, expected_output):
 @patch('wca.admission_controller.service.AnnotatingService._get_wss_to_mem_ratio',
        return_value='12.3')
 def test_mutate(ratio):
-    request_json = {'request':
-                    {'object':
-                        {"apiVersion": "v1",
+    request_json = {'request': {
+                      'namespace': 'default',
+                      'object': {
+                         "apiVersion": "v1",
                          "kind": "Pod",
                          "metadata": {
                              "labels": {
