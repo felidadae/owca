@@ -135,19 +135,19 @@ spec:
       expr: 'task_mbw_read + task_mbw_write'
 
     - record: app_cpu
-      expr: 'max(max_over_time(task_requested_cpus[2m])) by (app)'
+      expr: 'max(max_over_time(task_requested_cpus[7d])) by (app)'
       labels:
         source: wca
     - record: app_mem
-      expr: 'max(max_over_time(task_requested_mem_bytes[2m])) by (app) / 1e9'
+      expr: 'max(max_over_time(task_requested_mem_bytes[7d])) by (app) / 1e9'
       labels:
         source: wca
     - record: app_mbw_flat
-      expr: 'max(quantile_over_time(0.95, task_mbw_flat[2m:10s])) by (app)'
+      expr: 'max(quantile_over_time(0.95, task_mbw_flat[7d:2m])) by (app)'
       labels:
         source: wca
     - record: app_wss
-      expr: 'max(quantile_over_time(0.95, task_wss_referenced_bytes[2m:10s])) by (app) / 1e9'
+      expr: 'max(quantile_over_time(0.95, task_wss_referenced_bytes[7d:2m])) by (app) / 1e9'
       labels:
         source: wca
 
