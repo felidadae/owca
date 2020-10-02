@@ -22,31 +22,38 @@ spec:
       labels:
         dim: cpu
         node: 'virtual_node_pmem'
+        source: 'wca'
     - record: node_capacity_unsafe
       expr: '1024'
       labels:
         dim: mem
         node: 'virtual_node_pmem'
+        source: 'wca'
     - record: node_capacity_unsafe
       expr: '58'
       labels:
         dim: wss
         node: 'virtual_node_pmem'
+        source: 'wca'
     - record: node_capacity_unsafe
       expr: '54'
       labels:
         dim: mbw_flat
         node: 'virtual_node_pmem'
+        source: 'wca'
 
     - record: platform_mem_mode_size_bytes
       expr: '1085958258688'
       labels:
         node: 'virtual_node_pmem'
+        source: 'wca'
     - record: platform_nvdimm_write_bandwidth_bytes_per_second
       expr: '14800000000'
       labels:
         node: 'virtual_node_pmem'
+        source: 'wca'
     - record: platform_nvdimm_read_bandwidth_bytes_per_second
       expr: '54400000000'
       labels:
         node: 'virtual_node_pmem'
+        source: 'wca'

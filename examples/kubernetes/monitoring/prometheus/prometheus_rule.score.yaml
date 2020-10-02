@@ -17,49 +17,59 @@ spec:
       expr: 'sum(platform_topology_cpus) by (node)'
       labels:
         dim: cpu
+        source: wca
     # mem
     - record: node_capacity_unsafe
       expr: 'ceil((sum(platform_mem_mode_size_bytes) by (node) / 1e9)) and on(node) platform_mem_mode_size_bytes!=0'
       labels:
         dim: mem
+        source: wca
     - record: node_capacity_unsafe
       expr: 'ceil(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes==0'
       labels:
         dim: mem
+        source: wca
     #mbw
     - record: node_capacity_unsafe
       expr: 'ceil(sum(platform_nvdimm_read_bandwidth_bytes_per_second) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes!=0'
       labels:
         dim: mbw_flat
+        source: wca
     - record: node_capacity_unsafe
       expr: 'ceil(sum(platform_dimm_speed_bytes_per_second) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes==0'
       labels:
         dim: mbw_flat
+        source: wca
     # wss
     # -- wss on 2lm is devaulated to 30% because of direct mapping (that is approximated by us unsafe maximum)
     - record: node_capacity_unsafe
       expr: 'ceil(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (node) * 0.3 / 1e9) and on(node) platform_mem_mode_size_bytes!=0'
       labels:
         dim: wss
+        source: wca
       # -- ws on 1lm nodes is just capacity of ram
     - record: node_capacity_unsafe
       expr: 'ceil(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes==0'
       labels:
         dim: wss
+        source: wca
 
     # safety weights: we don't want to fill any resource to it limit;
     - record: safety_weights
       expr: '0.7'
       labels:
         dim: cpu
+        source: wca
     - record: safety_weights
       expr: '0.9'
       labels:
         dim: mem
+        source: wca
     - record: safety_weights
       expr: '0.7'
       labels:
         dim: mbw_flat
+        source: wca
     - record: safety_weights
       expr: '0.66'
       labels:
@@ -70,23 +80,23 @@ spec:
     
     # ---------------------------- node PMEM profile -----------------------------------------
 
-    # Profile by mem
+      # Profile by mem
     - record: profile_node_by_mem
-      expr: 'node_capacity{dim="cpu"} / on (node) node_capacity{dim="mem"}'
+      expr: 'node_capacity{dim="cpu"} / on (node, source) node_capacity{dim="mem"}'
       labels:
         index: cpu
     - record: profile_node_by_mem
-      expr: 'node_capacity{dim="mbw_flat"} / on (node) node_capacity{dim="mem"}'
+      expr: 'node_capacity{dim="mbw_flat"} / on (node, source) node_capacity{dim="mem"}'
       labels:
         index: mbw_flat
     - record: profile_node_by_mem
-      expr: 'node_capacity{dim="wss"} / on (node) node_capacity{dim="mem"}'
+      expr: 'node_capacity{dim="wss"} / on (node, source) node_capacity{dim="mem"}'
       labels:
         index: wss
 
     # Note: average (avg) all PMEM nodes
     - record: profile_nodes_by_mem
-      expr: 'avg(profile_node_by_mem and on(node) platform_mem_mode_size_bytes != 0) by (index)'
+      expr: 'avg(profile_node_by_mem and on(node, source) platform_mem_mode_size_bytes != 0) by (index, source)'
       labels:
         memory: 2lm
 
@@ -103,13 +113,17 @@ spec:
     - record: task_memory_rw_ratio
       expr: '(rate(task_offcore_requests_demand_data_rd[30s]) + rate(task_offcore_requests_demand_rfo[30s])) /
              (rate(task_offcore_requests_demand_data_rd[30s]) + 2*rate(task_offcore_requests_demand_rfo[30s]))'
+      labels:
+        source: wca
     - record: task_mbw
       expr: 'rate(task_mem_bandwidth_bytes[30s]) / 1e9'
-    - record: task_memory_rw_ratio_
+      labels:
+        source: wca
+    - record: task_memory_rw_ratio_ # just added 2lm label
       expr: 'task_memory_rw_ratio'
       labels:
         memory: 2lm
-    - record: task_mbw_
+    - record: task_mbw_ # just added 2lm label
       expr: 'task_mbw'
       labels:
         memory: 2lm
@@ -121,13 +135,21 @@ spec:
       expr: 'task_mbw_read + task_mbw_write'
 
     - record: app_cpu
-      expr: 'max(max_over_time(task_requested_cpus[7d])) by (app)'
+      expr: 'max(max_over_time(task_requested_cpus[2m])) by (app)'
+      labels:
+        source: wca
     - record: app_mem
-      expr: 'max(max_over_time(task_requested_mem_bytes[7d])) by (app) / 1e9'
+      expr: 'max(max_over_time(task_requested_mem_bytes[2m])) by (app) / 1e9'
+      labels:
+        source: wca
     - record: app_mbw_flat
-      expr: 'max(quantile_over_time(0.95, task_mbw_flat[7d:2m])) by (app)'
+      expr: 'max(quantile_over_time(0.95, task_mbw_flat[2m:10s])) by (app)'
+      labels:
+        source: wca
     - record: app_wss
-      expr: 'max(quantile_over_time(0.95, task_wss_referenced_bytes[7d:2m])) by (app) / 1e9'
+      expr: 'max(quantile_over_time(0.95, task_wss_referenced_bytes[2m:10s])) by (app) / 1e9'
+      labels:
+        source: wca
 
     - record: app_req
       expr: 'app_cpu'
@@ -150,25 +172,25 @@ spec:
     #
     # app profile by mem
     - record: profile_app_by_mem
-      expr: 'app_req{dim="cpu"} / on(app) app_req{dim="mem"}'
+      expr: 'app_req{dim="cpu"} / on(app, source) app_req{dim="mem"}'
       labels:
         index: cpu
     - record: profile_app_by_mem
-      expr: 'app_req{dim="mbw_flat"} / on(app) app_req{dim="mem"}'
+      expr: 'app_req{dim="mbw_flat"} / on(app, source) app_req{dim="mem"}'
       labels:
         index: mbw_flat
     - record: profile_app_by_mem
-      expr: 'app_req{dim="wss"} / on(app) app_req{dim="mem"}'
+      expr: 'app_req{dim="wss"} / on(app, source) app_req{dim="mem"}'
       labels:
         index: wss
 
     # ======================== normalization profile ========================
     - record: profile_app_by_mem_norm
-      expr: 'profile_app_by_mem / on (index) group_left profile_nodes_by_mem{memory="2lm"}'
+      expr: 'profile_app_by_mem / on (index, source) group_left profile_nodes_by_mem{memory="2lm"}'
 
     # ======================== SCORE calculation ==========================
     - record: profile_app_2lm_score_max # lower is better for 2lm
-      expr: 'max(profile_app_by_mem_norm{index=~"cpu|mbw_flat|wss"}) by (app)'
+      expr: 'max(profile_app_by_mem_norm{index=~"cpu|mbw_flat|wss"}) by (app, source)'
 
   - name: cluster-score-data-provider
     rules:
