@@ -93,6 +93,8 @@ spec:
 
               stdbuf -e0 -o0
               memtier_benchmark
+              --distinct-client-seed
+              --randomize
               --run-count=9999
               --requests=10000000000
               --server=127.0.0.1
