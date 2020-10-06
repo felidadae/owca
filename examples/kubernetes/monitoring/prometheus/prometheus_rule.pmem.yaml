@@ -30,7 +30,7 @@ spec:
         node: 'virtual_node_pmem'
         source: 'wca'
     - record: node_capacity_unsafe
-      expr: '58'
+      expr: '193' # pmem_mode_wss_weight
       labels:
         dim: wss
         node: 'virtual_node_pmem'

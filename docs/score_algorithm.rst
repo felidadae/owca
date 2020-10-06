@@ -181,33 +181,41 @@ This could be accomplished using command:
 Configuring the Score
 #####################
 
+2LM or HMEM mode
+****************
+
+A little changes must be made to adjust the rules for **2LM** PMEM mode. By default the rules file is
+adjusted for HMEM mode.
+If score are targeted at 2LM mode please run replace commands:
+
+.. code-block:: shell
+
+    perl -i -pe "s/expr: \'1.0\' # pmem_mode_wss_weight/expr: \'0.3\' # pmem_mode_wss_weight/g" examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml
+    perl -i -pe "s/expr: \'193\' # pmem_mode_wss_weight/expr: \'58\' # pmem_mode_wss_weight/g" examples/kubernetes/monitoring/prometheus/prometheus_rule.pmem.yaml
+
+History window length
+*********************
+
 As mentioned in `Workloads characterization`_ the approximators of workloads features are calculated
 as peak value using **max** and **quantile_over_time** prometheus functions:
 
 .. code-block:: yaml
 
     - record: app_mbw_flat
-      expr: 'max(quantile_over_time(0.95, task_mbw_flat[7d:2m])) by (app)'
+      expr: 'max(quantile_over_time(0.95, task_mbw_flat[7d:3m])) by (app)'
     - record: app_wss
-      expr: 'max(quantile_over_time(0.9, task_working_set_size_bytes[7d:2m])) by (app) / 1e9'
+      expr: 'max(quantile_over_time(0.9, task_working_set_size_bytes[7d:3m])) by (app) / 1e9'
 
 By default the period length is set to 7 days, but can be changed using
-`generator_prometheus_rules.py script <../examples/kubernetes/scripts/generator_prometheus_rules.py>`_
-or manually simply by using find/replace command.
+commands:
 
 .. code-block:: shell
 
-    python3 examples/kubernetes/scripts/generator_prometheus_rules.py --features_history_period 7d –output prometheus_rules_score.yaml
+    perl -i -pe "s/7d/NEW_WINDOW_LENGTH/g" examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml
 
 `features_history_period` is time used in rules. Prometheus query language supports time
 durations specified as a number, followed immediately by one of the following
 units: s - seconds, m - minutes, h - hours, d - days, w - weeks, y - years.
-
-If score are targeted at 2LM mode please change value of `pmem_mode_wss_weight` to `0.3`:
-
-.. code-block:: shell
-
-    perl -pe -i 's/expr: '1.0 # pmem_mode_wss_weight'/expr: '0.3' # pmem_mode_wss_weight/g' examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml
 
 
 Grafana dashboard
