@@ -207,13 +207,13 @@ as peak value using **max** and **quantile_over_time** prometheus functions:
       expr: 'max(quantile_over_time(0.9, task_working_set_size_bytes[7d:3m])) by (app) / 1e9'
 
 By default the period length is set to 7 days, but can be changed using
-commands:
+commands (by filling proper value instead of `NEW_WINDOW_LENGTH`):
 
 .. code-block:: shell
 
     perl -i -pe "s/7d/NEW_WINDOW_LENGTH/g" examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml
 
-`features_history_period` is time used in rules. Prometheus query language supports time
+Prometheus query language supports time
 durations specified as a number, followed immediately by one of the following
 units: s - seconds, m - minutes, h - hours, d - days, w - weeks, y - years.
 
