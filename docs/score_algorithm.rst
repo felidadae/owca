@@ -3,7 +3,7 @@ Score algorithm overview
 ************************
 
 We constructed a heuristic for automatic assessment of how well a workload match a node with
-Intel PMEM memory installed ran in 2LM mode. The heuristic is trying to reach two goals:
+Intel PMEM memory installed ran in 2LM (or HMEM) mode. The heuristic is trying to reach two goals:
 
 - use as much of memory as possible on PMEM nodes
 - minimize a chance of worsening workloads performance (comparing to DRAM).
@@ -202,6 +202,13 @@ or manually simply by using find/replace command.
 `features_history_period` is time used in rules. Prometheus query language supports time
 durations specified as a number, followed immediately by one of the following
 units: s - seconds, m - minutes, h - hours, d - days, w - weeks, y - years.
+
+If score are targeted at 2LM mode please change value of `pmem_mode_wss_weight` to `0.3`:
+
+.. code-block:: shell
+
+    perl -pe -i 's/expr: '1.0 # pmem_mode_wss_weight'/expr: '0.3' # pmem_mode_wss_weight/g' examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml
+
 
 Grafana dashboard
 *****************

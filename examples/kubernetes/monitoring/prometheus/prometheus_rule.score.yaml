@@ -40,14 +40,17 @@ spec:
       labels:
         dim: mbw_flat
         source: wca
+    # -- 2LM:  0.3, NOTE: wss devaluated to 30% because of direct mapping (that is approximated by us unsafe maximum)
+    # -- HMEM: 1.0, NOTE: kernel based managing of DRAM memory
+    - record: pmem_mode_wss_weight
+      expr: '1.0' # pmem_mode_wss_weight
     # wss
-    # -- wss on 2lm is devaulated to 30% because of direct mapping (that is approximated by us unsafe maximum)
     - record: node_capacity_unsafe
-      expr: 'ceil(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (node) * 0.3 / 1e9) and on(node) platform_mem_mode_size_bytes!=0'
+      expr: 'ceil(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (node) * on() group_left pmem_mode_wss_weight / 1e9) and on(node) platform_mem_mode_size_bytes!=0'
       labels:
         dim: wss
         source: wca
-      # -- ws on 1lm nodes is just capacity of ram
+    # wss on 1lm nodes is just capacity of ram
     - record: node_capacity_unsafe
       expr: 'ceil(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (node) / 1e9) and on(node) platform_mem_mode_size_bytes==0'
       labels:
@@ -71,7 +74,7 @@ spec:
         dim: mbw_flat
         source: wca
     - record: safety_weights
-      expr: '0.66'
+      expr: '0.8'
       labels:
         dim: wss
 
@@ -109,14 +112,14 @@ spec:
     # ============================ apps ===================================
 
     # Helper metrics
-    # Note: heuristic for approximation of R/W ratio for a task; 30s set to be sure to have in each range at least 2 points;
+    # Note: heuristic for approximation of R/W ratio for a task; 3m set to be sure to have in each range at least 2 points;
     - record: task_memory_rw_ratio
-      expr: '(rate(task_offcore_requests_demand_data_rd[30s]) + rate(task_offcore_requests_demand_rfo[30s])) /
-             (rate(task_offcore_requests_demand_data_rd[30s]) + 2*rate(task_offcore_requests_demand_rfo[30s]))'
+      expr: '(rate(task_offcore_requests_demand_data_rd[3m]) + rate(task_offcore_requests_demand_rfo[3m])) /
+             (rate(task_offcore_requests_demand_data_rd[3m]) + 2*rate(task_offcore_requests_demand_rfo[3m]))'
       labels:
         source: wca
     - record: task_mbw
-      expr: 'rate(task_mem_bandwidth_bytes[30s]) / 1e9'
+      expr: 'rate(task_mem_bandwidth_bytes[3m]) / 1e9'
       labels:
         source: wca
     - record: task_memory_rw_ratio_ # just added 2lm label
@@ -135,19 +138,19 @@ spec:
       expr: 'task_mbw_read + task_mbw_write'
 
     - record: app_cpu
-      expr: 'max(max_over_time(task_requested_cpus[7d])) by (app)'
+      expr: 'max(max_over_time(task_requested_cpus[2h])) by (app)'
       labels:
         source: wca
     - record: app_mem
-      expr: 'max(max_over_time(task_requested_mem_bytes[7d])) by (app) / 1e9'
+      expr: 'max(max_over_time(task_requested_mem_bytes[2h])) by (app) / 1e9'
       labels:
         source: wca
     - record: app_mbw_flat
-      expr: 'max(quantile_over_time(0.95, task_mbw_flat[7d:2m])) by (app)'
+      expr: 'max(quantile_over_time(0.95, task_mbw_flat[2h:3m])) by (app)'
       labels:
         source: wca
     - record: app_wss
-      expr: 'max(quantile_over_time(0.95, task_wss_referenced_bytes[7d:2m])) by (app) / 1e9'
+      expr: 'max(quantile_over_time(0.95, task_working_set_size_bytes[2h:3m])) by (app) / 1e9'
       labels:
         source: wca
 
@@ -189,7 +192,7 @@ spec:
       expr: 'profile_app_by_mem / on (index, source) group_left profile_nodes_by_mem{memory="2lm"}'
 
     # ======================== SCORE calculation ==========================
-    - record: profile_app_2lm_score_max # lower is better for 2lm
+    - record: profile_app_score_max # lower is better for 2lm
       expr: 'max(profile_app_by_mem_norm{index=~"cpu|mbw_flat|wss"}) by (app, source)'
 
   - name: cluster-score-data-provider
