@@ -40,10 +40,10 @@ spec:
       labels:
         dim: mbw_flat
         source: wca
-    # -- 2LM:  0.3, NOTE: wss devaluated to 30% because of direct mapping (that is approximated by us unsafe maximum)
+    # -- 2LM:  0.5, NOTE: wss devaluated to 50% because of direct mapping (that is approximated by us unsafe maximum)
     # -- HMEM: 1.0, NOTE: kernel based managing of DRAM memory
     - record: pmem_mode_wss_weight
-      expr: '1.0' # pmem_mode_wss_weight
+      expr: '0.5' # pmem_mode_wss_weight
     # wss
     - record: node_capacity_unsafe
       expr: 'ceil(sum(platform_dimm_total_size_bytes{dimm_type="ram"}) by (node) * on() group_left pmem_mode_wss_weight / 1e9) and on(node) platform_mem_mode_size_bytes!=0'
@@ -74,7 +74,7 @@ spec:
         dim: mbw_flat
         source: wca
     - record: safety_weights
-      expr: '0.8'
+      expr: '0.9'
       labels:
         dim: wss
 

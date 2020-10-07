@@ -188,14 +188,14 @@ Configuring the Score
 2LM or HMEM mode
 ****************
 
-A little changes must be made to adjust the rules for **2LM** PMEM mode. By default the rules file is
-adjusted for HMEM mode.
-If score are targeted at 2LM mode please run replace commands:
+A little changes must be made to adjust the rules for **HMEM** PMEM mode. By default the rules file is
+adjusted for 2LM mode.
+If score are targeted at **HMEM** mode please run replace commands:
 
 .. code-block:: shell
 
-    perl -i -pe "s/expr: \'1.0\' # pmem_mode_wss_weight/expr: \'0.3\' # pmem_mode_wss_weight/g" examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml
-    perl -i -pe "s/expr: \'193\' # pmem_mode_wss_weight/expr: \'58\' # pmem_mode_wss_weight/g" examples/kubernetes/monitoring/prometheus/prometheus_rule.pmem.yaml
+    perl -i -pe "s/expr: \'0.5\' # pmem_mode_wss_weight/expr: \'1.0\' # pmem_mode_wss_weight/g" examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml
+    perl -i -pe "s/expr: \'96\' # pmem_mode_wss_weight/expr: \'192\' # pmem_mode_wss_weight/g" examples/kubernetes/monitoring/prometheus/prometheus_rule.pmem.yaml
 
 
 History window length
