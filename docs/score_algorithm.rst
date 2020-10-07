@@ -2,7 +2,7 @@
 Guide to usage of Score Prometheus rules
 ########################################
 
-**Note: please read last paragraph `Limitations and notes`** before using the solution.
+**Note: please read last paragraph *Limitations and notes* before using the solution.**
 
 .. contents:: Table of Contents
 
@@ -98,8 +98,8 @@ For each workload the heuristic approximates (among others):
 All this is calculated based on historical data (as default history window is set to 7 days).
 Please refer to `prometheus_rule.score.yaml <../examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml>`_.
 
-Setting cut-off Score value
-###########################
+Choosing cut-off Score value
+############################
 
 The created workloads scores list can be used to manually place workloads
 to make the best use of nodes with PMEM memory modules installed.
@@ -222,8 +222,10 @@ Prometheus query language supports time
 durations specified as a number, followed immediately by one of the following
 units: s - seconds, m - minutes, h - hours, d - days, w - weeks, y - years.
 
+
+****************************
 Visualization of the results
-############################
+****************************
 
 Prometheus query for score
 **************************
