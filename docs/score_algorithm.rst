@@ -58,7 +58,7 @@ By doing that we should not cause saturation of other resources on the node.
 
 .. csv-table::
 
-    "Score", "PMEM upper bound of memory usage"<
+    "Score", "PMEM upper bound of memory usage"
     "0.5", "200%"
     "0.75", "133%"
     "1", "100%"
@@ -228,7 +228,7 @@ Visualization of the results
 ****************************
 
 Prometheus query for score
-**************************
+##########################
 
 Please use prometheus query to list potential candidates:
 
@@ -237,7 +237,7 @@ Please use prometheus query to list potential candidates:
     sort(profile_app_score_max) < 5
 
 Grafana dashboard
-*****************
+#################
 
 We prepared Grafana dashboard `graphana dashboard <../examples/kubernetes/monitoring/grafana/2lm_dashboards/2lm_score_dashboard.yaml>`_
 for visualization of the results mentioned in `Scores for our testing workloads`_.
@@ -255,7 +255,7 @@ There are few limitations of our solution, which depending on usage can constitu
 - not detecting workloads where all workloads tasks are short-lived.
 
 Igoring tasks first N minutes of execution
-******************************************
+##########################################
 
 We on purpose ignores first N minutes (by default N=30) of execution of each task.
 There two reasons why such approach was implemented:
@@ -267,7 +267,7 @@ There two reasons why such approach was implemented:
 Drawback of the approach is that we will not detect workloads with only short living tasks.
 
 Workload identification
-***********************
+#######################
 
 The algorithm requires that there will be a way to identify all instances of a workload. E.g. a common
 label on all pods identifying the workload they belong to (notice **"app"** label being used in the rules file).
