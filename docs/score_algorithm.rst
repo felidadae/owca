@@ -1,6 +1,18 @@
-************************
-Score algorithm overview
-************************
+########################################
+Guide to usage of Score Prometheus rules
+########################################
+
+**Note: please read last paragraph `Limitations and notes`** before using the solution.
+
+.. contents:: Table of Contents
+
+
+********
+Overview
+********
+
+Overview of the main algorithm
+##############################
 
 We constructed a heuristic for automatic assessment of how well a workload match a node with
 Intel PMEM memory installed ran in 2LM (or HMEM) mode. The heuristic is trying to reach two goals:
@@ -63,8 +75,8 @@ It is a **desired** situation. Having workloads with **smaller score than 1** we
 for shared resources **saturation** on the node.
 
 
-Scores for our testing workloads
-################################
+Results for our testing workloads
+#################################
 
 Below we provide a screenshot of Grafana dashboard provided by us for visualization of final and
 transitional results of the algorithm. For our testing workloads the score values are widely scattered.
@@ -85,14 +97,6 @@ For each workload the heuristic approximates (among others):
 
 All this is calculated based on historical data (as default history window is set to 7 days).
 Please refer to `prometheus_rule.score.yaml <../examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml>`_.
-
-Workload identification
-#######################
-
-The algorithm requires that there will be a way to identify all instances of a workload. E.g. a common
-label on all pods identifying the workload they belong to (notice **"app"** label being used in the rules file).
-In the case, that there is no uniform, common label available across many workloads,
-one can use built-in controllers labels as described [here.](https://github.com/kubernetes/kubernetes/issues/47554)
 
 Setting cut-off Score value
 ###########################
@@ -193,30 +197,42 @@ If score are targeted at 2LM mode please run replace commands:
     perl -i -pe "s/expr: \'1.0\' # pmem_mode_wss_weight/expr: \'0.3\' # pmem_mode_wss_weight/g" examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml
     perl -i -pe "s/expr: \'193\' # pmem_mode_wss_weight/expr: \'58\' # pmem_mode_wss_weight/g" examples/kubernetes/monitoring/prometheus/prometheus_rule.pmem.yaml
 
+
 History window length
 *********************
 
 As mentioned in `Workloads characterization`_ the approximators of workloads features are calculated
-as peak value using **max** and **quantile_over_time** prometheus functions:
+as peak (**0.95** quantile) value using **quantile** and **quantile_over_time** prometheus functions:
 
 .. code-block:: yaml
 
     - record: app_mbw_flat
-      expr: 'max(quantile_over_time(0.95, task_mbw_flat[7d:3m])) by (app)'
+      expr: 'quantile(0.95, quantile_over_time(0.95, task_mbw_flat_ignore_initialization[7d])) by (app, source)'
     - record: app_wss
-      expr: 'max(quantile_over_time(0.9, task_working_set_size_bytes[7d:3m])) by (app) / 1e9'
+      expr: 'quantile(0.95, quantile_over_time(0.95, task_wss_ignore_initialization[7d])) by (app, source) / 1e9'
 
-By default the period length is set to 7 days, but can be changed using
+By default the period length is set to **7 days**, but can be changed using
 commands (by filling proper value instead of `NEW_WINDOW_LENGTH`):
 
 .. code-block:: shell
 
-    perl -i -pe "s/7d/NEW_WINDOW_LENGTH/g" examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml
+    perl -i -pe "s/7d/new_window_length/g" examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml
 
 Prometheus query language supports time
 durations specified as a number, followed immediately by one of the following
 units: s - seconds, m - minutes, h - hours, d - days, w - weeks, y - years.
 
+Visualization of the results
+############################
+
+Prometheus query for score
+**************************
+
+Please use prometheus query to list potential candidates:
+
+.. code-block:: yaml
+
+    sort(profile_app_score_max) < 5
 
 Grafana dashboard
 *****************
@@ -224,11 +240,34 @@ Grafana dashboard
 We prepared Grafana dashboard `graphana dashboard <../examples/kubernetes/monitoring/grafana/2lm_dashboards/2lm_score_dashboard.yaml>`_
 for visualization of the results mentioned in `Scores for our testing workloads`_.
 
-Limitations
-###########
+
+*********************
+Limitations and notes
+*********************
 
 There are few limitations of our solution, which depending on usage can constitute a problem:
 
-- requirements of some workload can be overestimated,
-    e.g. if workload is wrongly configured and keeps restarting after a short period of time
-- we support only workloads with defined CPU/MEM requirements.
+- requires automatic method of assigning tasks to workloads
+- we support only workloads with defined CPU/MEM requirements,
+- our method of estimating WSS (working set size) uses /proc/{pid}/smaps kernel API, which may have noneglicable overhead
+- not detecting workloads where all workloads tasks are short-lived.
+
+Igoring tasks first N minutes of execution
+******************************************
+
+We on purpose ignores first N minutes (by default N=30) of execution of each task.
+There two reasons why such approach was implemented:
+
+- ignore any costly initialization phase, which could result in overestimatation of parameters
+- ignore short living tasks, as our method of calculating WSS needs at least few minutes for observing a task,
+- ignore wrongly configured tasks.
+
+Drawback of the approach is that we will not detect workloads with only short living tasks.
+
+Workload identification
+***********************
+
+The algorithm requires that there will be a way to identify all instances of a workload. E.g. a common
+label on all pods identifying the workload they belong to (notice **"app"** label being used in the rules file).
+In the case, that there is no uniform, common label available across many workloads,
+one can use built-in controllers labels as described [here.](https://github.com/kubernetes/kubernetes/issues/47554)

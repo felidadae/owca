@@ -83,7 +83,7 @@ spec:
     
     # ---------------------------- node PMEM profile -----------------------------------------
 
-      # Profile by mem
+    # Profile by mem
     - record: profile_node_by_mem
       expr: 'node_capacity{dim="cpu"} / on (node, source) node_capacity{dim="mem"}'
       labels:
@@ -109,7 +109,8 @@ spec:
              (avg(ceil(sum(platform_nvdimm_write_bandwidth_bytes_per_second) by (node)) and on(node) platform_mem_mode_size_bytes!=0) by (node))'
       labels:
         memory: 2lm
-    # ============================ apps ===================================
+
+    # ============================ tasks ===================================
 
     # Helper metrics
     # Note: heuristic for approximation of R/W ratio for a task; 3m set to be sure to have in each range at least 2 points;
@@ -137,6 +138,18 @@ spec:
     - record: task_mbw_flat
       expr: 'task_mbw_read + task_mbw_write'
 
+    # Ignore first 1h of run of each task for WSS, MBW.
+    - record: task_mbw_flat_ignore_initialization
+      expr: 'task_mbw_flat and count_over_time(task_mbw_flat[2h:3m]) > 20'
+      labels:
+        source: wca
+    - record: task_wss_ignore_initialization
+      expr: 'task_working_set_size_bytes and count_over_time(task_working_set_size_bytes[2h:3m]) > 20'
+      labels:
+        source: wca
+
+    # ============================ apps ===================================
+
     - record: app_cpu
       expr: 'max(max_over_time(task_requested_cpus[2h])) by (app)'
       labels:
@@ -146,13 +159,9 @@ spec:
       labels:
         source: wca
     - record: app_mbw_flat
-      expr: 'max(quantile_over_time(0.95, task_mbw_flat[2h:3m])) by (app)'
-      labels:
-        source: wca
+      expr: 'quantile(0.95, quantile_over_time(0.95, task_mbw_flat_ignore_initialization[2h])) by (app, source)'
     - record: app_wss
-      expr: 'max(quantile_over_time(0.95, task_working_set_size_bytes[2h:3m])) by (app) / 1e9'
-      labels:
-        source: wca
+      expr: 'quantile(0.95, quantile_over_time(0.95, task_wss_ignore_initialization[2h])) by (app, source) / 1e9'
 
     - record: app_req
       expr: 'app_cpu'
@@ -190,6 +199,10 @@ spec:
     # ======================== normalization profile ========================
     - record: profile_app_by_mem_norm
       expr: 'profile_app_by_mem / on (index, source) group_left profile_nodes_by_mem{memory="2lm"}'
+
+    # Must contains all 3 dimensions: cpu, wss, membw.
+    - record: profile_app_by_mem_norm_3dim
+      expr: profile_app_by_mem_norm and on(app, source) count(profile_app_by_mem_norm) by (app, source) == 3
 
     # ======================== SCORE calculation ==========================
     - record: profile_app_score_max # lower is better for 2lm
