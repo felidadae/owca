@@ -230,11 +230,11 @@ Visualization of the results
 Prometheus query for score
 ##########################
 
-Please use prometheus query to list potential candidates:
+Please use prometheus query to list potential candidates (those with smaller value better suit 2LM/HMEM nodes):
 
 .. code-block:: yaml
 
-    sort(profile_app_score_max) < 5
+    sort(profile_app_score_max)
 
 Grafana dashboard
 #################

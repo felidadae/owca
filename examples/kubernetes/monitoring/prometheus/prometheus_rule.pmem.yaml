@@ -15,7 +15,6 @@ spec:
     # ======================== example node pmem ===============================
     # Xeon Gold 6230R, 26 core;
     # 2-2-1, 8x128GB, 1T; 192 DRAM;
-    # wss 192 * 0.3 = 57.6;
     # mbw_read 54.4, mbw_write 14.8;
     - record: node_capacity_unsafe
       expr: '104'
@@ -30,7 +29,7 @@ spec:
         node: 'virtual_node_pmem'
         source: 'wca'
     - record: node_capacity_unsafe
-      expr: '193' # pmem_mode_wss_weight
+      expr: '96' # pmem_mode_wss_weight
       labels:
         dim: wss
         node: 'virtual_node_pmem'
