@@ -157,17 +157,17 @@ spec:
     # ============================ apps ===================================
 
     - record: app_cpu
-      expr: 'max(max_over_time(task_requested_cpus[2h])) by (app)'
+      expr: 'max(max_over_time(task_requested_cpus[7d])) by (app)'
       labels:
         source: wca
     - record: app_mem
-      expr: 'max(max_over_time(task_requested_mem_bytes[2h])) by (app) / 1e9'
+      expr: 'max(max_over_time(task_requested_mem_bytes[7d])) by (app) / 1e9'
       labels:
         source: wca
     - record: app_mbw_flat
-      expr: 'quantile(0.95, quantile_over_time(0.95, task_mbw_flat_ignore_initialization[2h])) by (app, source)'
+      expr: 'quantile(0.95, quantile_over_time(0.95, task_mbw_flat_ignore_initialization[7d])) by (app, source)'
     - record: app_wss
-      expr: 'quantile(0.95, quantile_over_time(0.95, task_wss_ignore_initialization[2h])) by (app, source) / 1e9'
+      expr: 'quantile(0.95, quantile_over_time(0.95, task_wss_ignore_initialization[7d])) by (app, source) / 1e9'
 
     - record: app_req
       expr: 'app_cpu'
