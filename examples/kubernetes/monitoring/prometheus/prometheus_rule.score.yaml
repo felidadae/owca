@@ -156,6 +156,10 @@ spec:
 
     # ============================ apps ===================================
 
+    # For graphana dashboard.
+    - record: app_count
+      expr: count(task_up) by (app)
+
     - record: app_cpu
       expr: 'max(max_over_time(task_requested_cpus[7d])) by (app)'
       labels:
