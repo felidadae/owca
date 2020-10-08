@@ -75,7 +75,7 @@ It is a **desired** situation. Having workloads with **smaller score than 1** we
 for shared resources **saturation** on the node.
 
 
-Results for our testing workloads
+Results for our example workloads
 #################################
 
 Below we provide a screenshot of Grafana dashboard provided by us for visualization of final and
@@ -91,9 +91,9 @@ Workloads characterization
 
 For each workload the heuristic approximates (among others):
 
-- peak **memory bandwidth** used (traffic from caches to RAM memory) with division on read/write,
+- **memory bandwidth** requirement (traffic from caches to RAM memory) with division on read/write,
   **what must be noted Intel RDT** is required to be enabled on the node for this to work,
-- peak **working set size** (number of touched memory pages in a period of time).
+- **working set size** requirement (number of touched memory pages in a period of time).
 
 All this is calculated based on historical data (as default history window is set to 7 days).
 Please refer to `prometheus_rule.score.yaml <../examples/kubernetes/monitoring/prometheus/prometheus_rule.score.yaml>`_.
@@ -188,7 +188,7 @@ Configuring the Score
 2LM or HMEM mode
 ****************
 
-A little changes must be made to adjust the rules for **HMEM** PMEM mode. By default the rules file is
+A little changes must be done to adjust the rules for **HMEM** PMEM mode. By default the rules file is
 adjusted for 2LM mode.
 If score are targeted at **HMEM** mode please run replace commands:
 
@@ -201,8 +201,8 @@ If score are targeted at **HMEM** mode please run replace commands:
 History window length
 *********************
 
-As mentioned in `Workloads characterization`_ the approximators of workloads features are calculated
-as peak (**0.95** quantile) value using **quantile** and **quantile_over_time** prometheus functions:
+We approximate workloads resource requirements by using
+**quantile** and **quantile_over_time** prometheus functions:
 
 .. code-block:: yaml
 
@@ -210,6 +210,8 @@ as peak (**0.95** quantile) value using **quantile** and **quantile_over_time** 
       expr: 'quantile(0.95, quantile_over_time(0.95, task_mbw_flat_ignore_initialization[7d])) by (app, source)'
     - record: app_wss
       expr: 'quantile(0.95, quantile_over_time(0.95, task_wss_ignore_initialization[7d])) by (app, source) / 1e9'
+
+We use **0.95-quntile** to get rid off outliers and fit requirements to peak traffic.
 
 By default the period length is set to **7 days**, but can be changed using
 commands (by filling proper value instead of `NEW_WINDOW_LENGTH`):
@@ -230,7 +232,7 @@ Visualization of the results
 Prometheus query for score
 ##########################
 
-Please use prometheus query to list potential candidates (those with smaller value better suit 2LM/HMEM nodes):
+Please use Prometheus query to list potential candidates (those with smaller value better suit 2LM/HMEM nodes):
 
 .. code-block:: yaml
 
@@ -241,6 +243,7 @@ Grafana dashboard
 
 We prepared Grafana dashboard `graphana dashboard <../examples/kubernetes/monitoring/grafana/2lm_dashboards/2lm_score_dashboard.yaml>`_
 for visualization of the results mentioned in `Scores for our testing workloads`_.
+The dashboard requires Grafana with `boom table plugin <https://grafana.com/grafana/plugins/yesoreyeram-boomtable-panel>`.
 
 
 *********************
@@ -251,25 +254,27 @@ There are few limitations of our solution, which depending on usage can constitu
 
 - requires automatic method of assigning tasks to workloads
 - we support only workloads with defined CPU/MEM requirements,
-- our method of estimating WSS (working set size) uses /proc/{pid}/smaps kernel API, which may have noneglicable overhead
+- our method of estimating WSS (working set size) uses /proc/{pid}/smaps kernel API,
+  which may have non negligible overhead (the overhead is tried to be mitigated
+  by long sampling and resets interval - 60s/15minutes),
 - not detecting workloads where all workloads tasks are short-lived.
 
-Igoring tasks first N minutes of execution
-##########################################
+Ignoring tasks first N minutes of execution
+###########################################
 
-We on purpose ignores first N minutes (by default N=30) of execution of each task.
+We on purpose ignore first N minutes (by default N=30) of execution of each task.
 There two reasons why such approach was implemented:
 
-- ignore any costly initialization phase, which could result in overestimatation of parameters
+- ignore any costly initialization phase, which could result in overestimatation of parameters,
 - ignore short living tasks, as our method of calculating WSS needs at least few minutes for observing a task,
 - ignore wrongly configured tasks.
 
-Drawback of the approach is that we will not detect workloads with only short living tasks.
+Drawback of the approach is that we will not characterize workloads with only short living tasks.
 
 Workload identification
 #######################
 
-The algorithm requires that there will be a way to identify all instances of a workload. E.g. a common
-label on all pods identifying the workload they belong to (notice **"app"** label being used in the rules file).
-In the case, that there is no uniform, common label available across many workloads,
-one can use built-in controllers labels as described [here.](https://github.com/kubernetes/kubernetes/issues/47554)
+The algorithm requires that there will be a way to identify all instances of a workload. In the simplest case a common
+label on all pods identifying the workload they belong to exists (e.g. following
+`kubernetes recommended scheme of labelling <https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/#labels>` 
+provides needed common label).
