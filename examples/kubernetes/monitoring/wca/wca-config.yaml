@@ -10,7 +10,7 @@
 #  wca.wss: debug
 
 runner: !MeasurementRunner
-  interval: 60.0 
+  interval: 5.0
   node: !KubernetesNode
     cgroup_driver: cgroupfs
     monitored_namespaces: ["default"]
@@ -24,25 +24,20 @@ runner: !MeasurementRunner
 
   extra_labels:
     node: !Env HOSTNAME
-  event_names:
-    - task_cycles # do not remove: USED BY E2E tests
-    - task_instructions
-    - task_offcore_requests_demand_data_rd # required fro R/W characterization
-    - task_offcore_requests_demand_rfo
   enable_derived_metrics: True
   uncore_event_names:
-    - platform_cas_count_reads
-    - platform_cas_count_writes
-    - platform_pmm_bandwidth_reads
-    - platform_pmm_bandwidth_writes
+    -   - platform_cas_count_reads
+        - platform_cas_count_writes
+        - platform_pmm_bandwidth_reads
+        - platform_pmm_bandwidth_writes
+    -   - platform_upi_rxl_flits
+        - platform_upi_txl_flits
+    -   - platform_rpq_occupancy
+        - platform_rpq_inserts
+        - platform_imc_clockticks
 
-  # WorkingSetSize configuration: reset every 20 minutes, require 5 minutes of stable increase less then 1%)
-  # (assuming 1 minute collection interval).
-  wss_reset_cycles: 20
-  wss_membw_threshold: 0.01
-  wss_stable_cycles: -5
-
-  # Collect metrics from proc/PID/sched to debug numa issues
-  # sched: True
+  rdt_enabled: True
+  sched: True
+  vmstat: True
   
   gather_hw_mm_topology: True

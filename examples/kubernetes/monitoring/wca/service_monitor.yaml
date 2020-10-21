@@ -10,7 +10,7 @@ spec:
       name: wca
   endpoints:
   - port: web
-    interval: 60s
+    interval: 5s
     # https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#relabelconfig
     # https://github.com/grafana/kubernetes-app/issues/31#issuecomment-409862549
     relabelings:
